@@ -1,0 +1,256 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wzzc-dev/text"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn grayscale_to_rgba(FixedArray[Byte], Int, Int) -> FixedArray[Byte]
+
+pub fn layout_paragraph(String, FontData, LayoutConfig) -> Paragraph
+
+pub fn layout_text(Font, String, LayoutConfig) -> LayoutResult
+
+pub fn parse_font(Bytes) -> Font
+
+// Errors
+
+// Types and methods
+pub struct BinaryReader {
+  data : BytesView
+  mut pos : Int
+} derive(@debug.Debug)
+pub fn BinaryReader::from_view(BytesView) -> Self
+pub fn BinaryReader::new(Bytes) -> Self
+pub fn BinaryReader::read_byte(Self) -> Byte
+pub fn BinaryReader::read_bytes(Self, Int) -> BytesView
+pub fn BinaryReader::read_i16_be(Self) -> Int
+pub fn BinaryReader::read_i32_be(Self) -> Int
+pub fn BinaryReader::read_tag(Self) -> String
+pub fn BinaryReader::read_u16_be(Self) -> UInt16
+pub fn BinaryReader::read_u32_be(Self) -> UInt
+pub fn BinaryReader::remaining(Self) -> Int
+pub fn BinaryReader::seek(Self, Int) -> Unit
+pub fn BinaryReader::skip(Self, Int) -> Unit
+pub fn BinaryReader::tell(Self) -> Int
+
+pub struct Font {
+  head : FontHead
+  hhea : FontHhea
+  hmtx : Array[LongHorMetric]
+  cmap : Map[Int, Int]
+  glyphs : Array[GlyphData]
+  glyph_count : Int
+  kern : Array[KernPair]
+} derive(@debug.Debug)
+pub fn Font::char_to_glyph(Self, Int) -> Int
+pub fn Font::get_glyph(Self, Int) -> GlyphData
+pub fn Font::get_h_metrics(Self, Int) -> (Int, Int)
+pub fn Font::get_kerning(Self, Int, Int) -> Int
+pub fn Font::get_metrics(Self) -> (Int, Int, Int)
+pub fn Font::get_units_per_em(Self) -> Int
+
+pub struct FontData {
+  data : Bytes
+  font_index : Int
+} derive(@debug.Debug)
+pub fn FontData::get_data(Self) -> Bytes
+pub fn FontData::new(Bytes, font_index? : Int) -> Self
+
+pub struct FontHead {
+  units_per_em : Int
+  index_to_loc_format : Int
+} derive(Eq, @debug.Debug)
+
+pub struct FontHhea {
+  ascent : Int
+  descent : Int
+  line_gap : Int
+  num_h_metrics : Int
+} derive(Eq, @debug.Debug)
+
+pub struct FontMetrics {
+  units_per_em : Int
+  ascent : Int
+  descent : Int
+  line_gap : Int
+} derive(Eq, @debug.Debug)
+pub fn FontMetrics::line_height(Self) -> Int
+pub fn FontMetrics::new(units_per_em~ : Int, ascent~ : Int, descent~ : Int, line_gap? : Int) -> Self
+
+pub struct GlyphContour {
+  points : Array[GlyphPoint]
+} derive(@debug.Debug)
+
+pub enum GlyphData {
+  Simple(SimpleGlyph)
+  Empty
+} derive(@debug.Debug)
+
+pub struct GlyphId {
+  id : Int
+} derive(Eq, @debug.Debug)
+pub fn GlyphId::new(Int) -> Self
+pub fn GlyphId::to_int(Self) -> Int
+
+pub struct GlyphInfo {
+  glyph_id : GlyphId
+  cluster : Int
+} derive(Eq, @debug.Debug)
+pub fn GlyphInfo::new(glyph_id~ : GlyphId, cluster~ : Int) -> Self
+
+pub struct GlyphPoint {
+  x : Int
+  y : Int
+  on_curve : Bool
+} derive(Eq, @debug.Debug)
+
+pub struct GlyphPosition {
+  glyph_id : GlyphId
+  x_advance : Int
+  y_advance : Int
+  x_offset : Int
+  y_offset : Int
+} derive(Eq, @debug.Debug)
+pub fn GlyphPosition::new(glyph_id~ : GlyphId, x_advance? : Int, y_advance? : Int, x_offset? : Int, y_offset? : Int) -> Self
+
+pub struct KernPair {
+  left : Int
+  right : Int
+  value : Int
+} derive(Eq, @debug.Debug)
+
+pub struct LayoutConfig {
+  max_width : Double
+  font_size : Double
+  line_height : Double
+  alignment : TextAlign
+} derive(@debug.Debug)
+pub fn LayoutConfig::new(max_width? : Double, font_size? : Double, line_height? : Double, alignment? : TextAlign) -> Self
+
+pub struct LayoutLine {
+  glyphs : Array[PositionedGlyph]
+  width : Double
+  y : Double
+} derive(@debug.Debug)
+
+pub struct LayoutMetrics {
+  width : Double
+  height : Double
+  baseline : Double
+} derive(Eq, @debug.Debug)
+pub fn LayoutMetrics::new(width~ : Double, height~ : Double, baseline~ : Double) -> Self
+
+pub struct LayoutResult {
+  lines : Array[LayoutLine]
+  total_width : Double
+  total_height : Double
+} derive(@debug.Debug)
+
+pub struct LineSegment {
+  x0 : Double
+  y0 : Double
+  x1 : Double
+  y1 : Double
+} derive(@debug.Debug)
+
+pub struct LongHorMetric {
+  advance_width : Int
+  lsb : Int
+} derive(Eq, @debug.Debug)
+
+pub struct Paragraph {
+  text : String
+  lines : Array[TextLine]
+  alignment : TextAlign
+  font_size : Double
+  line_height : Double
+} derive(@debug.Debug)
+pub fn Paragraph::get_lines(Self) -> Array[TextLine]
+pub fn Paragraph::total_height(Self) -> Double
+
+pub struct PositionedGlyph {
+  glyph_id : Int
+  x : Double
+  y : Double
+  advance_width : Double
+} derive(@debug.Debug)
+
+pub struct Rasterizer {
+  width : Int
+  height : Int
+  pixels : FixedArray[Byte]
+  coverage : FixedArray[Int]
+}
+pub fn Rasterizer::clear(Self) -> Unit
+pub fn Rasterizer::draw_line(Self, Double, Double, Double, Double) -> Unit
+pub fn Rasterizer::get_pixels(Self) -> FixedArray[Byte]
+pub fn Rasterizer::new(Int, Int) -> Self
+pub fn Rasterizer::rasterize_glyph(Self, SimpleGlyph, Double, Double, Double) -> Unit
+
+pub struct Script {
+  tag : String
+} derive(Eq, @debug.Debug)
+pub fn Script::cjk() -> Self
+pub fn Script::cyrillic() -> Self
+pub fn Script::latin() -> Self
+
+pub struct ShapedText {
+  glyphs : Array[GlyphInfo]
+  positions : Array[GlyphPosition]
+  width : Int
+} derive(@debug.Debug)
+pub fn ShapedText::get_width(Self) -> Int
+pub fn ShapedText::glyph_count(Self) -> Int
+
+pub struct ShapingBuffer {
+  text : String
+  direction : TextDirection
+  script : Script
+  font_size : Double
+} derive(@debug.Debug)
+pub fn ShapingBuffer::new(String, direction? : TextDirection, script? : Script, font_size? : Double) -> Self
+pub fn ShapingBuffer::shape(Self, FontData) -> ShapedText
+
+pub struct SimpleGlyph {
+  contours : Array[GlyphContour]
+  xmin : Int
+  ymin : Int
+  xmax : Int
+  ymax : Int
+} derive(@debug.Debug)
+
+pub struct TableRecord {
+  tag : String
+  checksum : UInt
+  offset : UInt
+  length : UInt
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TextAlign {
+  Left
+  Center
+  Right
+  Justify
+} derive(Eq, @debug.Debug)
+
+pub enum TextDirection {
+  LeftToRight
+  RightToLeft
+} derive(Eq, @debug.Debug)
+
+pub struct TextLine {
+  glyphs : Array[GlyphInfo]
+  positions : Array[GlyphPosition]
+  width : Int
+  y_offset : Int
+} derive(@debug.Debug)
+pub fn TextLine::get_width(Self) -> Int
+pub fn TextLine::glyph_count(Self) -> Int
+pub fn TextLine::new(Array[GlyphInfo], Array[GlyphPosition], Int, y_offset? : Int) -> Self
+
+// Type aliases
+
+// Traits
+

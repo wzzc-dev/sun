@@ -1,0 +1,9 @@
+members = [
+  "./graphics",
+  "./text",
+  "./softbuffer",
+  "./examples/triangle_window",
+  "./examples/hello_world",
+  "./examples/font_demo",
+  "./.local_repos/window",
+]

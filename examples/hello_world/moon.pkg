@@ -1,0 +1,14 @@
+import {
+  "Milky2018/window/core",
+  "Milky2018/window/windows",
+  "wzzc-dev/graphics",
+  "wzzc-dev/text",
+  "wzzc-dev/softbuffer",
+}
+
+supported_targets = "native"
+
+options(
+  "is-main": true,
+  targets: { "main.mbt": [ "native" ] },
+)
