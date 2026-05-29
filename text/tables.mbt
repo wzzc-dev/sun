@@ -46,9 +46,22 @@ pub struct SimpleGlyph {
 } derive(Debug)
 
 ///|
+/// A component of a composite glyph
+pub struct GlyphComponent {
+  glyph_index : Int
+  x_offset : Int
+  y_offset : Int
+  scale_x : Double
+  scale_y : Double
+  scale_xy : Double
+  scale_yx : Double
+} derive(Debug)
+
+///|
 /// Glyph data (simple or composite)
 pub enum GlyphData {
   Simple(SimpleGlyph)
+  Composite(Array[GlyphComponent])
   Empty
 } derive(Debug)
 
@@ -103,12 +116,78 @@ pub fn Font::char_to_glyph(self : Font, char_code : Int) -> Int {
 }
 
 ///|
-/// Get glyph data
+/// Get glyph data, resolving composite glyphs
 pub fn Font::get_glyph(self : Font, glyph_id : Int) -> GlyphData {
   guard glyph_id >= 0 && glyph_id < self.glyph_count else {
     return GlyphData::Empty
   }
-  self.glyphs[glyph_id]
+  let data = self.glyphs[glyph_id]
+  match data {
+    GlyphData::Composite(components) =>
+      resolve_composite_glyph(self, components)
+    _ => data
+  }
+}
+
+///|
+/// Resolve a composite glyph by combining component glyphs
+fn resolve_composite_glyph(
+  font : Font,
+  components : Array[GlyphComponent],
+) -> GlyphData {
+  let all_contours = []
+
+  for component in components {
+    let glyph_data = font.get_glyph(component.glyph_index)
+    match glyph_data {
+      GlyphData::Simple(simple) =>
+        // Transform and add contours
+        for contour in simple.contours {
+          let transformed_points = []
+          for point in contour.points {
+            let x = point.x.to_double() * component.scale_x +
+              point.y.to_double() * component.scale_xy +
+              component.x_offset.to_double()
+            let y = point.x.to_double() * component.scale_yx +
+              point.y.to_double() * component.scale_y +
+              component.y_offset.to_double()
+            transformed_points.push({
+              x: x.to_int(),
+              y: y.to_int(),
+              on_curve: point.on_curve,
+            })
+          }
+          all_contours.push({ points: transformed_points })
+        }
+      _ => () // Skip empty or unresolved composite glyphs
+    }
+  }
+
+  guard all_contours.length() > 0 else { return GlyphData::Empty }
+
+  // Calculate bounding box from contours
+  let mut xmin = all_contours[0].points[0].x
+  let mut ymin = all_contours[0].points[0].y
+  let mut xmax = xmin
+  let mut ymax = ymin
+  for contour in all_contours {
+    for point in contour.points {
+      if point.x < xmin {
+        xmin = point.x
+      }
+      if point.y < ymin {
+        ymin = point.y
+      }
+      if point.x > xmax {
+        xmax = point.x
+      }
+      if point.y > ymax {
+        ymax = point.y
+      }
+    }
+  }
+
+  GlyphData::Simple({ contours: all_contours, xmin, ymin, xmax, ymax })
 }
 
 ///|

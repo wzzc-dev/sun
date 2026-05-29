@@ -215,7 +215,7 @@ fn calculate_bezier_steps(
 }
 
 ///|
-/// Scanline fill with anti-aliasing using coverage calculation
+/// Scanline fill with non-zero winding rule and 4x4 supersampling anti-aliasing
 fn scanline_fill_with_aa(
   rasterizer : Rasterizer,
   segments : Array[LineSegment],
@@ -242,68 +242,38 @@ fn scanline_fill_with_aa(
 
   let y_start = min_y.to_int().max(0)
   let y_end = (max_y.to_int() + 1).min(rasterizer.height)
+  let x_start = min_x(segments).to_int().max(0)
+  let x_end = max_x(segments).to_int().min(rasterizer.width)
 
-  // For each scanline
+  // 4x4 supersampling for anti-aliasing
+  let sample_count = 4
+  let sample_count_sq = sample_count * sample_count // 16
+
+  // For each pixel in the bounding box
   for y in y_start..<y_end {
-    // Find intersections with this scanline (at pixel center)
-    let y_double = y.to_double() + 0.5
-    let intersections = []
-    for seg in segments {
-      let y0 = seg.y0
-      let y1 = seg.y1
+    for x in x_start..<x_end {
+      let mut covered = 0
 
-      // Check if segment crosses this scanline (using >= and < for proper winding)
-      if (y0 < y_double && y1 >= y_double) || (y1 < y_double && y0 >= y_double) {
-        // Calculate x intersection
-        let t = (y_double - y0) / (y1 - y0)
-        let x = seg.x0 + t * (seg.x1 - seg.x0)
-        intersections.push(x)
-      }
-    }
+      // Check each sub-pixel
+      for sy in 0..<sample_count {
+        for sx in 0..<sample_count {
+          // Sub-pixel position (center of sub-pixel)
+          let sample_x = x.to_double() +
+            (sx.to_double() + 0.5) / sample_count.to_double()
+          let sample_y = y.to_double() +
+            (sy.to_double() + 0.5) / sample_count.to_double()
 
-    // Sort intersections
-    let sorted = sort_doubles(intersections)
-
-    // Fill between pairs of intersections (even-odd rule)
-    let mut i = 0
-    while i + 1 < sorted.length() {
-      let x_start_f = sorted[i]
-      let x_end_f = sorted[i + 1]
-
-      // Calculate pixel range
-      let x_start = x_start_f.to_int().max(0)
-      let x_end = (x_end_f.to_int() + 1).min(rasterizer.width)
-
-      // Set coverage for fully covered pixels
-      for x in x_start..<x_end {
-        let idx = y * rasterizer.width + x
-        rasterizer.coverage[idx] = 255
-      }
-
-      i = i + 2
-    }
-  }
-
-  // Apply coverage to pixels with anti-aliasing
-  // Apply a simple 2x2 box filter to smooth edges
-  for y in y_start..<y_end {
-    for x in 0..<rasterizer.width {
-      let idx = y * rasterizer.width + x
-      if rasterizer.coverage[idx] > 0 {
-        // Check neighbors for anti-aliasing
-        let has_left = x > 0 && rasterizer.coverage[idx - 1] == 0
-        let has_right = x < rasterizer.width - 1 &&
-          rasterizer.coverage[idx + 1] == 0
-        let has_top = y > 0 &&
-          rasterizer.coverage[(y - 1) * rasterizer.width + x] == 0
-        let has_bottom = y < rasterizer.height - 1 &&
-          rasterizer.coverage[(y + 1) * rasterizer.width + x] == 0
-
-        // If this pixel is at the edge, apply partial coverage
-        if has_left || has_right || has_top || has_bottom {
-          // Edge pixel - use partial coverage for anti-aliasing
-          rasterizer.coverage[idx] = 192 // ~75% coverage for edge pixels
+          // Check if this sub-pixel is inside the glyph using non-zero winding rule
+          if is_point_inside_glyph(sample_x, sample_y, segments) {
+            covered = covered + 1
+          }
         }
+      }
+
+      // Map coverage count to 0-255
+      if covered > 0 {
+        let idx = y * rasterizer.width + x
+        rasterizer.coverage[idx] = covered * 255 / sample_count_sq
       }
     }
   }
@@ -314,6 +284,72 @@ fn scanline_fill_with_aa(
       rasterizer.pixels[i] = rasterizer.coverage[i].to_byte()
     }
   }
+}
+
+///|
+/// Get minimum x coordinate from segments
+fn min_x(segments : Array[LineSegment]) -> Double {
+  let mut min_val = segments[0].x0
+  for seg in segments {
+    if seg.x0 < min_val {
+      min_val = seg.x0
+    }
+    if seg.x1 < min_val {
+      min_val = seg.x1
+    }
+  }
+  min_val
+}
+
+///|
+/// Get maximum x coordinate from segments
+fn max_x(segments : Array[LineSegment]) -> Double {
+  let mut max_val = segments[0].x0
+  for seg in segments {
+    if seg.x0 > max_val {
+      max_val = seg.x0
+    }
+    if seg.x1 > max_val {
+      max_val = seg.x1
+    }
+  }
+  max_val
+}
+
+///|
+/// Check if a point is inside the glyph using non-zero winding rule
+fn is_point_inside_glyph(
+  px : Double,
+  py : Double,
+  segments : Array[LineSegment],
+) -> Bool {
+  // Count crossings with direction
+  let mut winding = 0
+
+  for seg in segments {
+    let y0 = seg.y0
+    let y1 = seg.y1
+
+    // Check if segment crosses the horizontal line at py
+    if (y0 < py && y1 >= py) || (y1 < py && y0 >= py) {
+      // Calculate x intersection
+      let t = (py - y0) / (y1 - y0)
+      let x = seg.x0 + t * (seg.x1 - seg.x0)
+
+      // Only count if intersection is to the left of the point
+      if x < px {
+        // Direction: +1 if crossing upward, -1 if downward
+        if y0 < y1 {
+          winding = winding + 1
+        } else {
+          winding = winding - 1
+        }
+      }
+    }
+  }
+
+  // Non-zero rule: point is inside if winding number is non-zero
+  winding != 0
 }
 
 ///|

@@ -122,7 +122,7 @@ fn parse_hmtx(
 }
 
 ///|
-/// Parse cmap table (format 4 - BMP characters)
+/// Parse cmap table (supports format 4 and format 12)
 fn parse_cmap(data : Bytes, tables : Map[String, TableRecord]) -> Map[Int, Int] {
   let table = match tables.get("cmap") {
     Some(t) => t
@@ -135,54 +135,79 @@ fn parse_cmap(data : Bytes, tables : Map[String, TableRecord]) -> Map[Int, Int] 
   ignore(reader.read_u16_be()) // version
   let num_tables = reader.read_u16_be().to_int()
 
-  // Find encoding record for platform 3 (Windows), encoding 1 (Unicode BMP)
-  let mut cmap_subtable_offset = 0
+  // Collect encoding records
+  let mut format4_offset = 0
+  let mut format12_offset = 0
   for _ in 0..<num_tables {
     let platform_id = reader.read_u16_be().to_int()
     let encoding_id = reader.read_u16_be().to_int()
     let offset = reader.read_u32_be().to_int()
-    if platform_id is 3 && encoding_id is 1 {
-      cmap_subtable_offset = offset
+
+    // Prefer format 12 (full Unicode) over format 4 (BMP only)
+    if platform_id is 0 && encoding_id is 4 {
+      // Unicode 2.0+ full repertoire
+      format12_offset = offset
+    } else if platform_id is 3 && encoding_id is 10 {
+      // Windows Unicode full repertoire
+      format12_offset = offset
+    } else if platform_id is 3 && encoding_id is 1 {
+      // Windows Unicode BMP (format 4)
+      format4_offset = offset
     }
   }
 
-  guard cmap_subtable_offset > 0 else { return cmap }
+  // Try format 12 first, then format 4
+  if format12_offset > 0 {
+    let result = parse_cmap_format12(data, base_offset + format12_offset)
+    if result.length() > 0 {
+      return result
+    }
+  }
 
-  // Parse format 4 subtable
-  let subtable_reader = BinaryReader::from_view(
-    data[base_offset + cmap_subtable_offset:],
-  )
-  let format = subtable_reader.read_u16_be().to_int()
+  if format4_offset > 0 {
+    return parse_cmap_format4(data, base_offset + format4_offset)
+  }
+
+  cmap
+}
+
+///|
+/// Parse cmap format 4 subtable (BMP characters)
+fn parse_cmap_format4(data : Bytes, offset : Int) -> Map[Int, Int] {
+  let cmap : Map[Int, Int] = {}
+  let reader = BinaryReader::from_view(data[offset:])
+
+  let format = reader.read_u16_be().to_int()
   guard format is 4 else { return cmap }
 
-  ignore(subtable_reader.read_u16_be()) // length
-  ignore(subtable_reader.read_u16_be()) // language
-  let seg_count = subtable_reader.read_u16_be().to_int() / 2
-  ignore(subtable_reader.read_u16_be()) // searchRange
-  ignore(subtable_reader.read_u16_be()) // entrySelector
-  ignore(subtable_reader.read_u16_be()) // rangeShift
+  ignore(reader.read_u16_be()) // length
+  ignore(reader.read_u16_be()) // language
+  let seg_count = reader.read_u16_be().to_int() / 2
+  ignore(reader.read_u16_be()) // searchRange
+  ignore(reader.read_u16_be()) // entrySelector
+  ignore(reader.read_u16_be()) // rangeShift
 
   // Read end codes
   let end_codes = []
   for _ in 0..<seg_count {
-    end_codes.push(subtable_reader.read_u16_be().to_int())
+    end_codes.push(reader.read_u16_be().to_int())
   }
-  ignore(subtable_reader.read_u16_be()) // reservedPad
+  ignore(reader.read_u16_be()) // reservedPad
   // Read start codes
   let start_codes = []
   for _ in 0..<seg_count {
-    start_codes.push(subtable_reader.read_u16_be().to_int())
+    start_codes.push(reader.read_u16_be().to_int())
   }
   // Read id deltas
   let id_deltas = []
   for _ in 0..<seg_count {
-    id_deltas.push(subtable_reader.read_i16_be())
+    id_deltas.push(reader.read_i16_be())
   }
   // Read id range offsets
   let id_range_offsets = []
-  let offsets_start = subtable_reader.tell()
+  let offsets_start = reader.tell()
   for _ in 0..<seg_count {
-    id_range_offsets.push(subtable_reader.read_u16_be().to_int())
+    id_range_offsets.push(reader.read_u16_be().to_int())
   }
 
   // Build cmap
@@ -197,8 +222,8 @@ fn parse_cmap(data : Bytes, tables : Map[String, TableRecord]) -> Map[Int, Int] 
         (c + delta) % 65536
       } else {
         // Calculate offset into glyphIdArray
-        let offset = offsets_start + i * 2
-        let glyph_offset = offset + range_offset + (c - start) * 2
+        let off = offsets_start + i * 2
+        let glyph_offset = off + range_offset + (c - start) * 2
         if glyph_offset + 2 <= data.length() {
           let gid = (data[glyph_offset].to_int() << 8) +
             data[glyph_offset + 1].to_int()
@@ -214,6 +239,36 @@ fn parse_cmap(data : Bytes, tables : Map[String, TableRecord]) -> Map[Int, Int] 
       if glyph_id > 0 {
         cmap[c] = glyph_id
       }
+    }
+  }
+
+  cmap
+}
+
+///|
+/// Parse cmap format 12 subtable (full Unicode repertoire)
+fn parse_cmap_format12(data : Bytes, offset : Int) -> Map[Int, Int] {
+  let cmap : Map[Int, Int] = {}
+  let reader = BinaryReader::from_view(data[offset:])
+
+  let format = reader.read_u16_be().to_int()
+  guard format is 12 else { return cmap }
+
+  ignore(reader.read_u16_be()) // reserved
+  let length = reader.read_u32_be().to_int()
+  ignore(reader.read_u32_be()) // language
+  let n_groups = reader.read_u32_be().to_int()
+
+  // Read groups
+  for _ in 0..<n_groups {
+    let start_char_code = reader.read_u32_be().to_int()
+    let end_char_code = reader.read_u32_be().to_int()
+    let start_glyph_id = reader.read_u32_be().to_int()
+
+    // Map each character in the range
+    for c in start_char_code..<=end_char_code {
+      let glyph_id = start_glyph_id + (c - start_char_code)
+      cmap[c] = glyph_id
     }
   }
 
@@ -279,8 +334,9 @@ fn parse_glyf(
   let glyph_count = loca.length() - 1
   let glyphs = []
 
-  // Parse glyphs (limit to avoid crashes from malformed glyph data)
-  let max_glyphs = if glyph_count > 350 { 350 } else { glyph_count }
+  // Parse glyphs (increased limit for CJK fonts)
+  // CJK fonts typically have 20000+ glyphs
+  let max_glyphs = if glyph_count > 65536 { 65536 } else { glyph_count }
   for i in 0..<max_glyphs {
     let offset = loca[i]
     let next_offset = loca[i + 1]
@@ -311,8 +367,8 @@ fn parse_glyph(data : BytesView) -> GlyphData {
   let ymax = reader.read_i16_be()
 
   guard num_contours > 0 else {
-    // Composite glyph (simplified - just return empty)
-    return GlyphData::Empty
+    // Composite glyph (num_contours == -1)
+    return parse_composite_glyph(reader)
   }
 
   // Simple glyph
@@ -403,6 +459,74 @@ fn parse_glyph(data : BytesView) -> GlyphData {
   }
 
   GlyphData::Simple({ contours, xmin, ymin, xmax, ymax })
+}
+
+///|
+/// Parse a composite glyph
+fn parse_composite_glyph(reader : BinaryReader) -> GlyphData {
+  let components = []
+
+  // Composite glyph flags
+  let arg_1_and_2_are_words = 0x0001
+  let args_are_xy_values = 0x0002
+  let we_have_a_scale = 0x0008
+  let more_components = 0x0020
+  let we_have_an_x_and_y_scale = 0x0040
+  let we_have_a_two_by_two = 0x0080
+
+  let mut has_more = true
+  while has_more {
+    let flags = reader.read_u16_be().to_int()
+    let glyph_index = reader.read_u16_be().to_int()
+
+    // Read offset/argument values
+    let (x_offset, y_offset) = if flags.land(arg_1_and_2_are_words) != 0 {
+      let x = reader.read_i16_be()
+      let y = reader.read_i16_be()
+      (x, y)
+    } else {
+      let arg1 = reader.read_byte().to_int()
+      let arg2 = reader.read_byte().to_int()
+      if flags.land(args_are_xy_values) != 0 {
+        (arg1, arg2)
+      } else {
+        (0, 0)
+      }
+    }
+
+    // Read scale values
+    let (scale_x, scale_y, scale_xy, scale_yx) = if flags.land(we_have_a_scale) !=
+      0 {
+      let s = reader.read_i16_be().to_double() / 16384.0
+      (s, s, 0.0, 0.0)
+    } else if flags.land(we_have_an_x_and_y_scale) != 0 {
+      let sx = reader.read_i16_be().to_double() / 16384.0
+      let sy = reader.read_i16_be().to_double() / 16384.0
+      (sx, sy, 0.0, 0.0)
+    } else if flags.land(we_have_a_two_by_two) != 0 {
+      let sx = reader.read_i16_be().to_double() / 16384.0
+      let sxy = reader.read_i16_be().to_double() / 16384.0
+      let syx = reader.read_i16_be().to_double() / 16384.0
+      let sy = reader.read_i16_be().to_double() / 16384.0
+      (sx, sy, sxy, syx)
+    } else {
+      (1.0, 1.0, 0.0, 0.0)
+    }
+
+    components.push({
+      glyph_index,
+      x_offset,
+      y_offset,
+      scale_x,
+      scale_y,
+      scale_xy,
+      scale_yx,
+    })
+
+    has_more = flags.land(more_components) != 0
+  }
+
+  GlyphData::Composite(components)
 }
 
 ///|

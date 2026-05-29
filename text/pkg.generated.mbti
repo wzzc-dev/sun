@@ -3,16 +3,29 @@ package "wzzc-dev/text"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/x/fs",
 }
 
 // Values
+pub fn file_exists(String) -> Bool
+
+pub fn get_line_break_class(Int) -> LineBreakClass
+
 pub fn grayscale_to_rgba(FixedArray[Byte], Int, Int) -> FixedArray[Byte]
+
+pub fn is_line_break_allowed(LineBreakClass, LineBreakClass) -> Bool
 
 pub fn layout_paragraph(String, FontData, LayoutConfig) -> Paragraph
 
 pub fn layout_text(Font, String, LayoutConfig) -> LayoutResult
 
 pub fn parse_font(Bytes) -> Font
+
+pub fn read_file(String) -> Bytes raise @fs.IOError
+
+pub fn split_at_line_breaks(String, Font, Double, Double) -> Array[String]
+
+pub fn write_file(String, Bytes) -> Unit raise @fs.IOError
 
 // Errors
 
@@ -79,12 +92,23 @@ pub struct FontMetrics {
 pub fn FontMetrics::line_height(Self) -> Int
 pub fn FontMetrics::new(units_per_em~ : Int, ascent~ : Int, descent~ : Int, line_gap? : Int) -> Self
 
+pub struct GlyphComponent {
+  glyph_index : Int
+  x_offset : Int
+  y_offset : Int
+  scale_x : Double
+  scale_y : Double
+  scale_xy : Double
+  scale_yx : Double
+} derive(@debug.Debug)
+
 pub struct GlyphContour {
   points : Array[GlyphPoint]
 } derive(@debug.Debug)
 
 pub enum GlyphData {
   Simple(SimpleGlyph)
+  Composite(Array[GlyphComponent])
   Empty
 } derive(@debug.Debug)
 
@@ -147,6 +171,44 @@ pub struct LayoutResult {
   total_width : Double
   total_height : Double
 } derive(@debug.Debug)
+
+pub enum LineBreakClass {
+  BK
+  CR
+  LF
+  SP
+  OP
+  CL
+  QU
+  GL
+  NS
+  EX
+  SY
+  IS
+  NU
+  AL
+  ID
+  IN
+  HY
+  BA
+  BB
+  B2
+  ZW
+  CM
+  WJ
+  H2
+  H3
+  JL
+  JT
+  JV
+  CP
+  RI
+  EB
+  EModifier
+  ZWJ
+  AI
+  Unknown
+} derive(Eq, @debug.Debug)
 
 pub struct LineSegment {
   x0 : Double
