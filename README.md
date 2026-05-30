@@ -100,7 +100,8 @@ wzzc-dev/
   full/rect pixel checksums for headless fixtures, and straight-alpha
   composition for image, glyph atlas, and layer caching
 - `PixmapCache` for keyed reuse of image/layer pixmaps with copy-isolated cache
-  entries, optional hit/insert telemetry, and opt-in LRU entry limits
+  entries, membership introspection, optional hit/insert telemetry, and opt-in
+  LRU entry limits
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition
 - `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present/dirty-submit plans, scheduler states, and `Canvas` bounded dirty-present helpers
 - `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`

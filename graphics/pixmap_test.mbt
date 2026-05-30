@@ -161,6 +161,27 @@ test "PixmapCache::get_or_insert_result reports cache hits" {
 }
 
 ///|
+test "PixmapCache::contains reports membership without refreshing LRU" {
+  let cache = PixmapCache::with_capacity(2)
+  let red = Pixmap::new(1, 1)
+  red.set_pixel(0, 0, Color::red())
+  let green = Pixmap::new(1, 1)
+  green.set_pixel(0, 0, Color::green())
+  let blue = Pixmap::new(1, 1)
+  blue.set_pixel(0, 0, Color::blue())
+  ignore(cache.insert("red", red))
+  ignore(cache.insert("green", green))
+  assert_true(cache.contains("red"))
+  assert_true(!cache.contains("blue"))
+
+  ignore(cache.insert("blue", blue))
+  assert_eq(cache.len(), 2)
+  assert_true(!cache.contains("red"))
+  assert_true(cache.contains("green"))
+  assert_true(cache.contains("blue"))
+}
+
+///|
 test "PixmapCache::with_capacity evicts least recently used pixmaps" {
   let cache = PixmapCache::with_capacity(2)
   assert_true(cache.is_capacity_bounded())

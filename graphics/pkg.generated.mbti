@@ -464,6 +464,7 @@ pub struct PixmapCache {
 } derive(@debug.Debug)
 pub fn PixmapCache::capacity(Self) -> Int
 pub fn PixmapCache::clear(Self) -> Unit
+pub fn PixmapCache::contains(Self, String) -> Bool
 pub fn PixmapCache::get(Self, String) -> Pixmap?
 pub fn PixmapCache::get_or_insert(Self, String, Pixmap) -> Pixmap
 pub fn PixmapCache::get_or_insert_result(Self, String, Pixmap) -> PixmapCacheInsertResult

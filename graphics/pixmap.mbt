@@ -204,6 +204,12 @@ pub fn PixmapCache::is_capacity_bounded(self : PixmapCache) -> Bool {
 }
 
 ///|
+/// Return whether the cache has a pixmap for this key without refreshing LRU.
+pub fn PixmapCache::contains(self : PixmapCache, key : String) -> Bool {
+  self.pixmaps.contains(key)
+}
+
+///|
 /// Look up a pixmap by caller-provided key.
 pub fn PixmapCache::get(self : PixmapCache, key : String) -> Pixmap? {
   match self.pixmaps.get(key) {
