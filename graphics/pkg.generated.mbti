@@ -252,16 +252,28 @@ pub fn LayerTree::set_layer_opacity(Self, Int, Double) -> Bool
 pub fn LayerTree::set_layer_position(Self, Int, Int, Int) -> Bool
 pub fn LayerTree::set_layer_visible(Self, Int, Bool) -> Bool
 
+pub struct MemoryPresentRecord {
+  rect : PixelRect
+  row_bytes : Int
+} derive(Eq, @debug.Debug)
+pub fn MemoryPresentRecord::get_present_byte_count(Self) -> Int
+pub fn MemoryPresentRecord::get_present_pixel_count(Self) -> Int
+pub fn MemoryPresentRecord::get_rect(Self) -> PixelRect
+pub fn MemoryPresentRecord::get_row_bytes(Self) -> Int
+
 pub struct MemorySurface {
   width : Int
   height : Int
   pixels : FixedArray[Byte]
   mut present_count : Int
+  present_records : Array[MemoryPresentRecord]
 } derive(@debug.Debug)
 pub fn MemorySurface::get_height(Self) -> Int
+pub fn MemorySurface::get_last_present_record(Self) -> MemoryPresentRecord?
 pub fn MemorySurface::get_pixel(Self, Int, Int) -> Color
 pub fn MemorySurface::get_pixels(Self) -> FixedArray[Byte]
 pub fn MemorySurface::get_present_count(Self) -> Int
+pub fn MemorySurface::get_present_records(Self) -> Array[MemoryPresentRecord]
 pub fn MemorySurface::get_width(Self) -> Int
 pub fn MemorySurface::new(Int, Int) -> Self
 pub fn MemorySurface::present_pixels(Self, Int, Int, Int, FixedArray[Byte]) -> Result[Unit, PresentError]

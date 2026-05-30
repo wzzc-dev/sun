@@ -33,6 +33,13 @@ pub struct PresentBatch {
 } derive(Debug)
 
 ///|
+/// One validated present operation recorded by MemorySurface.
+pub struct MemoryPresentRecord {
+  rect : PixelRect
+  row_bytes : Int
+} derive(Eq, Debug)
+
+///|
 pub fn PresentRectInfo::required_row_bytes(self : PresentRectInfo) -> Int {
   self.required_row_bytes
 }
@@ -116,6 +123,30 @@ pub fn PresentBatch::get_present_byte_count(self : PresentBatch) -> Int {
 }
 
 ///|
+pub fn MemoryPresentRecord::get_rect(self : MemoryPresentRecord) -> PixelRect {
+  self.rect
+}
+
+///|
+pub fn MemoryPresentRecord::get_row_bytes(self : MemoryPresentRecord) -> Int {
+  self.row_bytes
+}
+
+///|
+pub fn MemoryPresentRecord::get_present_pixel_count(
+  self : MemoryPresentRecord,
+) -> Int {
+  self.rect.area()
+}
+
+///|
+pub fn MemoryPresentRecord::get_present_byte_count(
+  self : MemoryPresentRecord,
+) -> Int {
+  self.get_present_pixel_count() * 4
+}
+
+///|
 pub fn[S : Surface] PresentBatch::submit_to(
   self : PresentBatch,
   surface : S,
@@ -160,6 +191,7 @@ pub struct MemorySurface {
   height : Int
   pixels : FixedArray[Byte]
   mut present_count : Int
+  present_records : Array[MemoryPresentRecord]
 } derive(Debug)
 
 ///|
@@ -171,6 +203,7 @@ pub fn MemorySurface::new(width : Int, height : Int) -> MemorySurface {
     height: safe_height,
     pixels: FixedArray::make(safe_width * safe_height * 4, 0),
     present_count: 0,
+    present_records: [],
   }
 }
 
@@ -192,6 +225,21 @@ pub fn MemorySurface::get_pixels(self : MemorySurface) -> FixedArray[Byte] {
 ///|
 pub fn MemorySurface::get_present_count(self : MemorySurface) -> Int {
   self.present_count
+}
+
+///|
+pub fn MemorySurface::get_present_records(
+  self : MemorySurface,
+) -> Array[MemoryPresentRecord] {
+  self.present_records
+}
+
+///|
+pub fn MemorySurface::get_last_present_record(
+  self : MemorySurface,
+) -> MemoryPresentRecord? {
+  guard self.present_records.length() > 0 else { return None }
+  Some(self.present_records[self.present_records.length() - 1])
 }
 
 ///|
@@ -262,6 +310,10 @@ pub fn MemorySurface::present_pixels_rect(
         }
       }
       self.present_count = self.present_count + 1
+      self.present_records.push({
+        rect: PixelRect::new(x~, y~, width~, height~),
+        row_bytes,
+      })
       Ok(())
     }
   }

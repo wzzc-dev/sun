@@ -113,6 +113,7 @@ Application / GUI
 - GUI/window 后端 build-only 验证策略
 - `headless_render` 示例走 `RenderFrame + LayerTree + MemorySurface`，无需窗口即可自校验离屏渲染与 dirty present 路径
 - `graphics.validate_present_rect` 标准化 Surface rect present 的 bounds、row stride 和 buffer 长度校验，`MemorySurface` 与 `softbuffer.NativeSurface` 共享同一错误语义
+- `MemorySurface` 记录每次 validated present 的目标 rect 与 row stride，让 headless 测试能直接审查 present lifecycle
 - `PresentRectPayload`/`PresentBatch` 将 dirty present plan 物化为 packed rect payload，复用同一批量提交与成本统计语义
 - `Canvas::dirty_present_batch` 支持提交前 dry-run packed rect batch，不触发 present、不清 dirty，供事件循环做批量调度
 - `LayerTree`/`RenderFrame` 支持提交前 dry-run dirty present batch，临时合成 layer 脏区后恢复 target 像素和 dirty 状态
@@ -322,6 +323,7 @@ Application / GUI
 #### 4.3 渲染优化
 - [x] `PixelRect`/`DirtyRegion` 数据结构与 Canvas dirty tracking
 - [x] `Surface::present_pixels_rect`、`Pixmap::present_rect_to`、`Canvas::present_dirty_to` 基础 partial present 契约
+- [x] `MemorySurface` 记录 validated full/rect present 操作，暴露目标 rect、row stride 与紧凑像素/字节成本，便于测试 present lifecycle
 - [x] `PresentRectPayload`/`PresentBatch` 将 Pixmap dirty present plan 物化为可测试 packed rect payload，并让 Canvas dirty submit 复用批量提交路径
 - [x] `Canvas::dirty_present_batch` 支持提交前 dry-run packed rect batch，并验证不会触发 present 或清理 dirty 状态
 - [x] `LayerTree`/`RenderFrame` 支持提交前 dry-run dirty present batch，并验证临时 layer 合成后会恢复 target 像素与 dirty 状态
@@ -376,6 +378,7 @@ Application / GUI
 - [x] 抽象 `Surface` 与 `present(pixels)` 后端接口，并提供可测试 `MemorySurface` 参考后端
 - [x] 将 softbuffer/外部原生窗口句柄适配为 `graphics.Surface`，打通 `Canvas/Pixmap -> Surface -> native present`
 - [x] 为 `MemorySurface` 和 softbuffer native adapter 增加 rect present 路径，支持 dirty rect 提交验证
+- [x] `MemorySurface` 暴露 present-operation records，让测试可检查 row stride、dirty rect 顺序和批量 present 形状
 - [x] softbuffer 提供 `RenderFrame -> NativeSurface` dirty/full present helper，并覆盖 frame submit 回归
 - [x] softbuffer 提供 `RenderFrame -> NativeSurface` dirty-submit plan 查询，并验证查询不会触发 pre-present hook
 - [x] softbuffer 提供 state-aware dirty submit helper，并覆盖 Clean/Present/DirtyClippedAway 的 pre-present 行为
