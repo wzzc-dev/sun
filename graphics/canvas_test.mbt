@@ -607,6 +607,155 @@ test "Canvas::draw_sampled_pixmap_rect ignores stroke paint and invalid size" {
 }
 
 ///|
+test "Canvas::draw_transformed_sampled_pixmap_rect applies transform and clip" {
+  let canvas = Canvas::new(5, 3)
+  canvas.clear(Color::white())
+  canvas.clear_dirty_region()
+  canvas.set_transform(
+    Transform::translate(tx=1.0, ty=1.0).multiply(
+      Transform::scale(sx=2.0, sy=1.0),
+    ),
+  )
+  canvas.set_clip_rect(Rect::new(x=2.0, y=1.0, width=2.0, height=1.0))
+  let src = Pixmap::new(2, 1)
+  src.set_pixel(0, 0, Color::red())
+  src.set_pixel(1, 0, Color::blue())
+  canvas.draw_transformed_sampled_pixmap_rect(
+    src,
+    PixelRect::new(x=0, y=0, width=2, height=1),
+    0.0,
+    0.0,
+    2.0,
+    1.0,
+    Paint::new(),
+    ImageSampling::Nearest,
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(1, 1), Color::white())
+  assert_eq(pixmap.get_pixel(2, 1), Color::red())
+  assert_eq(pixmap.get_pixel(3, 1), Color::blue())
+  assert_eq(pixmap.get_pixel(4, 1), Color::white())
+  assert_true(
+    canvas.get_dirty_region().bounds() ==
+    Some(PixelRect::new(x=2, y=1, width=2, height=1)),
+  )
+}
+
+///|
+test "Canvas::draw_transformed_sampled_pixmap_rect maps rotation" {
+  let canvas = Canvas::new(3, 3)
+  canvas.clear(Color::white())
+  canvas.clear_dirty_region()
+  canvas.set_transform(
+    Transform::translate(tx=2.0, ty=0.0).multiply(
+      Transform::rotate(1.5707963267948966),
+    ),
+  )
+  let src = Pixmap::new(2, 1)
+  src.set_pixel(0, 0, Color::red())
+  src.set_pixel(1, 0, Color::blue())
+  canvas.draw_transformed_sampled_pixmap_rect(
+    src,
+    PixelRect::new(x=0, y=0, width=2, height=1),
+    0.0,
+    0.0,
+    2.0,
+    1.0,
+    Paint::new(),
+    ImageSampling::Nearest,
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::white())
+  assert_eq(pixmap.get_pixel(1, 0), Color::red())
+  assert_eq(pixmap.get_pixel(1, 1), Color::blue())
+  assert_eq(pixmap.get_pixel(2, 0), Color::white())
+  assert_true(
+    canvas.get_dirty_region().bounds() ==
+    Some(PixelRect::new(x=1, y=0, width=1, height=2)),
+  )
+}
+
+///|
+test "Canvas::draw_transformed_sampled_pixmap_rect supports bilinear sampling" {
+  let canvas = Canvas::new(5, 1)
+  canvas.clear(Color::white())
+  canvas.set_transform(Transform::translate(tx=1.0, ty=0.0))
+  let src = Pixmap::new(2, 1)
+  src.set_pixel(0, 0, Color::red())
+  src.set_pixel(1, 0, Color::blue())
+  canvas.draw_transformed_sampled_pixmap_rect(
+    src,
+    PixelRect::new(x=0, y=0, width=2, height=1),
+    0.0,
+    0.0,
+    3.0,
+    1.0,
+    Paint::new(),
+    ImageSampling::Bilinear,
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(1, 0), Color::red())
+  assert_eq(pixmap.get_pixel(2, 0), Color::new(r=128, g=0, b=128, a=255))
+  assert_eq(pixmap.get_pixel(3, 0), Color::blue())
+}
+
+///|
+test "Canvas::draw_transformed_sampled_pixmap covers full source pixmap" {
+  let canvas = Canvas::new(3, 1)
+  canvas.clear(Color::white())
+  canvas.set_transform(Transform::translate(tx=1.0, ty=0.0))
+  let src = Pixmap::new(2, 1)
+  src.set_pixel(0, 0, Color::red())
+  src.set_pixel(1, 0, Color::blue())
+  canvas.draw_transformed_sampled_pixmap(
+    src,
+    0.0,
+    0.0,
+    2.0,
+    1.0,
+    Paint::new(),
+    ImageSampling::Nearest,
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::white())
+  assert_eq(pixmap.get_pixel(1, 0), Color::red())
+  assert_eq(pixmap.get_pixel(2, 0), Color::blue())
+}
+
+///|
+test "Canvas::draw_transformed_sampled_pixmap_rect ignores invalid state" {
+  let canvas = Canvas::new(1, 1)
+  canvas.clear(Color::white())
+  canvas.clear_dirty_region()
+  canvas.set_transform(Transform::scale(sx=0.0, sy=1.0))
+  let src = Pixmap::new(1, 1)
+  src.set_pixel(0, 0, Color::black())
+  canvas.draw_transformed_sampled_pixmap_rect(
+    src,
+    PixelRect::new(x=0, y=0, width=1, height=1),
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    Paint::new(),
+    ImageSampling::Nearest,
+  )
+  canvas.set_transform(Transform::identity())
+  canvas.draw_transformed_sampled_pixmap_rect(
+    src,
+    PixelRect::new(x=0, y=0, width=1, height=1),
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    Paint::new().set_style(PaintStyle::Stroke),
+    ImageSampling::Nearest,
+  )
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), Color::white())
+  assert_true(canvas.get_dirty_region().is_empty())
+}
+
+///|
 test "Canvas::draw_tiled_pixmap_rect respects clip opacity and dirty region" {
   let canvas = Canvas::new(5, 1)
   canvas.clear(Color::white())

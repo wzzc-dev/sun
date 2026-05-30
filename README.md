@@ -84,8 +84,9 @@ wzzc-dev/
 - Canvas save/restore state stack, transform-aware rect/path drawing, transform helpers, and intersecting clip scopes for nested GUI drawing
 - `Surface` trait, `MemorySurface` with present-operation records and aggregate present telemetry, full/rect present helpers, and dirty-present batch dry-runs for `Canvas`, `LayerTree`, `RenderFrame`, and `Pixmap`
 - Pixmap blitting, source-rect atlas drawing, source-rect coverage-mask drawing,
-  tiled Pixmap fills, explicit nearest/bilinear sampling modes, and
-  straight-alpha composition for image, glyph atlas, and layer caching
+  tiled Pixmap fills, explicit nearest/bilinear sampling modes,
+  transform-aware sampled Pixmap drawing, and straight-alpha composition for
+  image, glyph atlas, and layer caching
 - `PixmapCache` for keyed reuse of image/layer pixmaps with copy-isolated cache
   entries and optional hit/insert telemetry
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition

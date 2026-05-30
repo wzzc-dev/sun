@@ -44,6 +44,8 @@ pub fn Canvas::draw_scaled_pixmap_rect_bilinear(Self, Pixmap, PixelRect, Int, In
 #deprecated
 pub fn Canvas::draw_text(Self, String, Double, Double, Double, Color) -> Unit
 pub fn Canvas::draw_tiled_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint) -> Unit
+pub fn Canvas::draw_transformed_sampled_pixmap(Self, Pixmap, Double, Double, Double, Double, Paint, ImageSampling) -> Unit
+pub fn Canvas::draw_transformed_sampled_pixmap_rect(Self, Pixmap, PixelRect, Double, Double, Double, Double, Paint, ImageSampling) -> Unit
 pub fn Canvas::fill_circle(Self, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::fill_ellipse(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::fill_path(Self, Path, Paint) -> Unit
@@ -600,6 +602,7 @@ pub struct Transform {
 } derive(Eq, @debug.Debug)
 pub fn Transform::apply(Self, Double, Double) -> (Double, Double)
 pub fn Transform::identity() -> Self
+pub fn Transform::inverse(Self) -> Self?
 pub fn Transform::multiply(Self, Self) -> Self
 pub fn Transform::rotate(Double) -> Self
 pub fn Transform::scale(sx~ : Double, sy~ : Double) -> Self

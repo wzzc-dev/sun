@@ -62,3 +62,18 @@ pub fn Transform::multiply(self : Transform, other : Transform) -> Transform {
     ty: self.c * other.tx + self.d * other.ty + self.ty,
   }
 }
+
+///|
+/// Return the inverse transform if this matrix is invertible.
+pub fn Transform::inverse(self : Transform) -> Transform? {
+  let determinant = self.a * self.d - self.b * self.c
+  guard determinant.abs() > 0.000000001 else { return None }
+  Some({
+    a: self.d / determinant,
+    b: -self.b / determinant,
+    c: -self.c / determinant,
+    d: self.a / determinant,
+    tx: (self.b * self.ty - self.d * self.tx) / determinant,
+    ty: (self.c * self.tx - self.a * self.ty) / determinant,
+  })
+}

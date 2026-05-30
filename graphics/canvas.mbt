@@ -903,6 +903,103 @@ pub fn Canvas::draw_sampled_pixmap_rect(
 }
 
 ///|
+/// Draw a source pixmap transformed by the current canvas transform.
+pub fn Canvas::draw_transformed_sampled_pixmap(
+  self : Canvas,
+  src : Pixmap,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  paint : Paint,
+  sampling : ImageSampling,
+) -> Unit {
+  self.draw_transformed_sampled_pixmap_rect(
+    src,
+    PixelRect::new(x=0, y=0, width=src.get_width(), height=src.get_height()),
+    x,
+    y,
+    width,
+    height,
+    paint,
+    sampling,
+  )
+}
+
+///|
+/// Draw a source pixmap rectangle transformed by the current canvas transform.
+pub fn Canvas::draw_transformed_sampled_pixmap_rect(
+  self : Canvas,
+  src : Pixmap,
+  src_rect : PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  paint : Paint,
+  sampling : ImageSampling,
+) -> Unit {
+  guard paint.style is PaintStyle::Fill else { return }
+  guard width > 0.0 && height > 0.0 else { return }
+  guard src.get_width() > 0 && src.get_height() > 0 else { return }
+  let src_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=src.get_width(),
+    height=src.get_height(),
+  )
+  match (src_rect.clip_to(src_bounds), self.transform.inverse()) {
+    (Some(clipped_src), Some(inverse_transform)) => {
+      let (left, top, right, bottom) = transformed_rect_bounds(
+        self.transform,
+        x,
+        y,
+        width,
+        height,
+      )
+      let (x_start, y_start, x_end, y_end) = clipped_int_bounds(
+        self, left, top, right, bottom,
+      )
+      guard x_start < x_end && y_start < y_end else { return }
+      let opacity = paint.opacity
+      let local_right = x + width
+      let local_bottom = y + height
+      let mut dirty_left = x_end
+      let mut dirty_top = y_end
+      let mut dirty_right = x_start
+      let mut dirty_bottom = y_start
+      for py in y_start..<y_end {
+        for px in x_start..<x_end {
+          let (local_x, local_y) = inverse_transform.apply(
+            px.to_double() + 0.5,
+            py.to_double() + 0.5,
+          )
+          if local_x >= x &&
+            local_x < local_right &&
+            local_y >= y &&
+            local_y < local_bottom {
+            let color = sample_transformed_pixmap_rect(
+              src, clipped_src, local_x, local_y, x, y, width, height, sampling,
+            ).scale_alpha(opacity)
+            if color.a.to_int() > 0 {
+              self.pixmap.blend_pixel(px, py, color)
+              dirty_left = dirty_left.min(px)
+              dirty_top = dirty_top.min(py)
+              dirty_right = dirty_right.max(px + 1)
+              dirty_bottom = dirty_bottom.max(py + 1)
+            }
+          }
+        }
+      }
+      if dirty_left < dirty_right && dirty_top < dirty_bottom {
+        self.mark_dirty_bounds(dirty_left, dirty_top, dirty_right, dirty_bottom)
+      }
+    }
+    _ => ()
+  }
+}
+
+///|
 /// Draw a source pixmap rectangle repeatedly into the destination rectangle.
 pub fn Canvas::draw_tiled_pixmap_rect(
   self : Canvas,
@@ -1363,6 +1460,69 @@ fn clipped_int_bounds(
     None => ()
   }
   (left, top, right, bottom)
+}
+
+///|
+fn transformed_rect_bounds(
+  transform : Transform,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+) -> (Int, Int, Int, Int) {
+  let (x0, y0) = transform.apply(x, y)
+  let (x1, y1) = transform.apply(x + width, y)
+  let (x2, y2) = transform.apply(x, y + height)
+  let (x3, y3) = transform.apply(x + width, y + height)
+  let min_x = x0.min(x1).min(x2).min(x3)
+  let min_y = y0.min(y1).min(y2).min(y3)
+  let max_x = x0.max(x1).max(x2).max(x3)
+  let max_y = y0.max(y1).max(y2).max(y3)
+  (
+    floor_to_int(min_x),
+    floor_to_int(min_y),
+    ceil_to_int(max_x),
+    ceil_to_int(max_y),
+  )
+}
+
+///|
+fn ceil_to_int(value : Double) -> Int {
+  -floor_to_int(-value)
+}
+
+///|
+fn sample_transformed_pixmap_rect(
+  src : Pixmap,
+  src_rect : PixelRect,
+  local_x : Double,
+  local_y : Double,
+  dst_x : Double,
+  dst_y : Double,
+  dst_width : Double,
+  dst_height : Double,
+  sampling : ImageSampling,
+) -> Color {
+  let u = (local_x - dst_x) / dst_width
+  let v = (local_y - dst_y) / dst_height
+  match sampling {
+    ImageSampling::Nearest => {
+      let src_x = src_rect.x +
+        floor_to_int(u * src_rect.width.to_double())
+        .max(0)
+        .min(src_rect.width - 1)
+      let src_y = src_rect.y +
+        floor_to_int(v * src_rect.height.to_double())
+        .max(0)
+        .min(src_rect.height - 1)
+      src.get_pixel(src_x, src_y)
+    }
+    ImageSampling::Bilinear => {
+      let src_x = src_rect.x.to_double() + u * src_rect.width.to_double() - 0.5
+      let src_y = src_rect.y.to_double() + v * src_rect.height.to_double() - 0.5
+      sample_bilinear_rect(src, src_x, src_y, src_rect)
+    }
+  }
 }
 
 ///|
