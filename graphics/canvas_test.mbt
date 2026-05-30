@@ -986,6 +986,41 @@ test "Canvas::fill_polygon matches polygon path fill" {
 }
 
 ///|
+test "Canvas::fill_pie matches pie path fill" {
+  let helper_canvas = Canvas::new(8, 8)
+  helper_canvas.clear(Color::white())
+  helper_canvas.clear_dirty_region()
+  helper_canvas.set_clip_rect(Rect::new(x=1.0, y=0.0, width=7.0, height=8.0))
+  helper_canvas.translate(tx=1.0, ty=0.0)
+  helper_canvas.fill_pie(
+    3.0,
+    3.0,
+    3.0,
+    0.0,
+    1.5707963267948966,
+    Paint::new().set_color(Color::black()),
+  )
+
+  let path_canvas = Canvas::new(8, 8)
+  path_canvas.clear(Color::white())
+  path_canvas.clear_dirty_region()
+  path_canvas.set_clip_rect(Rect::new(x=1.0, y=0.0, width=7.0, height=8.0))
+  path_canvas.translate(tx=1.0, ty=0.0)
+  path_canvas.fill_path(
+    Path::new().add_pie(3.0, 3.0, 3.0, 0.0, 1.5707963267948966),
+    Paint::new().set_color(Color::black()),
+  )
+
+  assert_same_pixmap(helper_canvas.get_pixmap(), path_canvas.get_pixmap())
+  assert_true(
+    helper_canvas.get_dirty_region().bounds() ==
+    path_canvas.get_dirty_region().bounds(),
+  )
+  assert_not_white(helper_canvas.get_pixmap().get_pixel(5, 4))
+  assert_eq(helper_canvas.get_pixmap().get_pixel(1, 1), Color::white())
+}
+
+///|
 test "Canvas::fill_path composites paint opacity" {
   let canvas = Canvas::new(2, 2)
   canvas.clear(Color::white())
@@ -1304,6 +1339,39 @@ test "Canvas::stroke_polygon matches polygon path stroke" {
   )
   assert_not_white(helper_canvas.get_pixmap().get_pixel(4, 1))
   assert_eq(helper_canvas.get_pixmap().get_pixel(8, 8), Color::white())
+}
+
+///|
+test "Canvas::stroke_arc matches arc path stroke" {
+  let paint = Paint::new()
+    .set_color(Color::black())
+    .set_style(PaintStyle::Stroke)
+    .set_stroke_width(1.0)
+
+  let helper_canvas = Canvas::new(8, 8)
+  helper_canvas.clear(Color::white())
+  helper_canvas.clear_dirty_region()
+  helper_canvas.set_clip_rect(Rect::new(x=1.0, y=0.0, width=7.0, height=8.0))
+  helper_canvas.translate(tx=1.0, ty=0.0)
+  helper_canvas.stroke_arc(3.0, 3.0, 3.0, 0.0, 1.5707963267948966, paint)
+
+  let path_canvas = Canvas::new(8, 8)
+  path_canvas.clear(Color::white())
+  path_canvas.clear_dirty_region()
+  path_canvas.set_clip_rect(Rect::new(x=1.0, y=0.0, width=7.0, height=8.0))
+  path_canvas.translate(tx=1.0, ty=0.0)
+  path_canvas.stroke_path(
+    Path::new().add_arc(3.0, 3.0, 3.0, 0.0, 1.5707963267948966),
+    paint,
+  )
+
+  assert_same_pixmap(helper_canvas.get_pixmap(), path_canvas.get_pixmap())
+  assert_true(
+    helper_canvas.get_dirty_region().bounds() ==
+    path_canvas.get_dirty_region().bounds(),
+  )
+  assert_not_white(helper_canvas.get_pixmap().get_pixel(7, 3))
+  assert_eq(helper_canvas.get_pixmap().get_pixel(2, 2), Color::white())
 }
 
 ///|

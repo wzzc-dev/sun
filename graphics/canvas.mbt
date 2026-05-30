@@ -273,6 +273,24 @@ pub fn Canvas::fill_polygon(
 }
 
 ///|
+/// Draw a filled pie slice.
+pub fn Canvas::fill_pie(
+  self : Canvas,
+  cx : Double,
+  cy : Double,
+  radius : Double,
+  start_angle : Double,
+  sweep_angle : Double,
+  paint : Paint,
+) -> Unit {
+  guard radius > 0.0 && sweep_angle != 0.0 else { return }
+  self.fill_path(
+    Path::new().add_pie(cx, cy, radius, start_angle, sweep_angle),
+    paint,
+  )
+}
+
+///|
 /// Draw a stroked rectangle.
 pub fn Canvas::stroke_rect(
   self : Canvas,
@@ -319,6 +337,24 @@ pub fn Canvas::stroke_polygon(
 ) -> Unit {
   guard points.length() >= 3 else { return }
   self.stroke_path(Path::new().add_polygon(points), paint)
+}
+
+///|
+/// Draw a stroked circular arc.
+pub fn Canvas::stroke_arc(
+  self : Canvas,
+  cx : Double,
+  cy : Double,
+  radius : Double,
+  start_angle : Double,
+  sweep_angle : Double,
+  paint : Paint,
+) -> Unit {
+  guard radius > 0.0 && sweep_angle != 0.0 else { return }
+  self.stroke_path(
+    Path::new().add_arc(cx, cy, radius, start_angle, sweep_angle),
+    paint,
+  )
 }
 
 ///|

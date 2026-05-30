@@ -274,6 +274,125 @@ pub fn Path::add_ellipse(
 }
 
 ///|
+/// Add an open circular arc approximated with cubic bezier curves.
+pub fn Path::add_arc(
+  self : Path,
+  cx : Double,
+  cy : Double,
+  radius : Double,
+  start_angle : Double,
+  sweep_angle : Double,
+) -> Path {
+  let sweep = clamp_sweep_angle(sweep_angle)
+  guard radius > 0.0 && sweep != 0.0 else { return self }
+  ignore(
+    self.move_to(arc_x(cx, radius, start_angle), arc_y(cy, radius, start_angle)),
+  )
+  append_arc_segments(self, cx, cy, radius, start_angle, sweep)
+}
+
+///|
+/// Add a closed pie slice from the center through a circular arc.
+pub fn Path::add_pie(
+  self : Path,
+  cx : Double,
+  cy : Double,
+  radius : Double,
+  start_angle : Double,
+  sweep_angle : Double,
+) -> Path {
+  let sweep = clamp_sweep_angle(sweep_angle)
+  guard radius > 0.0 && sweep != 0.0 else { return self }
+  ignore(self.move_to(cx, cy))
+  ignore(
+    self.line_to(arc_x(cx, radius, start_angle), arc_y(cy, radius, start_angle)),
+  )
+  ignore(append_arc_segments(self, cx, cy, radius, start_angle, sweep))
+  self.close()
+}
+
+///|
+fn append_arc_segments(
+  path : Path,
+  cx : Double,
+  cy : Double,
+  radius : Double,
+  start_angle : Double,
+  sweep_angle : Double,
+) -> Path {
+  let half_pi = 1.5707963267948966
+  let mut remaining = sweep_angle
+  let mut angle = start_angle
+  while remaining != 0.0 {
+    let step = if remaining > half_pi {
+      half_pi
+    } else if remaining < -half_pi {
+      -half_pi
+    } else {
+      remaining
+    }
+    ignore(append_arc_segment(path, cx, cy, radius, angle, step))
+    angle = angle + step
+    remaining = remaining - step
+  }
+  path
+}
+
+///|
+fn append_arc_segment(
+  path : Path,
+  cx : Double,
+  cy : Double,
+  radius : Double,
+  start_angle : Double,
+  sweep_angle : Double,
+) -> Path {
+  let end_angle = start_angle + sweep_angle
+  let k = 4.0 / 3.0 * @math.tan(sweep_angle / 4.0)
+  let cos0 = @math.cos(start_angle)
+  let sin0 = @math.sin(start_angle)
+  let cos1 = @math.cos(end_angle)
+  let sin1 = @math.sin(end_angle)
+  let x0 = cx + radius * cos0
+  let y0 = cy + radius * sin0
+  let x1 = cx + radius * cos1
+  let y1 = cy + radius * sin1
+
+  path.cubic_to(
+    x0 - radius * k * sin0,
+    y0 + radius * k * cos0,
+    x1 + radius * k * sin1,
+    y1 - radius * k * cos1,
+    x1,
+    y1,
+  )
+}
+
+///|
+fn arc_x(cx : Double, radius : Double, angle : Double) -> Double {
+  cx + radius * @math.cos(angle)
+}
+
+///|
+fn arc_y(cy : Double, radius : Double, angle : Double) -> Double {
+  cy + radius * @math.sin(angle)
+}
+
+///|
+fn clamp_sweep_angle(sweep : Double) -> Double {
+  let two_pi = 6.283185307179586
+  if sweep != sweep {
+    0.0
+  } else if sweep > two_pi {
+    two_pi
+  } else if sweep < -two_pi {
+    -two_pi
+  } else {
+    sweep
+  }
+}
+
+///|
 /// Get the segments of the path
 pub fn Path::get_segments(self : Path) -> Array[PathSegment] {
   self.segments

@@ -42,6 +42,7 @@ pub fn Canvas::draw_tiled_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, In
 pub fn Canvas::fill_circle(Self, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::fill_ellipse(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::fill_path(Self, Path, Paint) -> Unit
+pub fn Canvas::fill_pie(Self, Double, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::fill_polygon(Self, Array[Point], Paint) -> Unit
 pub fn Canvas::fill_rect(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::fill_rounded_rect(Self, Double, Double, Double, Double, Double, Paint) -> Unit
@@ -63,6 +64,7 @@ pub fn Canvas::save(Self) -> Unit
 pub fn Canvas::scale(Self, sx~ : Double, sy~ : Double) -> Unit
 pub fn Canvas::set_clip_rect(Self, Rect) -> Unit
 pub fn Canvas::set_transform(Self, Transform) -> Unit
+pub fn Canvas::stroke_arc(Self, Double, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::stroke_circle(Self, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::stroke_ellipse(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::stroke_line(Self, Double, Double, Double, Double, Paint) -> Unit
@@ -239,8 +241,10 @@ pub struct Path {
   mut start_x : Double
   mut start_y : Double
 } derive(@debug.Debug)
+pub fn Path::add_arc(Self, Double, Double, Double, Double, Double) -> Self
 pub fn Path::add_circle(Self, Double, Double, Double) -> Self
 pub fn Path::add_ellipse(Self, Double, Double, Double, Double) -> Self
+pub fn Path::add_pie(Self, Double, Double, Double, Double, Double) -> Self
 pub fn Path::add_polygon(Self, Array[Point]) -> Self
 pub fn Path::add_polyline(Self, Array[Point]) -> Self
 pub fn Path::add_rect(Self, Double, Double, Double, Double) -> Self

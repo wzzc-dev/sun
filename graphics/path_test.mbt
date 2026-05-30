@@ -138,6 +138,40 @@ test "Path::add_ellipse creates ellipse path" {
 }
 
 ///|
+test "Path::add_arc creates open cubic arc path" {
+  let path = Path::new().add_arc(4.0, 4.0, 3.0, 0.0, 1.5707963267948966)
+  let segments = path.get_segments()
+  inspect(segments.length(), content="2")
+  assert_move_to(segments[0], 7.0, 4.0)
+  assert_cubic_to_end_near(segments[1], 4.0, 7.0)
+}
+
+///|
+test "Path::add_arc splits long sweeps and ignores invalid arcs" {
+  let arc = Path::new().add_arc(0.0, 0.0, 2.0, 0.0, 3.141592653589793)
+  let segments = arc.get_segments()
+  inspect(segments.length(), content="3")
+  assert_move_to(segments[0], 2.0, 0.0)
+  assert_cubic_to_end_near(segments[1], 0.0, 2.0)
+  assert_cubic_to_end_near(segments[2], -2.0, 0.0)
+
+  assert_true(Path::new().add_arc(0.0, 0.0, 0.0, 0.0, 1.0).is_empty())
+  assert_true(Path::new().add_arc(0.0, 0.0, 1.0, 0.0, 0.0).is_empty())
+  assert_true(Path::new().add_arc(0.0, 0.0, 1.0, 0.0, 0.0 / 0.0).is_empty())
+}
+
+///|
+test "Path::add_pie creates closed slice path" {
+  let path = Path::new().add_pie(4.0, 4.0, 3.0, 0.0, 1.5707963267948966)
+  let segments = path.get_segments()
+  inspect(segments.length(), content="4")
+  assert_move_to(segments[0], 4.0, 4.0)
+  assert_line_to(segments[1], 7.0, 4.0)
+  assert_cubic_to_end_near(segments[2], 4.0, 7.0)
+  assert_close(segments[3])
+}
+
+///|
 fn assert_move_to(
   segment : PathSegment,
   expected_x : Double,
@@ -177,6 +211,21 @@ fn assert_cubic_to_end(
     PathSegment::CubicTo(_, _, _, _, x, y) => {
       assert_eq(x, expected_x)
       assert_eq(y, expected_y)
+    }
+    _ => abort("expected CubicTo")
+  }
+}
+
+///|
+fn assert_cubic_to_end_near(
+  segment : PathSegment,
+  expected_x : Double,
+  expected_y : Double,
+) -> Unit raise {
+  match segment {
+    PathSegment::CubicTo(_, _, _, _, x, y) => {
+      assert_true((x - expected_x).abs() < 0.000001)
+      assert_true((y - expected_y).abs() < 0.000001)
     }
     _ => abort("expected CubicTo")
   }
