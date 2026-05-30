@@ -150,6 +150,8 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
 - `Renderer::draw_text_face_atlas` for caller-owned glyph mask cache and
   `GlyphMaskAtlas` backed text drawing with per-call draw/skip/cache/atlas/clear
   telemetry
+- `Renderer::draw_text_fallback_line_atlas` for ordered `FontFace` fallback
+  labels backed by glyph mask cache and `GlyphMaskAtlas` telemetry
 - `RendererTextResources` for sharing bounded text-mask cache, glyph-mask cache,
   and glyph atlas state across renderer text draws
 - `RendererResources` for sharing checked font-face cache, renderer text

@@ -41,6 +41,17 @@ pub struct TextAtlasDrawResult {
 } derive(Debug)
 
 ///|
+/// Result of drawing one fallback line through glyph-mask cache and atlas
+/// resources.
+pub struct TextFallbackAtlasDrawResult {
+  plan : @text.FontFallbackPlan
+  drawn_span_count : Int
+  skipped_span_count : Int
+  advance_width : Double
+  atlas_result : TextAtlasDrawResult
+} derive(Debug)
+
+///|
 /// Result of drawing text through a caller-owned rendered text-mask cache.
 pub struct TextMaskDrawResult {
   did_render_mask : Bool
@@ -451,6 +462,142 @@ pub fn TextFallbackDrawResult::get_advance_width(
   self : TextFallbackDrawResult,
 ) -> Double {
   self.advance_width
+}
+
+///|
+/// Get the fallback plan used by this atlas draw.
+pub fn TextFallbackAtlasDrawResult::get_plan(
+  self : TextFallbackAtlasDrawResult,
+) -> @text.FontFallbackPlan {
+  self.plan
+}
+
+///|
+/// Return the number of fallback spans visited by this atlas draw.
+pub fn TextFallbackAtlasDrawResult::get_span_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.plan.span_count()
+}
+
+///|
+/// Return the number of fallback spans drawn with a covering face.
+pub fn TextFallbackAtlasDrawResult::get_drawn_span_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.drawn_span_count
+}
+
+///|
+/// Return the number of missing-glyph spans skipped by this atlas draw.
+pub fn TextFallbackAtlasDrawResult::get_skipped_span_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.skipped_span_count
+}
+
+///|
+/// Return the number of missing-glyph spans skipped by this atlas draw.
+pub fn TextFallbackAtlasDrawResult::get_missing_span_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.skipped_span_count
+}
+
+///|
+/// Return the number of text scalars not covered by any fallback face.
+pub fn TextFallbackAtlasDrawResult::get_missing_char_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.plan.get_missing_char_count()
+}
+
+///|
+/// Return whether this atlas draw skipped at least one missing glyph span.
+pub fn TextFallbackAtlasDrawResult::has_missing_glyphs(
+  self : TextFallbackAtlasDrawResult,
+) -> Bool {
+  self.plan.has_missing_glyphs()
+}
+
+///|
+/// Return the horizontal advance consumed by the fallback atlas draw.
+pub fn TextFallbackAtlasDrawResult::get_advance_width(
+  self : TextFallbackAtlasDrawResult,
+) -> Double {
+  self.advance_width
+}
+
+///|
+/// Return the underlying glyph-atlas draw result.
+pub fn TextFallbackAtlasDrawResult::get_atlas_result(
+  self : TextFallbackAtlasDrawResult,
+) -> TextAtlasDrawResult {
+  self.atlas_result
+}
+
+///|
+/// Return the number of layout glyphs visited by covered fallback spans.
+pub fn TextFallbackAtlasDrawResult::get_glyph_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_glyph_count()
+}
+
+///|
+/// Return the number of glyphs composited from the atlas.
+pub fn TextFallbackAtlasDrawResult::get_drawn_glyph_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_drawn_glyph_count()
+}
+
+///|
+/// Return the number of layout glyphs that could not be drawn through the atlas.
+pub fn TextFallbackAtlasDrawResult::get_skipped_glyph_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_skipped_glyph_count()
+}
+
+///|
+/// Return the number of drawable glyphs reused from the glyph mask cache.
+pub fn TextFallbackAtlasDrawResult::get_cache_hit_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_cache_hit_count()
+}
+
+///|
+/// Return the number of glyph masks rasterized on cache miss.
+pub fn TextFallbackAtlasDrawResult::get_rasterized_glyph_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_rasterized_glyph_count()
+}
+
+///|
+/// Return the number of glyph placements reused from the atlas.
+pub fn TextFallbackAtlasDrawResult::get_atlas_hit_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_atlas_hit_count()
+}
+
+///|
+/// Return the number of glyph placements newly inserted into the atlas.
+pub fn TextFallbackAtlasDrawResult::get_atlas_inserted_count(
+  self : TextFallbackAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_atlas_inserted_count()
+}
+
+///|
+/// Return whether the atlas was cleared while drawing this fallback line.
+pub fn TextFallbackAtlasDrawResult::did_clear_atlas(
+  self : TextFallbackAtlasDrawResult,
+) -> Bool {
+  self.atlas_result.did_clear_atlas()
 }
 
 ///|
@@ -895,6 +1042,88 @@ pub fn Renderer::draw_text_fallback_line_cached_with_renderer_resources(
 }
 
 ///|
+/// Draw a single fallback line through caller-owned glyph mask cache and atlas
+/// resources.
+pub fn Renderer::draw_text_fallback_line_atlas(
+  self : Renderer,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  glyph_cache : @text.GlyphMaskCache,
+  atlas : @text.GlyphMaskAtlas,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextFallbackAtlasDrawResult {
+  draw_text_fallback_line_atlas(
+    self.canvas,
+    faces,
+    text,
+    x,
+    y,
+    config,
+    glyph_cache,
+    atlas,
+    glyph_key_prefix,
+    paint,
+  )
+}
+
+///|
+/// Draw a fallback line through renderer-owned text resources and the glyph
+/// atlas path.
+pub fn Renderer::draw_text_fallback_line_atlas_with_resources(
+  self : Renderer,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererTextResources,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextFallbackAtlasDrawResult {
+  self.draw_text_fallback_line_atlas(
+    faces,
+    text,
+    x,
+    y,
+    config,
+    resources.get_glyph_mask_cache(),
+    resources.get_glyph_mask_atlas(),
+    glyph_key_prefix,
+    paint,
+  )
+}
+
+///|
+/// Draw a fallback line through renderer-owned resources and the glyph atlas
+/// path.
+pub fn Renderer::draw_text_fallback_line_atlas_with_renderer_resources(
+  self : Renderer,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextFallbackAtlasDrawResult {
+  self.draw_text_fallback_line_atlas_with_resources(
+    faces,
+    text,
+    x,
+    y,
+    config,
+    resources.get_text_resources(),
+    glyph_key_prefix,
+    paint,
+  )
+}
+
+///|
 /// Parse font bytes through renderer resources, then draw through the rendered
 /// text-mask cache.
 pub fn Renderer::draw_font_bytes_cached_with_renderer_resources(
@@ -1311,6 +1540,95 @@ pub fn draw_text_fallback_line_cached(
 }
 
 ///|
+/// Draw a single fallback line through caller-owned glyph mask cache and atlas
+/// resources.
+pub fn draw_text_fallback_line_atlas(
+  canvas : @graphics.Canvas,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  glyph_cache : @text.GlyphMaskCache,
+  atlas : @text.GlyphMaskAtlas,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextFallbackAtlasDrawResult {
+  let plan = @text.plan_font_fallback(faces, text)
+  let line_config = fallback_line_config(config)
+  let mut cursor_x = x
+  let mut drawn_span_count = 0
+  let mut skipped_span_count = 0
+  let mut emitted_char_count = 0
+  let mut glyph_count = 0
+  let mut drawn_glyph_count = 0
+  let mut skipped_glyph_count = 0
+  let mut cache_hit_count = 0
+  let mut rasterized_glyph_count = 0
+  let mut atlas_hit_count = 0
+  let mut atlas_inserted_count = 0
+  let mut did_clear_atlas = false
+
+  for span in plan.get_spans() {
+    if emitted_char_count > 0 {
+      cursor_x += line_config.letter_spacing
+    }
+    if span.is_missing() {
+      skipped_span_count += 1
+      cursor_x += estimate_missing_span_advance(span.get_text(), line_config)
+    } else {
+      let face = faces[span.get_face_index()]
+      let span_text = span.get_text()
+      let result = draw_text_face_atlas(
+        canvas,
+        face,
+        span_text,
+        cursor_x,
+        y,
+        line_config,
+        glyph_cache,
+        atlas,
+        fallback_glyph_atlas_cache_prefix(
+          glyph_key_prefix,
+          span.get_face_index(),
+        ),
+        paint,
+      )
+      glyph_count += result.get_glyph_count()
+      drawn_glyph_count += result.get_drawn_glyph_count()
+      skipped_glyph_count += result.get_skipped_glyph_count()
+      cache_hit_count += result.get_cache_hit_count()
+      rasterized_glyph_count += result.get_rasterized_glyph_count()
+      atlas_hit_count += result.get_atlas_hit_count()
+      atlas_inserted_count += result.get_atlas_inserted_count()
+      if result.did_clear_atlas() {
+        did_clear_atlas = true
+      }
+      cursor_x += @text.TextLayout::layout(face, span_text, line_config).get_width()
+      drawn_span_count += 1
+    }
+    emitted_char_count += span.get_char_count()
+  }
+
+  {
+    plan,
+    drawn_span_count,
+    skipped_span_count,
+    advance_width: cursor_x - x,
+    atlas_result: {
+      glyph_count,
+      drawn_glyph_count,
+      skipped_glyph_count,
+      cache_hit_count,
+      rasterized_glyph_count,
+      atlas_hit_count,
+      atlas_inserted_count,
+      did_clear_atlas,
+    },
+  }
+}
+
+///|
 fn draw_text_fallback_line_with_cache(
   canvas : @graphics.Canvas,
   faces : Array[@text.FontFace],
@@ -1550,6 +1868,14 @@ fn fallback_text_cache_key(
   config.word_spacing.to_string() +
   ":text:" +
   text
+}
+
+///|
+fn fallback_glyph_atlas_cache_prefix(
+  prefix : String,
+  face_index : Int,
+) -> String {
+  prefix + ":fallback-face:" + face_index.to_string()
 }
 
 ///|

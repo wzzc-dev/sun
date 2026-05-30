@@ -176,6 +176,7 @@ Application / GUI
 - Renderer 提供 `draw_text_face_cached`，让调用方传入 `TextMaskCache` 直接绘制 repeated label/text run，并返回 text-mask cache hit/render telemetry
 - Renderer 提供 `draw_text_fallback_line`，消费 `FontFallbackPlan` 对有序 `FontFace` 栈进行单行 fallback 绘制并报告 missing span telemetry
 - Renderer 提供 `draw_text_fallback_line_cached`，让 repeated fallback label 可复用 `TextMaskCache` 中的 per-span rendered mask，并报告 span 级 render/cache-hit telemetry
+- Renderer 提供 `draw_text_fallback_line_atlas`，让 fallback label 可复用 glyph mask cache 与 `GlyphMaskAtlas` placement，并聚合 missing span 与 glyph/atlas telemetry
 - Renderer 提供 `RendererTextResources`，让 GUI/resource 代码以单个对象复用 bounded text mask cache、glyph mask cache 与 glyph atlas 状态
 - Renderer 提供 keyed font-byte fallback line draw path，通过 `RendererResources` 复用 checked font-face cache 和 per-span text-mask cache，并报告 font/text cache telemetry
 - `examples/render_bench` 提供确定性的 CPU render microbenchmark smoke，覆盖 fill_rect、path fill、stroke、glyph raster/mask composition、Pixmap blit 与 present copy telemetry
@@ -242,6 +243,7 @@ Application / GUI
 - [x] 暴露 `FontFallbackPlan` 与 `plan_font_fallback`，让 GUI/resource 层可在 shaping 与绘制前做有序字体覆盖分段和 missing glyph 统计
 - [x] 暴露 `Renderer::draw_text_fallback_line`，让 GUI label 可用有序 `FontFace` 栈绘制 fallback span 并获得 missing glyph telemetry
 - [x] 暴露 `Renderer::draw_text_fallback_line_cached`，让 repeated fallback label 可通过 `TextMaskCache` 复用 per-span rendered mask 并获得 render/cache-hit telemetry
+- [x] 暴露 `Renderer::draw_text_fallback_line_atlas`，让 fallback label 可通过 glyph mask cache 与 `GlyphMaskAtlas` 复用 glyph placement 并获得 glyph/atlas telemetry
 - [x] 在 `text` 侧产出稳定的 glyph/text mask，并在 `font_demo` 接入 `Canvas::draw_mask`
 - [x] 将 `font_demo` 改为调用 Renderer Core 文本绘制入口
 - [x] 将旧 `Canvas::draw_text` 的公开 API 迁移到真实字体渲染管线或标记废弃
@@ -271,6 +273,7 @@ Application / GUI
 - [x] 将 `TextMaskCache` 接入 Renderer fallback line path，提供 repeated fallback label span 的 cached draw path 与 hit/render telemetry
 - [x] 为 `GlyphMaskCache`/`TextMaskCache` 增加 opt-in LRU entry limit，覆盖最近访问刷新、最旧条目淘汰和非法容量 clamp 回归
 - [x] 增加最小 `GlyphMaskAtlas`，让 renderer/resource 代码可先获得确定性的 glyph mask 行打包 placement、占用 telemetry、hit/insert telemetry 与满载清空重插信号
+- [x] 将 `GlyphMaskAtlas` 接入 Renderer fallback line path，支持多字体 fallback span 的 per-glyph cache/atlas 复用与聚合 telemetry
 - [x] 增加 `RendererTextResources`，让 renderer 调用方复用 bounded text/glyph mask cache 与 glyph atlas，并覆盖 cached-mask/atlas draw path 与 clear lifecycle
 - [x] 增加 `RendererResources`，让 GUI/resource 代码用单个对象复用 font cache、text cache、glyph cache、glyph atlas 与 image `PixmapCache`
 - [x] 将 `FontFaceCache` 接入 RendererResources draw path，提供 checked font-byte cached text/atlas drawing，覆盖 parse hit/miss、解析错误保留与 clear lifecycle

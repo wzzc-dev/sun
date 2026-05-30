@@ -22,6 +22,8 @@ pub fn draw_text_face_cached(@graphics.Canvas, @text.FontFace, String, Double, D
 
 pub fn draw_text_fallback_line(@graphics.Canvas, Array[@text.FontFace], String, Double, Double, Int, Int, @text.LayoutConfig, @graphics.Paint) -> TextFallbackDrawResult
 
+pub fn draw_text_fallback_line_atlas(@graphics.Canvas, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, @text.GlyphMaskCache, @text.GlyphMaskAtlas, String, @graphics.Paint) -> TextFallbackAtlasDrawResult
+
 pub fn draw_text_fallback_line_cached(@graphics.Canvas, Array[@text.FontFace], String, Double, Double, Int, Int, @text.LayoutConfig, @text.TextMaskCache, String, @graphics.Paint) -> TextFallbackDrawResult
 
 // Errors
@@ -102,6 +104,9 @@ pub fn Renderer::draw_text_face_cached(Self, @text.FontFace, String, Double, Dou
 pub fn Renderer::draw_text_face_cached_with_renderer_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> TextMaskDrawResult
 pub fn Renderer::draw_text_face_cached_with_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextMaskDrawResult
 pub fn Renderer::draw_text_fallback_line(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> TextFallbackDrawResult
+pub fn Renderer::draw_text_fallback_line_atlas(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, @text.GlyphMaskCache, @text.GlyphMaskAtlas, String, @graphics.Paint) -> TextFallbackAtlasDrawResult
+pub fn Renderer::draw_text_fallback_line_atlas_with_renderer_resources(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> TextFallbackAtlasDrawResult
+pub fn Renderer::draw_text_fallback_line_atlas_with_resources(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextFallbackAtlasDrawResult
 pub fn Renderer::draw_text_fallback_line_cached(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, @text.TextMaskCache, String, @graphics.Paint) -> TextFallbackDrawResult
 pub fn Renderer::draw_text_fallback_line_cached_with_renderer_resources(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> TextFallbackDrawResult
 pub fn Renderer::draw_text_fallback_line_cached_with_resources(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextFallbackDrawResult
@@ -154,6 +159,31 @@ pub fn TextAtlasDrawResult::get_drawn_glyph_count(Self) -> Int
 pub fn TextAtlasDrawResult::get_glyph_count(Self) -> Int
 pub fn TextAtlasDrawResult::get_rasterized_glyph_count(Self) -> Int
 pub fn TextAtlasDrawResult::get_skipped_glyph_count(Self) -> Int
+
+pub struct TextFallbackAtlasDrawResult {
+  plan : @text.FontFallbackPlan
+  drawn_span_count : Int
+  skipped_span_count : Int
+  advance_width : Double
+  atlas_result : TextAtlasDrawResult
+} derive(@debug.Debug)
+pub fn TextFallbackAtlasDrawResult::did_clear_atlas(Self) -> Bool
+pub fn TextFallbackAtlasDrawResult::get_advance_width(Self) -> Double
+pub fn TextFallbackAtlasDrawResult::get_atlas_hit_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_atlas_inserted_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_atlas_result(Self) -> TextAtlasDrawResult
+pub fn TextFallbackAtlasDrawResult::get_cache_hit_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_drawn_glyph_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_drawn_span_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_glyph_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_missing_char_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_missing_span_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_plan(Self) -> @text.FontFallbackPlan
+pub fn TextFallbackAtlasDrawResult::get_rasterized_glyph_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_skipped_glyph_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_skipped_span_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::get_span_count(Self) -> Int
+pub fn TextFallbackAtlasDrawResult::has_missing_glyphs(Self) -> Bool
 
 pub struct TextFallbackDrawResult {
   plan : @text.FontFallbackPlan
