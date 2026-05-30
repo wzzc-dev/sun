@@ -29,10 +29,13 @@ The `renderer` package includes the integration regressions that cross package
 boundaries, including parsed TTF bytes through text layout, glyph rasterization,
 coverage-mask composition, and final `Pixmap` pixels.
 
-For headless pixel fixtures, `graphics.Pixmap::to_ppm_bytes` and
+For headless pixel fixtures, `graphics.Pixmap::to_rgba_bytes` and
+`graphics.Pixmap::to_rgba_rect_bytes` provide isolated raw RGBA bytes in
+row-major order, while `graphics.Pixmap::to_ppm_bytes` and
 `graphics.Pixmap::to_ppm_rect_bytes` provide deterministic binary PPM(P6)
 export paths without adding filesystem or image codec dependencies to the
 graphics core. `MemorySurface::to_pixmap`, `MemorySurface::to_pixmap_rect`,
+`MemorySurface::to_rgba_bytes`, `MemorySurface::to_rgba_rect_bytes`,
 `MemorySurface::to_ppm_bytes`, and `MemorySurface::to_ppm_rect_bytes` expose
 the same output paths directly from the reference surface, so examples and
 tests do not need to hand-copy surface pixels. For compact regression checks

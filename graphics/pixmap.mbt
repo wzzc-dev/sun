@@ -104,6 +104,12 @@ pub fn Pixmap::checksum(self : Pixmap) -> Int {
 }
 
 ///|
+/// Return an isolated copy of the raw RGBA pixel bytes in row-major order.
+pub fn Pixmap::to_rgba_bytes(self : Pixmap) -> Bytes {
+  rgba_bytes_from_pixels(self.pixels)
+}
+
+///|
 /// Encode this pixmap as a binary PPM (P6) image, dropping the alpha channel.
 /// The result is a deterministic, dependency-free fixture format for headless
 /// render tests and simple CPU-rendered pixel dumps.
@@ -320,6 +326,15 @@ fn checksum_rgba_bytes(pixels : FixedArray[Byte]) -> Int {
     checksum = (checksum + pixels[i].to_int() * (i % 251 + 1)) % 1000003
   }
   checksum
+}
+
+///|
+fn rgba_bytes_from_pixels(pixels : FixedArray[Byte]) -> Bytes {
+  let out : Array[Byte] = []
+  for i in 0..<pixels.length() {
+    out.push(pixels[i])
+  }
+  Bytes::from_array(out)
 }
 
 ///|

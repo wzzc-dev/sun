@@ -37,6 +37,15 @@ test "Pixmap::checksum reports deterministic raw byte checksum" {
 }
 
 ///|
+test "Pixmap::to_rgba_bytes exports raw RGBA bytes" {
+  let pixmap = Pixmap::new(2, 1)
+  pixmap.set_pixel(0, 0, Color::new(r=1, g=2, b=3, a=4))
+  pixmap.set_pixel(1, 0, Color::new(r=5, g=6, b=7, a=8))
+  let expected : Array[Byte] = [1, 2, 3, 4, 5, 6, 7, 8]
+  assert_eq(pixmap.to_rgba_bytes(), Bytes::from_array(expected))
+}
+
+///|
 test "Pixmap::to_ppm_bytes encodes deterministic P6 RGB output" {
   let pixmap = Pixmap::new(2, 1)
   pixmap.set_pixel(0, 0, Color::new(r=1, g=2, b=3, a=4))

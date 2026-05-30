@@ -314,6 +314,8 @@ pub fn MemorySurface::to_pixmap(Self) -> Pixmap
 pub fn MemorySurface::to_pixmap_rect(Self, PixelRect) -> Result[Pixmap, PresentError]
 pub fn MemorySurface::to_ppm_bytes(Self) -> Bytes
 pub fn MemorySurface::to_ppm_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
+pub fn MemorySurface::to_rgba_bytes(Self) -> Bytes
+pub fn MemorySurface::to_rgba_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
 pub impl Surface for MemorySurface
 
 pub struct NinePatchInsets {
@@ -450,6 +452,8 @@ pub fn[S : Surface] Pixmap::present_to(Self, S) -> Result[Unit, PresentError]
 pub fn Pixmap::set_pixel(Self, Int, Int, Color) -> Unit
 pub fn Pixmap::to_ppm_bytes(Self) -> Bytes
 pub fn Pixmap::to_ppm_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
+pub fn Pixmap::to_rgba_bytes(Self) -> Bytes
+pub fn Pixmap::to_rgba_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
 
 pub struct PixmapCache {
   mut pixmaps : Map[String, Pixmap]
