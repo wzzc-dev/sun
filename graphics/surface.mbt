@@ -154,10 +154,40 @@ pub fn MemoryPresentRecord::get_source_byte_count(
 }
 
 ///|
+/// Validate every payload in this batch against a target surface before any
+/// present call mutates backend state.
+pub fn[S : Surface] PresentBatch::validate_for(
+  self : PresentBatch,
+  surface : S,
+) -> Result[Unit, PresentError] {
+  for payload in self.payloads {
+    match
+      validate_present_rect(
+        surface.get_width(),
+        surface.get_height(),
+        payload.rect.x,
+        payload.rect.y,
+        payload.rect.width,
+        payload.rect.height,
+        payload.row_bytes,
+        payload.pixels,
+      ) {
+      Ok(_) => ()
+      Err(error) => return Err(error)
+    }
+  }
+  Ok(())
+}
+
+///|
 pub fn[S : Surface] PresentBatch::submit_to(
   self : PresentBatch,
   surface : S,
 ) -> Result[Int, PresentError] {
+  match self.validate_for(surface) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
   let mut presented = 0
   for payload in self.payloads {
     match payload.submit_to(surface) {

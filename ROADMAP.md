@@ -347,6 +347,7 @@ Application / GUI
 - [x] `Surface::present_pixels_rect`、`Pixmap::present_rect_to`、`Canvas::present_dirty_to` 基础 partial present 契约
 - [x] `MemorySurface` 记录 validated full/rect present 操作，暴露目标 rect、row stride、紧凑像素/字节成本与 source-stride 字节成本，便于测试 present lifecycle
 - [x] `PresentRectPayload`/`PresentBatch` 将 Pixmap dirty present plan 物化为可测试 packed rect payload，并让 Canvas dirty submit 复用批量提交路径
+- [x] `PresentBatch::validate_for` 在批量 present 前预校验所有 rect，避免后端在后续 rect 失败时留下半提交状态
 - [x] `Canvas::dirty_present_batch` 支持提交前 dry-run packed rect batch，并验证不会触发 present 或清理 dirty 状态
 - [x] `LayerTree`/`RenderFrame` 支持提交前 dry-run dirty present batch，并验证临时 layer 合成后会恢复 target 像素与 dirty 状态
 - [x] Dirty rect 相交/相邻合并与 `Canvas::present_dirty_to_with_limit` 阈值提交策略

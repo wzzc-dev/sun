@@ -484,6 +484,7 @@ pub fn PresentBatch::get_present_pixel_count(Self) -> Int
 pub fn PresentBatch::get_rect_count(Self) -> Int
 pub fn PresentBatch::is_empty(Self) -> Bool
 pub fn[S : Surface] PresentBatch::submit_to(Self, S) -> Result[Int, PresentError]
+pub fn[S : Surface] PresentBatch::validate_for(Self, S) -> Result[Unit, PresentError]
 
 pub(all) enum PresentError {
   InvalidDimensions(Int, Int)

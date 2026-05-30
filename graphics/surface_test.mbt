@@ -272,6 +272,36 @@ test "Pixmap::present_batch materializes dirty present plan" {
       assert_eq(records[1].get_source_byte_count(), 4)
       assert_eq(surface.get_pixel(0, 0), Color::red())
       assert_eq(surface.get_pixel(2, 1), Color::blue())
+      assert_true(batch.validate_for(surface) == Ok(()))
+    }
+    Err(_) => abort("expected dirty present batch")
+  }
+}
+
+///|
+test "PresentBatch::submit_to preflights every payload before presenting" {
+  let pixmap = Pixmap::new(4, 2)
+  pixmap.set_pixel(0, 0, Color::red())
+  pixmap.set_pixel(2, 1, Color::blue())
+  let region = DirtyRegion::new()
+  region.add_rect(PixelRect::new(x=0, y=0, width=1, height=1))
+  region.add_rect(PixelRect::new(x=2, y=1, width=1, height=1))
+  let plan = region.present_plan(PixelRect::new(x=0, y=0, width=4, height=2), 4)
+
+  match pixmap.present_batch(plan) {
+    Ok(batch) => {
+      let surface = MemorySurface::new(2, 2)
+      assert_true(
+        batch.validate_for(surface) ==
+        Err(PresentError::RectOutOfBounds(2, 1, 1, 1, 2, 2)),
+      )
+      assert_true(
+        batch.submit_to(surface) ==
+        Err(PresentError::RectOutOfBounds(2, 1, 1, 1, 2, 2)),
+      )
+      assert_eq(surface.get_present_count(), 0)
+      assert_eq(surface.get_present_records().length(), 0)
+      assert_eq(surface.get_pixel(0, 0), Color::transparent())
     }
     Err(_) => abort("expected dirty present batch")
   }
