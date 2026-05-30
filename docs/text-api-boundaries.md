@@ -16,7 +16,9 @@ the facade types below.
   bytes while preserving checked `FontParseError` results for cache misses.
 - `GlyphMaskCache` is a small keyed cache for individual glyph `CoverageMask`
   values. Renderer and future atlas code can use `get_or_rasterize_glyph` when
-  a stable font/glyph/scale/subpixel key is already known.
+  a stable font/glyph/scale/subpixel key is already known, or
+  `get_or_rasterize_glyph_result` when cache-hit versus rasterize-miss
+  telemetry is needed.
 - `GlyphMaskAtlas` is a text-local row-packed atlas for copied glyph masks. It
   records caller-provided glyph keys and mask placement without depending on
   `graphics.PixelRect`, keeping the renderer atlas path optional and layered on
@@ -69,6 +71,8 @@ construct these types by hand.
   stable font-resource key and may request the same face repeatedly.
 - Prefer `GlyphMaskCache::get_or_rasterize_glyph(key, glyph, ...)` when renderer
   code already owns a stable glyph-resource key and wants per-glyph reuse.
+  Prefer `get_or_rasterize_glyph_result` when the caller also needs to report
+  cache hit/miss telemetry.
 - Prefer `GlyphMaskAtlas::can_fit(mask)` and `GlyphMaskAtlas::insert(key, mask)`
   when a renderer or GUI resource layer owns eviction policy. Prefer
   `GlyphMaskAtlas::insert_or_clear(key, mask)` when a deterministic clear and

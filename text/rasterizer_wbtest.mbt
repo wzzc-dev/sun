@@ -377,6 +377,36 @@ test "GlyphMaskCache::get_or_rasterize_glyph reuses rendered masks" {
 }
 
 ///|
+test "GlyphMaskCache::get_or_rasterize_glyph_result reports cache misses" {
+  let cache = GlyphMaskCache::new()
+  let first = cache.get_or_rasterize_glyph_result(
+    "glyph:box",
+    make_box_glyph(),
+    12,
+    12,
+    1.0,
+    11.0,
+    1.0,
+  )
+  assert_true(first.did_rasterize())
+  assert_eq(first.get_mask().get_pixels()[1 * 12 + 1], 255)
+  assert_eq(cache.len(), 1)
+
+  let second = cache.get_or_rasterize_glyph_result(
+    "glyph:box",
+    make_ring_glyph(),
+    12,
+    12,
+    1.0,
+    11.0,
+    1.0,
+  )
+  assert_true(!second.did_rasterize())
+  assert_eq(second.get_mask().get_pixels()[5 * 12 + 5], 255)
+  assert_eq(cache.len(), 1)
+}
+
+///|
 test "TextLayout aligns center and right lines" {
   let face = FontFace::from_font(make_box_font())
   let center = TextLayout::layout(

@@ -10,6 +10,8 @@ pub struct TextAtlasDrawResult {
   glyph_count : Int
   drawn_glyph_count : Int
   skipped_glyph_count : Int
+  cache_hit_count : Int
+  rasterized_glyph_count : Int
   did_clear_atlas : Bool
 } derive(Debug)
 
@@ -55,6 +57,22 @@ pub fn TextAtlasDrawResult::get_skipped_glyph_count(
   self : TextAtlasDrawResult,
 ) -> Int {
   self.skipped_glyph_count
+}
+
+///|
+/// Return the number of drawable glyphs reused from the glyph mask cache.
+pub fn TextAtlasDrawResult::get_cache_hit_count(
+  self : TextAtlasDrawResult,
+) -> Int {
+  self.cache_hit_count
+}
+
+///|
+/// Return the number of glyph masks rasterized on cache miss.
+pub fn TextAtlasDrawResult::get_rasterized_glyph_count(
+  self : TextAtlasDrawResult,
+) -> Int {
+  self.rasterized_glyph_count
 }
 
 ///|
@@ -219,6 +237,8 @@ pub fn draw_text_face_atlas(
   let mut glyph_count = 0
   let mut drawn_glyph_count = 0
   let mut skipped_glyph_count = 0
+  let mut cache_hit_count = 0
+  let mut rasterized_glyph_count = 0
   let mut did_clear_atlas = false
 
   for run in layout.get_runs() {
@@ -233,7 +253,7 @@ pub fn draw_text_face_atlas(
                 glyph.glyph_id,
                 config.font_size,
               )
-              let mask = glyph_cache.get_or_rasterize_glyph(
+              let cache_result = glyph_cache.get_or_rasterize_glyph_result(
                 key,
                 simple_glyph,
                 placement.width,
@@ -242,6 +262,12 @@ pub fn draw_text_face_atlas(
                 placement.origin_y,
                 scale,
               )
+              if cache_result.did_rasterize() {
+                rasterized_glyph_count += 1
+              } else {
+                cache_hit_count += 1
+              }
+              let mask = cache_result.get_mask()
               match atlas.insert_or_clear(key, mask) {
                 Some(result) => {
                   if result.did_clear() {
@@ -269,7 +295,14 @@ pub fn draw_text_face_atlas(
     }
   }
 
-  { glyph_count, drawn_glyph_count, skipped_glyph_count, did_clear_atlas }
+  {
+    glyph_count,
+    drawn_glyph_count,
+    skipped_glyph_count,
+    cache_hit_count,
+    rasterized_glyph_count,
+    did_clear_atlas,
+  }
 }
 
 ///|

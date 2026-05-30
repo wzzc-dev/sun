@@ -392,9 +392,32 @@ pub struct GlyphMaskCache {
 } derive(Debug)
 
 ///|
+/// Result of reading a glyph mask from cache or rasterizing it on miss.
+pub struct GlyphMaskCacheRasterizeResult {
+  mask : CoverageMask
+  did_rasterize : Bool
+} derive(Debug)
+
+///|
 /// Create an empty glyph mask cache.
 pub fn GlyphMaskCache::new() -> GlyphMaskCache {
   { masks: {} }
+}
+
+///|
+/// Get the resulting glyph coverage mask.
+pub fn GlyphMaskCacheRasterizeResult::get_mask(
+  self : GlyphMaskCacheRasterizeResult,
+) -> CoverageMask {
+  self.mask
+}
+
+///|
+/// Return whether this lookup rasterized a new mask instead of hitting cache.
+pub fn GlyphMaskCacheRasterizeResult::did_rasterize(
+  self : GlyphMaskCacheRasterizeResult,
+) -> Bool {
+  self.did_rasterize
 }
 
 ///|
@@ -445,10 +468,32 @@ pub fn GlyphMaskCache::get_or_rasterize_glyph(
   y : Double,
   scale : Double,
 ) -> CoverageMask {
+  self
+  .get_or_rasterize_glyph_result(key, glyph, width, height, x, y, scale)
+  .get_mask()
+}
+
+///|
+/// Rasterize a glyph on first use and report whether this lookup missed cache.
+pub fn GlyphMaskCache::get_or_rasterize_glyph_result(
+  self : GlyphMaskCache,
+  key : String,
+  glyph : SimpleGlyph,
+  width : Int,
+  height : Int,
+  x : Double,
+  y : Double,
+  scale : Double,
+) -> GlyphMaskCacheRasterizeResult {
   match self.get(key) {
-    Some(mask) => mask
-    None =>
-      self.insert(key, render_glyph_mask(glyph, width, height, x, y, scale))
+    Some(mask) => { mask, did_rasterize: false }
+    None => {
+      let mask = self.insert(
+        key,
+        render_glyph_mask(glyph, width, height, x, y, scale),
+      )
+      { mask, did_rasterize: true }
+    }
   }
 }
 

@@ -243,11 +243,19 @@ pub struct GlyphMaskCache {
 pub fn GlyphMaskCache::clear(Self) -> Unit
 pub fn GlyphMaskCache::get(Self, String) -> CoverageMask?
 pub fn GlyphMaskCache::get_or_rasterize_glyph(Self, String, SimpleGlyph, Int, Int, Double, Double, Double) -> CoverageMask
+pub fn GlyphMaskCache::get_or_rasterize_glyph_result(Self, String, SimpleGlyph, Int, Int, Double, Double, Double) -> GlyphMaskCacheRasterizeResult
 pub fn GlyphMaskCache::insert(Self, String, CoverageMask) -> CoverageMask
 pub fn GlyphMaskCache::is_empty(Self) -> Bool
 pub fn GlyphMaskCache::len(Self) -> Int
 pub fn GlyphMaskCache::new() -> Self
 pub fn GlyphMaskCache::remove(Self, String) -> Unit
+
+pub struct GlyphMaskCacheRasterizeResult {
+  mask : CoverageMask
+  did_rasterize : Bool
+} derive(@debug.Debug)
+pub fn GlyphMaskCacheRasterizeResult::did_rasterize(Self) -> Bool
+pub fn GlyphMaskCacheRasterizeResult::get_mask(Self) -> CoverageMask
 
 pub struct GlyphPoint {
   x : Int
