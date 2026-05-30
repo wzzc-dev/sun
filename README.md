@@ -114,7 +114,7 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
 - `Renderer::draw_text` for `Font -> layout -> glyph raster -> Canvas` drawing
 - `Renderer::draw_text_face` for checked `FontFace -> TextLayout -> Canvas` drawing
 - `Renderer::draw_coverage_mask` for testing and low-level mask composition
-- End-to-end regression from parsed TTF bytes to rendered `Pixmap` pixels
+- End-to-end regression from a parsed TTF printable ASCII fixture to rendered `Pixmap` pixels
 - Keeps `graphics` independent from font parsing and text layout
 
 ### softbuffer

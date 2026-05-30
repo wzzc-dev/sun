@@ -161,6 +161,7 @@ Application / GUI
 - RenderFrame 封装 frame canvas、LayerTree、resize lifecycle、dirty query/marking、dirty/full present 与 dirty rect limit，作为事件循环提交单元
 - PixelRect/DirtyRegion 合并、Canvas dirty tracking 与 rect present API，作为局部重绘和图层缓存基础
 - Renderer Core 组合层：`Font -> render_text_mask -> Canvas.draw_mask`
+- Renderer parsed TTF printable ASCII 字符矩阵回归，覆盖 `FontFace -> TextLayout -> Renderer -> Pixmap` 公开路径
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
 - Canvas 路径描边（Butt/Round/Square cap，Miter/Round/Bevel join，dash/dotted）
 - 基础 clip rect 与 intersect clip，覆盖 rect/path/stroke/mask/pixel/pixmap 绘制入口
@@ -168,9 +169,9 @@ Application / GUI
 - Win32 窗口管理
 
 ### ⚠️ 已知问题
-1. `Canvas::draw_text` 已标记废弃；真实文本绘制入口在 `renderer.Renderer::draw_text`，当前已有最小 TTF 字节端到端回归，仍需扩展为覆盖更多 glyph 的测试字体矩阵
+1. `Canvas::draw_text` 已标记废弃；真实文本绘制入口在 `renderer.Renderer::draw_text`，当前已有 parsed TTF printable ASCII 到 Pixmap 的端到端回归，仍需扩展到更多真实字体 fixture
 2. 反锯齿质量、glyph fill rule 和不同字号下的 coverage 仍需系统验证
-3. 带孔洞字符已有最小回归，并已扩展到 `o`/`d` 与 `2`/`3` 等更接近真实 ASCII 的测试轮廓；仍需扩展到完整 ASCII 字符矩阵和更多真实字体 fixture
+3. 带孔洞字符已有最小回归，并已扩展到 parsed TTF printable ASCII 字符矩阵；仍需扩展到更多真实字体 fixture
 4. 仅支持 TTF，不支持 OTF/CFF
 5. 字体解析主链路已有 `parse_font_result`；旧 `parse_font` 仍会在错误时 `abort` 以保持兼容，后续需要引导示例和上层调用迁移到 Result 风格入口
 
@@ -203,7 +204,7 @@ Application / GUI
 #### 1.3 测试与验证
 - [x] 添加字形渲染快照测试
 - [x] 创建测试字体 fixture（覆盖实心 glyph、单孔 glyph、偏移内孔、双孔 glyph、曲线轮廓和 `o`/`d`/`2`/`3` 字符）
-- [ ] 验证所有 ASCII 字符正确渲染
+- [x] 验证 parsed TTF fixture 中所有 printable ASCII 字符都能映射、布局并渲染到 Pixmap
 - [x] 为带孔洞 glyph 建立直接光栅化回归
 - [x] 为 `render_text_mask -> Canvas.draw_mask -> Pixmap` 建立组合层单元测试
 - [x] 为 `parse_font -> layout_text -> rasterize_glyph -> Pixmap` 建立字体文件端到端测试
@@ -436,7 +437,7 @@ Application / GUI
   都有 `.mbti` 或明确的 public API 审查记录；核心包 warning 有清单。
 - **v0.2.0**：`font_demo` 和测试都走 `renderer.Renderer::draw_text`；旧
   `Canvas::draw_text` 只保留废弃兼容；真实 TTF bytes 到 `Pixmap` 有端到端回归。
-- **v0.3.0**：Latin/ASCII glyph matrix、kerning、baseline、alignment、line break 有稳定回归；
+- **v0.3.0**：Latin/ASCII glyph matrix 已有 parsed TTF -> Pixmap 回归；kerning、baseline、alignment、line break 有稳定回归；
   `FontFace`/`GlyphRun`/`TextLayout` 边界确定。
 - **v0.4.0**：Canvas 的 fill/stroke/clip/transform/image/mask API 有像素级测试；
   alpha composition 行为文档化。
@@ -465,7 +466,7 @@ Application / GUI
 
 ### P0（立即修复）
 1. 保持 `scripts/check_ci.sh` 作为提交前验证入口
-2. 将测试字体矩阵继续扩展到真实 ASCII 轮廓（已覆盖 `o`/`d`/`2`/`3`，完整 ASCII 仍待补齐）
+2. 将测试字体矩阵继续扩展到更多真实字体 fixture（printable ASCII fixture 已覆盖映射、布局与渲染，仍需更多真实轮廓）
 3. 扩展 `FontFace`/`TextLayout` facade 使用面：更多示例、renderer helper 和未来 GUI 代码优先走 checked face API
 4. 继续推进 parser 错误处理迁移：`parse_font_result` 主链路已覆盖核心表、cmap、glyf、kern 的逐字段 Result 读取；下一步是继续减少上层 legacy `parse_font` 使用，并审查 `InvalidTable` 是否保留为迁移期兜底
 5. 改进反锯齿质量，并保留确定性像素回归

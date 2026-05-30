@@ -203,6 +203,31 @@ test "Renderer::draw_text covers a parsed TTF glyph matrix" {
 }
 
 ///|
+test "Renderer::draw_text covers printable ASCII from parsed TTF bytes" {
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  let config = @text.LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let ascii = printable_ascii_string()
+  let mut glyph_count = 0
+  for ch in ascii {
+    let codepoint = ch.to_int()
+    let glyph_id = face.char_to_glyph(codepoint)
+    assert_true(glyph_id > 0)
+    assert_eq(glyph_id, codepoint - 0x20 + 1)
+    if ch is ' ' {
+      assert_ascii_space_glyph(face, ch.to_string(), glyph_id, config)
+    } else {
+      assert_ascii_visible_glyph(face, ch.to_string(), glyph_id, config)
+    }
+    glyph_count = glyph_count + 1
+  }
+  assert_eq(glyph_count, printable_ascii_count())
+}
+
+///|
 fn assert_matrix_glyph(
   face : @text.FontFace,
   text : String,
@@ -234,6 +259,85 @@ fn assert_matrix_glyph(
     None => ()
   }
   assert_eq(pixmap.get_pixel(0, 0), @graphics.Color::white())
+}
+
+///|
+fn assert_ascii_visible_glyph(
+  face : @text.FontFace,
+  text : String,
+  glyph_id : Int,
+  config : @text.LayoutConfig,
+) -> Unit raise {
+  let layout = @text.TextLayout::layout(face, text, config)
+  assert_eq(layout.run_count(), 1)
+  assert_eq(layout.get_runs()[0].glyph_count(), 1)
+  assert_eq(layout.get_runs()[0].get_glyphs()[0].glyph_id, glyph_id)
+
+  let canvas = @graphics.Canvas::new(12, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  renderer.draw_text_face(
+    face,
+    text,
+    1.0,
+    1.0,
+    config,
+    @graphics.Paint::new().set_color(@graphics.Color::black()),
+  )
+  assert_true(pixmap_has_ink(renderer.get_canvas().get_pixmap()))
+}
+
+///|
+fn assert_ascii_space_glyph(
+  face : @text.FontFace,
+  text : String,
+  glyph_id : Int,
+  config : @text.LayoutConfig,
+) -> Unit raise {
+  let layout = @text.TextLayout::layout(face, text, config)
+  assert_eq(layout.run_count(), 1)
+  assert_eq(layout.get_runs()[0].glyph_count(), 1)
+  assert_eq(layout.get_runs()[0].get_glyphs()[0].glyph_id, glyph_id)
+  assert_eq(layout.get_runs()[0].get_width(), 5.0)
+
+  let canvas = @graphics.Canvas::new(12, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  renderer.draw_text_face(
+    face,
+    text,
+    1.0,
+    1.0,
+    config,
+    @graphics.Paint::new().set_color(@graphics.Color::black()),
+  )
+  assert_true(!pixmap_has_ink(renderer.get_canvas().get_pixmap()))
+}
+
+///|
+fn pixmap_has_ink(pixmap : @graphics.Pixmap) -> Bool {
+  for y in 0..<pixmap.get_height() {
+    for x in 0..<pixmap.get_width() {
+      if pixmap.get_pixel(x, y) != @graphics.Color::white() {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
+fn printable_ascii_string() -> String {
+  let out = StringBuilder(size_hint=printable_ascii_count())
+  for codepoint in 0x20..<=0x7E {
+    out.write_char(codepoint.unsafe_to_char())
+  }
+  out.to_string()
+}
+
+///|
+fn printable_ascii_count() -> Int {
+  0x7E - 0x20 + 1
 }
 
 ///|
@@ -323,19 +427,42 @@ fn make_minimal_ttf() -> Bytes {
 
 ///|
 fn make_test_glyphs() -> Array[TestGlyph] {
-  [
-    { codepoint: 'A'.to_int(), advance: 10, bytes: make_box_glyph() },
-    { codepoint: 'O'.to_int(), advance: 10, bytes: make_ring_glyph() },
-    { codepoint: 'D'.to_int(), advance: 10, bytes: make_d_glyph() },
-    { codepoint: 'o'.to_int(), advance: 10, bytes: make_o_glyph() },
-    { codepoint: 'd'.to_int(), advance: 10, bytes: make_lower_d_glyph() },
-    { codepoint: '0'.to_int(), advance: 10, bytes: make_ring_glyph() },
-    { codepoint: '2'.to_int(), advance: 10, bytes: make_two_glyph() },
-    { codepoint: '3'.to_int(), advance: 10, bytes: make_three_glyph() },
-    { codepoint: '8'.to_int(), advance: 10, bytes: make_eight_glyph() },
-    { codepoint: 0xE000, advance: 10, bytes: make_small_square_glyph() },
-    { codepoint: 'i'.to_int(), advance: 10, bytes: make_composite_i_glyph() },
-  ]
+  let glyphs = []
+  for codepoint in 0x20..<=0x7E {
+    glyphs.push(make_ascii_test_glyph(codepoint))
+  }
+  glyphs.push({
+    codepoint: 0xE000,
+    advance: 10,
+    bytes: make_small_square_glyph(),
+  })
+  glyphs
+}
+
+///|
+fn make_ascii_test_glyph(codepoint : Int) -> TestGlyph {
+  let bytes = match codepoint {
+    0x20 => []
+    65 => make_box_glyph()
+    79 => make_ring_glyph()
+    68 => make_d_glyph()
+    111 => make_o_glyph()
+    100 => make_lower_d_glyph()
+    48 => make_ring_glyph()
+    50 => make_two_glyph()
+    51 => make_three_glyph()
+    56 => make_eight_glyph()
+    105 => make_composite_i_glyph()
+    _ if codepoint >= 0x20 && codepoint <= 0x7E =>
+      make_ascii_fallback_glyph(codepoint)
+    _ => make_ascii_fallback_glyph(codepoint)
+  }
+  { codepoint, advance: if codepoint is 0x20 { 5 } else { 10 }, bytes }
+}
+
+///|
+fn square_component_glyph_id() -> Int {
+  printable_ascii_count() + 1
 }
 
 ///|
@@ -611,6 +738,37 @@ fn make_lower_d_glyph() -> Array[Byte] {
 }
 
 ///|
+fn make_ascii_fallback_glyph(codepoint : Int) -> Array[Byte] {
+  let stem_x = 1 + codepoint % 4
+  let stem_top = 2 + codepoint % 3
+  let bar_y = 1 + codepoint % 7
+  make_simple_glyph({
+    contours: [
+      {
+        points: [
+          { x: stem_x, y: stem_top + 5, on_curve: true },
+          { x: stem_x + 2, y: stem_top + 5, on_curve: true },
+          { x: stem_x + 2, y: 0, on_curve: true },
+          { x: stem_x, y: 0, on_curve: true },
+        ],
+      },
+      {
+        points: [
+          { x: 1, y: bar_y + 1, on_curve: true },
+          { x: 9, y: bar_y + 1, on_curve: true },
+          { x: 9, y: bar_y, on_curve: true },
+          { x: 1, y: bar_y, on_curve: true },
+        ],
+      },
+    ],
+    xmin: 1,
+    ymin: 0,
+    xmax: 9,
+    ymax: stem_top + 5,
+  })
+}
+
+///|
 fn make_two_glyph() -> Array[Byte] {
   make_simple_glyph({
     contours: [
@@ -713,12 +871,12 @@ fn make_composite_i_glyph() -> Array[Byte] {
   append_i16(out, 10) // ymax
 
   append_u16(out, 0x0023) // words, xy values, more components
-  append_u16(out, 10) // small square component glyph
+  append_u16(out, square_component_glyph_id()) // small square component glyph
   append_i16(out, 0)
   append_i16(out, 0)
 
   append_u16(out, 0x0003) // words, xy values
-  append_u16(out, 10) // small square component glyph
+  append_u16(out, square_component_glyph_id()) // small square component glyph
   append_i16(out, 0)
   append_i16(out, 6)
   out

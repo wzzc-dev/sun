@@ -46,7 +46,8 @@ owns the behavior:
   and surface present behavior.
 - `text`: glyph outline parsing, layout metrics, and coverage-mask snapshots.
 - `renderer`: cross-package regressions from parsed font bytes to final `Pixmap`
-  pixels.
+  pixels, including printable ASCII fixture coverage through the public
+  `FontFace -> Renderer` path.
 - `softbuffer`: validation, trait dispatch, and build-only native present checks
   without requiring a live platform window.
 
