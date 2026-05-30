@@ -213,6 +213,73 @@ test "GlyphMaskAtlas reports lifecycle metrics and fit" {
 }
 
 ///|
+test "GlyphMaskAtlas insert_or_clear reports atlas rotation" {
+  let atlas = GlyphMaskAtlas::new(2, 2)
+  let first_pixels : FixedArray[Byte] = FixedArray::make(2, 0)
+  first_pixels[0] = 90
+  let first = CoverageMask::new(2, 1, first_pixels)
+  match atlas.insert_or_clear("first", first) {
+    Some(result) => {
+      assert_true(!result.did_clear())
+      let entry = result.get_entry()
+      assert_eq(entry.get_key(), "first")
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 0)
+    }
+    None => abort("expected first insert_or_clear result")
+  }
+
+  let existing_pixels : FixedArray[Byte] = FixedArray::make(2, 0)
+  existing_pixels[0] = 220
+  let existing = CoverageMask::new(2, 1, existing_pixels)
+  match atlas.insert_or_clear("first", existing) {
+    Some(result) => {
+      assert_true(!result.did_clear())
+      let entry = result.get_entry()
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 0)
+    }
+    None => abort("expected existing atlas result")
+  }
+  assert_eq(atlas.to_mask().get_pixels()[0], 90)
+
+  let second = CoverageMask::new(2, 1, FixedArray::make(2, 7))
+  ignore(atlas.insert_or_clear("second", second))
+  assert_eq(atlas.len(), 2)
+  assert_eq(atlas.get_used_pixel_count(), 4)
+  assert_true(!atlas.can_fit(first))
+
+  let rotated_pixels : FixedArray[Byte] = FixedArray::make(2, 0)
+  rotated_pixels[0] = 33
+  rotated_pixels[1] = 44
+  let rotated = CoverageMask::new(2, 1, rotated_pixels)
+  match atlas.insert_or_clear("rotated", rotated) {
+    Some(result) => {
+      assert_true(result.did_clear())
+      let entry = result.get_entry()
+      assert_eq(entry.get_key(), "rotated")
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 0)
+    }
+    None => abort("expected rotated atlas result")
+  }
+  assert_eq(atlas.len(), 1)
+  assert_true(atlas.get("first") is None)
+  assert_true(atlas.get("second") is None)
+  assert_eq(atlas.get_used_pixel_count(), 2)
+  assert_eq(atlas.get_free_pixel_count(), 2)
+  let packed = atlas.to_mask().get_pixels()
+  assert_eq(packed[0], 33)
+  assert_eq(packed[1], 44)
+  assert_eq(packed[2], 0)
+
+  let too_wide = CoverageMask::new(3, 1, FixedArray::make(3, 1))
+  assert_true(atlas.insert_or_clear("too-wide", too_wide) is None)
+  assert_eq(atlas.len(), 1)
+  assert_true(atlas.get("rotated") is Some(_))
+}
+
+///|
 test "GlyphMaskAtlas reuses keys rejects overflow and clears" {
   let atlas = GlyphMaskAtlas::new(2, 2)
   let pixels : FixedArray[Byte] = FixedArray::make(1, 0)

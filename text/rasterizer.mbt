@@ -77,6 +77,13 @@ pub struct GlyphAtlasEntry {
 } derive(Debug)
 
 ///|
+/// Result of inserting a glyph mask into an atlas with lifecycle policy.
+pub struct GlyphMaskAtlasInsertResult {
+  entry : GlyphAtlasEntry
+  did_clear : Bool
+} derive(Debug)
+
+///|
 priv struct GlyphAtlasPlacement {
   x : Int
   y : Int
@@ -123,6 +130,22 @@ pub fn GlyphAtlasEntry::get_width(self : GlyphAtlasEntry) -> Int {
 /// Get the entry height.
 pub fn GlyphAtlasEntry::get_height(self : GlyphAtlasEntry) -> Int {
   self.height
+}
+
+///|
+/// Get the placed atlas entry.
+pub fn GlyphMaskAtlasInsertResult::get_entry(
+  self : GlyphMaskAtlasInsertResult,
+) -> GlyphAtlasEntry {
+  self.entry
+}
+
+///|
+/// Return whether the atlas was cleared before this entry was inserted.
+pub fn GlyphMaskAtlasInsertResult::did_clear(
+  self : GlyphMaskAtlasInsertResult,
+) -> Bool {
+  self.did_clear
 }
 
 ///|
@@ -247,6 +270,31 @@ pub fn GlyphMaskAtlas::insert(
 }
 
 ///|
+/// Insert a mask, clearing the atlas first if the current row-packing state is full.
+/// When the result reports `did_clear`, previous atlas entries are no longer valid.
+pub fn GlyphMaskAtlas::insert_or_clear(
+  self : GlyphMaskAtlas,
+  key : String,
+  mask : CoverageMask,
+) -> GlyphMaskAtlasInsertResult? {
+  match self.get(key) {
+    Some(entry) => Some({ entry, did_clear: false })
+    None =>
+      match self.place(key, mask) {
+        Some(entry) => Some({ entry, did_clear: false })
+        None => {
+          guard self.can_fit_empty(mask) else { return None }
+          self.clear()
+          match self.place(key, mask) {
+            Some(entry) => Some({ entry, did_clear: true })
+            None => None
+          }
+        }
+      }
+  }
+}
+
+///|
 /// Remove all atlas entries and clear atlas pixels.
 pub fn GlyphMaskAtlas::clear(self : GlyphMaskAtlas) -> Unit {
   self.entries = {}
@@ -266,13 +314,7 @@ fn GlyphMaskAtlas::next_placement(
 ) -> GlyphAtlasPlacement? {
   let mask_width = mask.get_width()
   let mask_height = mask.get_height()
-  guard mask_width > 0 && mask_height > 0 else { return None }
-  guard mask.get_pixels().length() >= mask_width * mask_height else {
-    return None
-  }
-  guard mask_width <= self.width && mask_height <= self.height else {
-    return None
-  }
+  guard self.can_fit_empty(mask) else { return None }
 
   let should_wrap = self.cursor_x + mask_width > self.width
   let (entry_x, entry_y, current_row_height) = if should_wrap {
@@ -282,6 +324,20 @@ fn GlyphMaskAtlas::next_placement(
   }
   guard entry_y + mask_height <= self.height else { return None }
   Some({ x: entry_x, y: entry_y, row_height: current_row_height })
+}
+
+///|
+fn GlyphMaskAtlas::can_fit_empty(
+  self : GlyphMaskAtlas,
+  mask : CoverageMask,
+) -> Bool {
+  let mask_width = mask.get_width()
+  let mask_height = mask.get_height()
+  mask_width > 0 &&
+  mask_height > 0 &&
+  mask.get_pixels().length() >= mask_width * mask_height &&
+  mask_width <= self.width &&
+  mask_height <= self.height
 }
 
 ///|

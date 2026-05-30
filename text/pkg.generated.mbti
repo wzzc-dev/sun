@@ -224,10 +224,18 @@ pub fn GlyphMaskAtlas::get_occupancy_ratio(Self) -> Double
 pub fn GlyphMaskAtlas::get_used_pixel_count(Self) -> Int
 pub fn GlyphMaskAtlas::get_width(Self) -> Int
 pub fn GlyphMaskAtlas::insert(Self, String, CoverageMask) -> GlyphAtlasEntry?
+pub fn GlyphMaskAtlas::insert_or_clear(Self, String, CoverageMask) -> GlyphMaskAtlasInsertResult?
 pub fn GlyphMaskAtlas::is_empty(Self) -> Bool
 pub fn GlyphMaskAtlas::len(Self) -> Int
 pub fn GlyphMaskAtlas::new(Int, Int) -> Self
 pub fn GlyphMaskAtlas::to_mask(Self) -> CoverageMask
+
+pub struct GlyphMaskAtlasInsertResult {
+  entry : GlyphAtlasEntry
+  did_clear : Bool
+} derive(@debug.Debug)
+pub fn GlyphMaskAtlasInsertResult::did_clear(Self) -> Bool
+pub fn GlyphMaskAtlasInsertResult::get_entry(Self) -> GlyphAtlasEntry
 
 pub struct GlyphMaskCache {
   mut masks : Map[String, CoverageMask]
