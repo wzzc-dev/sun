@@ -310,6 +310,55 @@ test "Canvas::dirty_present_plan matches bounded dirty submit strategy" {
 }
 
 ///|
+test "Canvas::dirty_present_batch materializes without clearing dirty" {
+  let canvas = Canvas::new(8, 2)
+  canvas.draw_pixel(0, 0, Color::red())
+  canvas.draw_pixel(3, 0, Color::green())
+  canvas.draw_pixel(6, 0, Color::blue())
+  let surface = MemorySurface::new(8, 2)
+
+  match canvas.dirty_present_batch(surface, 2) {
+    Ok(batch) => {
+      assert_eq(batch.get_rect_count(), 1)
+      assert_eq(batch.get_present_pixel_count(), 7)
+      assert_eq(batch.get_present_byte_count(), 28)
+      let payloads = batch.get_payloads()
+      assert_true(
+        payloads[0].get_rect() == PixelRect::new(x=0, y=0, width=7, height=1),
+      )
+      assert_eq(payloads[0].get_row_bytes(), 28)
+    }
+    Err(_) => abort("expected dirty present batch")
+  }
+
+  assert_eq(surface.get_present_count(), 0)
+  assert_true(!canvas.get_dirty_region().is_empty())
+  assert_true(canvas.present_dirty_to_with_limit(surface, 2) == Ok(1))
+  assert_eq(surface.get_present_count(), 1)
+  assert_true(canvas.get_dirty_region().is_empty())
+}
+
+///|
+test "Canvas::dirty_present_batch returns empty batch for clipped dirty" {
+  let canvas = Canvas::new(3, 3)
+  canvas.draw_pixel(2, 2, Color::white())
+  let surface = MemorySurface::new(2, 2)
+
+  match canvas.dirty_present_batch(surface, 4) {
+    Ok(batch) => {
+      assert_true(batch.is_empty())
+      assert_eq(batch.get_rect_count(), 0)
+      assert_eq(batch.get_present_pixel_count(), 0)
+      assert_eq(batch.get_present_byte_count(), 0)
+    }
+    Err(_) => abort("expected empty dirty present batch")
+  }
+
+  assert_eq(surface.get_present_count(), 0)
+  assert_true(!canvas.get_dirty_region().is_empty())
+}
+
+///|
 test "Canvas::present_dirty_to clips dirty rectangles to surface bounds" {
   let canvas = Canvas::new(3, 3)
   canvas.draw_pixel(2, 2, Color::white())

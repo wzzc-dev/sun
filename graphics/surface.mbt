@@ -467,6 +467,15 @@ pub fn[S : Surface] Canvas::dirty_present_plan(
 }
 
 ///|
+pub fn[S : Surface] Canvas::dirty_present_batch(
+  self : Canvas,
+  surface : S,
+  max_rects : Int,
+) -> Result[PresentBatch, PresentError] {
+  self.get_pixmap().present_batch(self.dirty_present_plan(surface, max_rects))
+}
+
+///|
 pub fn[S : Surface] Canvas::present_dirty_to_with_limit(
   self : Canvas,
   surface : S,
