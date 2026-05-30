@@ -91,7 +91,7 @@ Application / GUI
 |--------|---------------|---------------|-----------------|
 | Text | TTF -> layout -> glyph mask -> Canvas，Latin/ASCII 回归，`TextLayout` 基础对齐、显式换行、尾随空格和 spacing | 明确 `FontFace`/`GlyphRun`/`TextLayout` API，基础 CJK、kerning、fallback 轮廓 | Unicode 分段、BiDi 初版、字体缓存、更多 OpenType 表 |
 | Vector | transform-aware rect/path fill、line/polyline/polygon/arc/pie/rect/circle/ellipse/uniform 与 per-corner rounded-rect Canvas helpers、stroke、cap/join/dash、clip/intersect clip、transform helpers、Canvas save/restore state stack、4x4 coverage | 更稳定的 fill rule、miter/dash 行为、路径简化和基础 boolean 可评估 | 文档化 Canvas API、复杂路径回归、性能基准 |
-| Image/Layer | Pixmap blit、source-rect atlas drawing、tiled Pixmap fills、nearest/bilinear sampling modes、transform-aware sampled Pixmap drawing、nine-patch GUI image scaling、dirty region 合并、mask/alpha composition、Layer cache、LayerTree、属性变化 invalidation、LayerTree partial present、RenderFrame resize、rect present API | 更高质量采样、GUI event-loop 调度与 layer lifecycle 策略 | PNG 基础解码、GUI 集成 |
+| Image/Layer | Pixmap blit、source-rect atlas drawing、tiled Pixmap fills、nearest/bilinear/bicubic sampling modes、transform-aware sampled Pixmap drawing、nine-patch GUI image scaling、dirty region 合并、mask/alpha composition、Layer cache、LayerTree、属性变化 invalidation、LayerTree partial present、RenderFrame resize、rect present API | GUI event-loop 调度与 layer lifecycle 策略 | PNG 基础解码、GUI 集成 |
 | Surface | `MemorySurface`、`NativeSurface`、`Canvas/Pixmap::present_to`、`RenderFrame -> NativeSurface` helpers、`present_pixels_rect` | dirty rect 调度、row stride、错误传播和 pre-present hook 标准化 | Win32/macOS/Linux/WASM 后端都有 build 或运行验证 |
 | Tooling | `scripts/check_ci.sh`、`.mbti`、核心单测、headless render smoke test | warning baseline 可审查、覆盖率/benchmark 初版 | release checklist、示例矩阵、性能趋势 |
 
@@ -331,13 +331,14 @@ Application / GUI
 - [x] Pixmap 作为源图合成到 Canvas/Pixmap，作为图像与图层缓存基础
 - [x] 最近邻 Pixmap 缩放 blit，作为 CPU-first 图像缩放基线
 - [x] 增加 bilinear scaled blit，并通过像素回归覆盖透明、裁剪、缩小和放大
-- [x] 增加 `ImageSampling` 采样模式 API，统一 nearest/bilinear 缩放入口
+- [x] 增加 `ImageSampling` 采样模式 API，统一 nearest/bilinear/bicubic 缩放入口
 - [x] 增加 nine-patch Pixmap/Canvas 缩放绘制入口，覆盖角保持、边/中心拉伸、裁剪、opacity 与 dirty region 回归
 - [x] 增加 source-rect Pixmap atlas 缩放和平铺绘制入口，覆盖子图采样、越界裁剪、opacity、clip 与 dirty region 回归
 - [x] 增加 `PixmapCache`，让 GUI/resource 代码可按 key 复用 image/layer pixmap、隔离 raw pixel mutation，并报告 cache hit/insert telemetry
 - [x] 为 `PixmapCache` 增加 opt-in LRU entry limit，覆盖最近访问刷新、最旧条目淘汰和非法容量 clamp 回归
-- [x] 增加 transform-aware sampled Pixmap/atlas 绘制入口，覆盖 current transform、clip、nearest/bilinear sampling、dirty region 与不可逆 transform 回归
-- [ ] 更高质量图像采样与任意变换（已有 transform-aware sampled Pixmap 基础入口）
+- [x] 增加 transform-aware sampled Pixmap/atlas 绘制入口，覆盖 current transform、clip、nearest/bilinear/bicubic sampling、dirty region 与不可逆 transform 回归
+- [x] 增加 bicubic 图像采样，覆盖 Pixmap/Canvas 缩放、source-rect atlas、premultiplied alpha 和 transform-aware sampled Pixmap 回归
+- [ ] 更完整任意变换图像质量策略（已有 transform-aware sampled Pixmap 基础入口）
 - [ ] 图像与图形混合
 
 #### 4.3 渲染优化

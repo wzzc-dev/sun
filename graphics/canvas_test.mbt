@@ -411,6 +411,17 @@ test "Canvas::draw_scaled_pixmap_bilinear respects clip rect and opacity" {
 }
 
 ///|
+test "Canvas::draw_scaled_pixmap_bicubic interpolates source pixels" {
+  let canvas = Canvas::new(3, 1)
+  let src = make_canvas_test_bicubic_source()
+  canvas.draw_scaled_pixmap_bicubic(src, 0, 0, 3, 1, Paint::new())
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::new(r=34, g=0, b=0, a=255))
+  assert_eq(pixmap.get_pixel(1, 0), Color::new(r=128, g=0, b=0, a=255))
+  assert_eq(pixmap.get_pixel(2, 0), Color::new(r=221, g=0, b=0, a=255))
+}
+
+///|
 test "Canvas::draw_scaled_pixmap_bilinear ignores stroke paint and invalid size" {
   let canvas = Canvas::new(1, 1)
   canvas.clear(Color::white())
@@ -430,11 +441,10 @@ test "Canvas::draw_scaled_pixmap_bilinear ignores stroke paint and invalid size"
 
 ///|
 test "Canvas::draw_sampled_pixmap dispatches sampling modes" {
-  let src = Pixmap::new(2, 1)
-  src.set_pixel(0, 0, Color::red())
-  src.set_pixel(1, 0, Color::blue())
+  let src = make_canvas_test_bicubic_source()
   let nearest = Canvas::new(3, 1)
   let bilinear = Canvas::new(3, 1)
+  let bicubic = Canvas::new(3, 1)
   nearest.draw_sampled_pixmap(
     src,
     0,
@@ -453,10 +463,23 @@ test "Canvas::draw_sampled_pixmap dispatches sampling modes" {
     Paint::new(),
     ImageSampling::Bilinear,
   )
-  assert_eq(nearest.get_pixmap().get_pixel(1, 0), Color::blue())
+  bicubic.draw_sampled_pixmap(
+    src,
+    0,
+    0,
+    3,
+    1,
+    Paint::new(),
+    ImageSampling::Bicubic,
+  )
+  assert_eq(nearest.get_pixmap().get_pixel(1, 0), Color::black())
   assert_eq(
     bilinear.get_pixmap().get_pixel(1, 0),
-    Color::new(r=128, g=0, b=128, a=255),
+    Color::new(r=128, g=0, b=0, a=255),
+  )
+  assert_eq(
+    bicubic.get_pixmap().get_pixel(0, 0),
+    Color::new(r=34, g=0, b=0, a=255),
   )
 }
 
@@ -540,15 +563,31 @@ test "Canvas::draw_scaled_pixmap_rect_bilinear samples source rect" {
 }
 
 ///|
+test "Canvas::draw_scaled_pixmap_rect_bicubic samples source rect" {
+  let canvas = Canvas::new(3, 1)
+  let src = make_canvas_test_bicubic_rect_source()
+  canvas.draw_scaled_pixmap_rect_bicubic(
+    src,
+    PixelRect::new(x=1, y=0, width=4, height=1),
+    0,
+    0,
+    3,
+    1,
+    Paint::new(),
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::new(r=34, g=0, b=0, a=255))
+  assert_eq(pixmap.get_pixel(1, 0), Color::new(r=128, g=0, b=0, a=255))
+  assert_eq(pixmap.get_pixel(2, 0), Color::new(r=221, g=0, b=0, a=255))
+}
+
+///|
 test "Canvas::draw_sampled_pixmap_rect dispatches sampling modes" {
-  let src = Pixmap::new(4, 1)
-  src.set_pixel(0, 0, Color::white())
-  src.set_pixel(1, 0, Color::red())
-  src.set_pixel(2, 0, Color::blue())
-  src.set_pixel(3, 0, Color::white())
+  let src = make_canvas_test_bicubic_rect_source()
   let nearest = Canvas::new(3, 1)
   let bilinear = Canvas::new(3, 1)
-  let rect = PixelRect::new(x=1, y=0, width=2, height=1)
+  let bicubic = Canvas::new(3, 1)
+  let rect = PixelRect::new(x=1, y=0, width=4, height=1)
   nearest.draw_sampled_pixmap_rect(
     src,
     rect,
@@ -569,10 +608,24 @@ test "Canvas::draw_sampled_pixmap_rect dispatches sampling modes" {
     Paint::new(),
     ImageSampling::Bilinear,
   )
-  assert_eq(nearest.get_pixmap().get_pixel(1, 0), Color::blue())
+  bicubic.draw_sampled_pixmap_rect(
+    src,
+    rect,
+    0,
+    0,
+    3,
+    1,
+    Paint::new(),
+    ImageSampling::Bicubic,
+  )
+  assert_eq(nearest.get_pixmap().get_pixel(1, 0), Color::black())
   assert_eq(
     bilinear.get_pixmap().get_pixel(1, 0),
-    Color::new(r=128, g=0, b=128, a=255),
+    Color::new(r=128, g=0, b=0, a=255),
+  )
+  assert_eq(
+    bicubic.get_pixmap().get_pixel(0, 0),
+    Color::new(r=34, g=0, b=0, a=255),
   )
 }
 
@@ -697,6 +750,28 @@ test "Canvas::draw_transformed_sampled_pixmap_rect supports bilinear sampling" {
   assert_eq(pixmap.get_pixel(1, 0), Color::red())
   assert_eq(pixmap.get_pixel(2, 0), Color::new(r=128, g=0, b=128, a=255))
   assert_eq(pixmap.get_pixel(3, 0), Color::blue())
+}
+
+///|
+test "Canvas::draw_transformed_sampled_pixmap_rect supports bicubic sampling" {
+  let canvas = Canvas::new(5, 1)
+  canvas.clear(Color::white())
+  canvas.set_transform(Transform::translate(tx=1.0, ty=0.0))
+  let src = make_canvas_test_bicubic_source()
+  canvas.draw_transformed_sampled_pixmap_rect(
+    src,
+    PixelRect::new(x=0, y=0, width=4, height=1),
+    0.0,
+    0.0,
+    3.0,
+    1.0,
+    Paint::new(),
+    ImageSampling::Bicubic,
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(1, 0), Color::new(r=34, g=0, b=0, a=255))
+  assert_eq(pixmap.get_pixel(2, 0), Color::new(r=128, g=0, b=0, a=255))
+  assert_eq(pixmap.get_pixel(3, 0), Color::new(r=221, g=0, b=0, a=255))
 }
 
 ///|
@@ -1905,6 +1980,28 @@ fn make_canvas_test_nine_patch_source() -> Pixmap {
   src.set_pixel(0, 2, Color::new(r=70, g=0, b=0))
   src.set_pixel(1, 2, Color::new(r=80, g=0, b=0))
   src.set_pixel(2, 2, Color::new(r=90, g=0, b=0))
+  src
+}
+
+///|
+fn make_canvas_test_bicubic_source() -> Pixmap {
+  let src = Pixmap::new(4, 1)
+  src.set_pixel(0, 0, Color::black())
+  src.set_pixel(1, 0, Color::red())
+  src.set_pixel(2, 0, Color::black())
+  src.set_pixel(3, 0, Color::red())
+  src
+}
+
+///|
+fn make_canvas_test_bicubic_rect_source() -> Pixmap {
+  let src = Pixmap::new(6, 1)
+  src.set_pixel(0, 0, Color::white())
+  src.set_pixel(1, 0, Color::black())
+  src.set_pixel(2, 0, Color::red())
+  src.set_pixel(3, 0, Color::black())
+  src.set_pixel(4, 0, Color::red())
+  src.set_pixel(5, 0, Color::black())
   src
 }
 

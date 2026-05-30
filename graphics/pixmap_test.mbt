@@ -367,6 +367,30 @@ test "Pixmap::blend_scaled_pixmap_bilinear samples premultiplied alpha" {
 }
 
 ///|
+test "Pixmap::blend_scaled_pixmap_bicubic interpolates source pixels" {
+  let dst = Pixmap::new(3, 1)
+  let src = make_pixmap_test_bicubic_source()
+  dst.blend_scaled_pixmap_bicubic(0, 0, 3, 1, src, 1.0)
+  assert_eq(dst.get_pixel(0, 0), Color::new(r=34, g=0, b=0, a=255))
+  assert_eq(dst.get_pixel(1, 0), Color::new(r=128, g=0, b=0, a=255))
+  assert_eq(dst.get_pixel(2, 0), Color::new(r=221, g=0, b=0, a=255))
+}
+
+///|
+test "Pixmap::blend_scaled_pixmap_bicubic samples premultiplied alpha" {
+  let dst = Pixmap::new(3, 1)
+  let src = Pixmap::new(4, 1)
+  src.set_pixel(0, 0, Color::new(r=255, g=0, b=0, a=0))
+  src.set_pixel(1, 0, Color::blue())
+  src.set_pixel(2, 0, Color::new(r=0, g=255, b=0, a=0))
+  src.set_pixel(3, 0, Color::blue())
+  dst.blend_scaled_pixmap_bicubic(0, 0, 3, 1, src, 1.0)
+  assert_eq(dst.get_pixel(0, 0), Color::new(r=0, g=0, b=255, a=34))
+  assert_eq(dst.get_pixel(1, 0), Color::new(r=0, g=0, b=255, a=128))
+  assert_eq(dst.get_pixel(2, 0), Color::new(r=0, g=0, b=255, a=221))
+}
+
+///|
 test "Pixmap::blend_scaled_pixmap_bilinear clips destination bounds and opacity" {
   let dst = Pixmap::new(2, 1)
   dst.clear(Color::white())
@@ -380,15 +404,16 @@ test "Pixmap::blend_scaled_pixmap_bilinear clips destination bounds and opacity"
 
 ///|
 test "Pixmap::blend_sampled_pixmap dispatches sampling modes" {
-  let src = Pixmap::new(2, 1)
-  src.set_pixel(0, 0, Color::red())
-  src.set_pixel(1, 0, Color::blue())
+  let src = make_pixmap_test_bicubic_source()
   let nearest = Pixmap::new(3, 1)
   let bilinear = Pixmap::new(3, 1)
+  let bicubic = Pixmap::new(3, 1)
   nearest.blend_sampled_pixmap(0, 0, 3, 1, src, 1.0, ImageSampling::Nearest)
   bilinear.blend_sampled_pixmap(0, 0, 3, 1, src, 1.0, ImageSampling::Bilinear)
-  assert_eq(nearest.get_pixel(1, 0), Color::blue())
-  assert_eq(bilinear.get_pixel(1, 0), Color::new(r=128, g=0, b=128, a=255))
+  bicubic.blend_sampled_pixmap(0, 0, 3, 1, src, 1.0, ImageSampling::Bicubic)
+  assert_eq(nearest.get_pixel(1, 0), Color::black())
+  assert_eq(bilinear.get_pixel(1, 0), Color::new(r=128, g=0, b=0, a=255))
+  assert_eq(bicubic.get_pixel(0, 0), Color::new(r=34, g=0, b=0, a=255))
 }
 
 ///|
@@ -487,15 +512,30 @@ test "Pixmap::blend_scaled_pixmap_rect_bilinear samples within source rect" {
 }
 
 ///|
+test "Pixmap::blend_scaled_pixmap_rect_bicubic samples within source rect" {
+  let dst = Pixmap::new(3, 1)
+  let src = make_pixmap_test_bicubic_rect_source()
+  dst.blend_scaled_pixmap_rect_bicubic(
+    0,
+    0,
+    3,
+    1,
+    src,
+    PixelRect::new(x=1, y=0, width=4, height=1),
+    1.0,
+  )
+  assert_eq(dst.get_pixel(0, 0), Color::new(r=34, g=0, b=0, a=255))
+  assert_eq(dst.get_pixel(1, 0), Color::new(r=128, g=0, b=0, a=255))
+  assert_eq(dst.get_pixel(2, 0), Color::new(r=221, g=0, b=0, a=255))
+}
+
+///|
 test "Pixmap::blend_sampled_pixmap_rect dispatches sampling modes" {
-  let src = Pixmap::new(4, 1)
-  src.set_pixel(0, 0, Color::white())
-  src.set_pixel(1, 0, Color::red())
-  src.set_pixel(2, 0, Color::blue())
-  src.set_pixel(3, 0, Color::white())
+  let src = make_pixmap_test_bicubic_rect_source()
   let nearest = Pixmap::new(3, 1)
   let bilinear = Pixmap::new(3, 1)
-  let rect = PixelRect::new(x=1, y=0, width=2, height=1)
+  let bicubic = Pixmap::new(3, 1)
+  let rect = PixelRect::new(x=1, y=0, width=4, height=1)
   nearest.blend_sampled_pixmap_rect(
     0,
     0,
@@ -516,8 +556,19 @@ test "Pixmap::blend_sampled_pixmap_rect dispatches sampling modes" {
     1.0,
     ImageSampling::Bilinear,
   )
-  assert_eq(nearest.get_pixel(1, 0), Color::blue())
-  assert_eq(bilinear.get_pixel(1, 0), Color::new(r=128, g=0, b=128, a=255))
+  bicubic.blend_sampled_pixmap_rect(
+    0,
+    0,
+    3,
+    1,
+    src,
+    rect,
+    1.0,
+    ImageSampling::Bicubic,
+  )
+  assert_eq(nearest.get_pixel(1, 0), Color::black())
+  assert_eq(bilinear.get_pixel(1, 0), Color::new(r=128, g=0, b=0, a=255))
+  assert_eq(bicubic.get_pixel(0, 0), Color::new(r=34, g=0, b=0, a=255))
 }
 
 ///|
@@ -621,5 +672,27 @@ fn make_pixmap_test_nine_patch_source() -> Pixmap {
   src.set_pixel(0, 2, Color::new(r=70, g=0, b=0))
   src.set_pixel(1, 2, Color::new(r=80, g=0, b=0))
   src.set_pixel(2, 2, Color::new(r=90, g=0, b=0))
+  src
+}
+
+///|
+fn make_pixmap_test_bicubic_source() -> Pixmap {
+  let src = Pixmap::new(4, 1)
+  src.set_pixel(0, 0, Color::black())
+  src.set_pixel(1, 0, Color::red())
+  src.set_pixel(2, 0, Color::black())
+  src.set_pixel(3, 0, Color::red())
+  src
+}
+
+///|
+fn make_pixmap_test_bicubic_rect_source() -> Pixmap {
+  let src = Pixmap::new(6, 1)
+  src.set_pixel(0, 0, Color::white())
+  src.set_pixel(1, 0, Color::black())
+  src.set_pixel(2, 0, Color::red())
+  src.set_pixel(3, 0, Color::black())
+  src.set_pixel(4, 0, Color::red())
+  src.set_pixel(5, 0, Color::black())
   src
 }

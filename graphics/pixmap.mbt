@@ -11,6 +11,7 @@ pub struct Pixmap {
 pub(all) enum ImageSampling {
   Nearest
   Bilinear
+  Bicubic
 } derive(Eq, Debug)
 
 ///|
@@ -525,6 +526,29 @@ pub fn Pixmap::blend_scaled_pixmap_bilinear(
 }
 
 ///|
+/// Composite another pixmap scaled with bicubic sampling.
+pub fn Pixmap::blend_scaled_pixmap_bicubic(
+  self : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  src : Pixmap,
+  opacity : Double,
+) -> Unit {
+  guard width > 0 && height > 0 else { return }
+  guard src.get_width() > 0 && src.get_height() > 0 else { return }
+  let x_start = x.max(0)
+  let y_start = y.max(0)
+  let x_end = (x + width).min(self.width)
+  let y_end = (y + height).min(self.height)
+  guard x_start < x_end && y_start < y_end else { return }
+  blend_scaled_pixmap_bicubic_region(
+    self, x, y, width, height, src, opacity, x_start, y_start, x_end, y_end,
+  )
+}
+
+///|
 /// Composite another pixmap scaled with an explicit sampling mode.
 pub fn Pixmap::blend_sampled_pixmap(
   self : Pixmap,
@@ -541,6 +565,8 @@ pub fn Pixmap::blend_sampled_pixmap(
       self.blend_scaled_pixmap(x, y, width, height, src, opacity)
     ImageSampling::Bilinear =>
       self.blend_scaled_pixmap_bilinear(x, y, width, height, src, opacity)
+    ImageSampling::Bicubic =>
+      self.blend_scaled_pixmap_bicubic(x, y, width, height, src, opacity)
   }
 }
 
@@ -589,6 +615,30 @@ pub fn Pixmap::blend_scaled_pixmap_rect_bilinear(
     src_rect,
     opacity,
     ImageSampling::Bilinear,
+  )
+}
+
+///|
+/// Composite a source pixmap rectangle scaled with bicubic sampling.
+pub fn Pixmap::blend_scaled_pixmap_rect_bicubic(
+  self : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  src : Pixmap,
+  src_rect : PixelRect,
+  opacity : Double,
+) -> Unit {
+  self.blend_sampled_pixmap_rect(
+    x,
+    y,
+    width,
+    height,
+    src,
+    src_rect,
+    opacity,
+    ImageSampling::Bicubic,
   )
 }
 
@@ -1011,6 +1061,11 @@ fn blend_sampled_pixmap_rect_region(
         dst, x, y, width, height, src, src_rect, opacity, x_start, y_start, x_end,
         y_end,
       )
+    ImageSampling::Bicubic =>
+      blend_scaled_pixmap_rect_bicubic_region(
+        dst, x, y, width, height, src, src_rect, opacity, x_start, y_start, x_end,
+        y_end,
+      )
   }
 }
 
@@ -1108,6 +1163,39 @@ fn blend_scaled_pixmap_rect_bilinear_region(
 }
 
 ///|
+fn blend_scaled_pixmap_rect_bicubic_region(
+  dst : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  src : Pixmap,
+  src_rect : PixelRect,
+  opacity : Double,
+  x_start : Int,
+  y_start : Int,
+  x_end : Int,
+  y_end : Int,
+) -> Unit {
+  guard width > 0 && height > 0 else { return }
+  guard src_rect.width > 0 && src_rect.height > 0 else { return }
+  for py in y_start..<y_end {
+    let src_y = src_rect.y.to_double() +
+      scaled_source_position(py - y, height, src_rect.height)
+    for px in x_start..<x_end {
+      let src_x = src_rect.x.to_double() +
+        scaled_source_position(px - x, width, src_rect.width)
+      let src_color = sample_bicubic_rect(src, src_x, src_y, src_rect).scale_alpha(
+        opacity,
+      )
+      if src_color.a.to_int() > 0 {
+        dst.blend_pixel(px, py, src_color)
+      }
+    }
+  }
+}
+
+///|
 fn blend_scaled_pixmap_region(
   dst : Pixmap,
   x : Int,
@@ -1160,6 +1248,32 @@ fn blend_scaled_pixmap_bilinear_region(
     for px in x_start..<x_end {
       let src_x = scaled_source_position(px - x, width, src.get_width())
       let src_color = sample_bilinear(src, src_x, src_y).scale_alpha(opacity)
+      if src_color.a.to_int() > 0 {
+        dst.blend_pixel(px, py, src_color)
+      }
+    }
+  }
+}
+
+///|
+fn blend_scaled_pixmap_bicubic_region(
+  dst : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  src : Pixmap,
+  opacity : Double,
+  x_start : Int,
+  y_start : Int,
+  x_end : Int,
+  y_end : Int,
+) -> Unit {
+  for py in y_start..<y_end {
+    let src_y = scaled_source_position(py - y, height, src.get_height())
+    for px in x_start..<x_end {
+      let src_x = scaled_source_position(px - x, width, src.get_width())
+      let src_color = sample_bicubic(src, src_x, src_y).scale_alpha(opacity)
       if src_color.a.to_int() > 0 {
         dst.blend_pixel(px, py, src_color)
       }
@@ -1308,6 +1422,190 @@ fn sample_bilinear_rect(
 }
 
 ///|
+fn sample_bicubic(src : Pixmap, x : Double, y : Double) -> Color {
+  let x_floor = floor_to_int(x)
+  let y_floor = floor_to_int(y)
+  sample_bicubic_clamped(
+    src,
+    x_floor,
+    y_floor,
+    (x - x_floor.to_double()).max(0.0).min(1.0),
+    (y - y_floor.to_double()).max(0.0).min(1.0),
+    0,
+    0,
+    src.get_width(),
+    src.get_height(),
+  )
+}
+
+///|
+fn sample_bicubic_rect(
+  src : Pixmap,
+  x : Double,
+  y : Double,
+  rect : PixelRect,
+) -> Color {
+  let x_floor = floor_to_int(x)
+  let y_floor = floor_to_int(y)
+  let left = rect.x.max(0).min(src.get_width() - 1)
+  let top = rect.y.max(0).min(src.get_height() - 1)
+  let right = rect.right().max(left + 1).min(src.get_width())
+  let bottom = rect.bottom().max(top + 1).min(src.get_height())
+  sample_bicubic_clamped(
+    src,
+    x_floor,
+    y_floor,
+    (x - x_floor.to_double()).max(0.0).min(1.0),
+    (y - y_floor.to_double()).max(0.0).min(1.0),
+    left,
+    top,
+    right,
+    bottom,
+  )
+}
+
+///|
+fn sample_bicubic_clamped(
+  src : Pixmap,
+  x_floor : Int,
+  y_floor : Int,
+  tx : Double,
+  ty : Double,
+  left : Int,
+  top : Int,
+  right : Int,
+  bottom : Int,
+) -> Color {
+  let x0 = (x_floor - 1).max(left).min(right - 1)
+  let x1 = x_floor.max(left).min(right - 1)
+  let x2 = (x_floor + 1).max(left).min(right - 1)
+  let x3 = (x_floor + 2).max(left).min(right - 1)
+  let y0 = (y_floor - 1).max(top).min(bottom - 1)
+  let y1 = y_floor.max(top).min(bottom - 1)
+  let y2 = (y_floor + 1).max(top).min(bottom - 1)
+  let y3 = (y_floor + 2).max(top).min(bottom - 1)
+  let c00 = src.get_pixel(x0, y0)
+  let c10 = src.get_pixel(x1, y0)
+  let c20 = src.get_pixel(x2, y0)
+  let c30 = src.get_pixel(x3, y0)
+  let c01 = src.get_pixel(x0, y1)
+  let c11 = src.get_pixel(x1, y1)
+  let c21 = src.get_pixel(x2, y1)
+  let c31 = src.get_pixel(x3, y1)
+  let c02 = src.get_pixel(x0, y2)
+  let c12 = src.get_pixel(x1, y2)
+  let c22 = src.get_pixel(x2, y2)
+  let c32 = src.get_pixel(x3, y2)
+  let c03 = src.get_pixel(x0, y3)
+  let c13 = src.get_pixel(x1, y3)
+  let c23 = src.get_pixel(x2, y3)
+  let c33 = src.get_pixel(x3, y3)
+  let alpha = bicubic_grid_value(
+      c00.a.to_int().to_double(),
+      c10.a.to_int().to_double(),
+      c20.a.to_int().to_double(),
+      c30.a.to_int().to_double(),
+      c01.a.to_int().to_double(),
+      c11.a.to_int().to_double(),
+      c21.a.to_int().to_double(),
+      c31.a.to_int().to_double(),
+      c02.a.to_int().to_double(),
+      c12.a.to_int().to_double(),
+      c22.a.to_int().to_double(),
+      c32.a.to_int().to_double(),
+      c03.a.to_int().to_double(),
+      c13.a.to_int().to_double(),
+      c23.a.to_int().to_double(),
+      c33.a.to_int().to_double(),
+      tx,
+      ty,
+    )
+    .max(0.0)
+    .min(255.0)
+  Color::new(
+    r=unpremul_channel(
+      clamp_premul_channel(
+        bicubic_grid_value(
+          premul_channel(c00.r, c00.a),
+          premul_channel(c10.r, c10.a),
+          premul_channel(c20.r, c20.a),
+          premul_channel(c30.r, c30.a),
+          premul_channel(c01.r, c01.a),
+          premul_channel(c11.r, c11.a),
+          premul_channel(c21.r, c21.a),
+          premul_channel(c31.r, c31.a),
+          premul_channel(c02.r, c02.a),
+          premul_channel(c12.r, c12.a),
+          premul_channel(c22.r, c22.a),
+          premul_channel(c32.r, c32.a),
+          premul_channel(c03.r, c03.a),
+          premul_channel(c13.r, c13.a),
+          premul_channel(c23.r, c23.a),
+          premul_channel(c33.r, c33.a),
+          tx,
+          ty,
+        ),
+        alpha,
+      ),
+      alpha,
+    ),
+    g=unpremul_channel(
+      clamp_premul_channel(
+        bicubic_grid_value(
+          premul_channel(c00.g, c00.a),
+          premul_channel(c10.g, c10.a),
+          premul_channel(c20.g, c20.a),
+          premul_channel(c30.g, c30.a),
+          premul_channel(c01.g, c01.a),
+          premul_channel(c11.g, c11.a),
+          premul_channel(c21.g, c21.a),
+          premul_channel(c31.g, c31.a),
+          premul_channel(c02.g, c02.a),
+          premul_channel(c12.g, c12.a),
+          premul_channel(c22.g, c22.a),
+          premul_channel(c32.g, c32.a),
+          premul_channel(c03.g, c03.a),
+          premul_channel(c13.g, c13.a),
+          premul_channel(c23.g, c23.a),
+          premul_channel(c33.g, c33.a),
+          tx,
+          ty,
+        ),
+        alpha,
+      ),
+      alpha,
+    ),
+    b=unpremul_channel(
+      clamp_premul_channel(
+        bicubic_grid_value(
+          premul_channel(c00.b, c00.a),
+          premul_channel(c10.b, c10.a),
+          premul_channel(c20.b, c20.a),
+          premul_channel(c30.b, c30.a),
+          premul_channel(c01.b, c01.a),
+          premul_channel(c11.b, c11.a),
+          premul_channel(c21.b, c21.a),
+          premul_channel(c31.b, c31.a),
+          premul_channel(c02.b, c02.a),
+          premul_channel(c12.b, c12.a),
+          premul_channel(c22.b, c22.a),
+          premul_channel(c32.b, c32.a),
+          premul_channel(c03.b, c03.a),
+          premul_channel(c13.b, c13.a),
+          premul_channel(c23.b, c23.a),
+          premul_channel(c33.b, c33.a),
+          tx,
+          ty,
+        ),
+        alpha,
+      ),
+      alpha,
+    ),
+    a=round_to_byte(alpha),
+  )
+}
+
+///|
 fn floor_to_int(value : Double) -> Int {
   let truncated = value.to_int()
   if truncated.to_double() > value {
@@ -1342,8 +1640,62 @@ fn bilinear_value(
 }
 
 ///|
+fn bicubic_grid_value(
+  v00 : Double,
+  v10 : Double,
+  v20 : Double,
+  v30 : Double,
+  v01 : Double,
+  v11 : Double,
+  v21 : Double,
+  v31 : Double,
+  v02 : Double,
+  v12 : Double,
+  v22 : Double,
+  v32 : Double,
+  v03 : Double,
+  v13 : Double,
+  v23 : Double,
+  v33 : Double,
+  tx : Double,
+  ty : Double,
+) -> Double {
+  bicubic_value(
+    bicubic_value(v00, v10, v20, v30, tx),
+    bicubic_value(v01, v11, v21, v31, tx),
+    bicubic_value(v02, v12, v22, v32, tx),
+    bicubic_value(v03, v13, v23, v33, tx),
+    ty,
+  )
+}
+
+///|
+fn bicubic_value(
+  v0 : Double,
+  v1 : Double,
+  v2 : Double,
+  v3 : Double,
+  t : Double,
+) -> Double {
+  let t2 = t * t
+  let t3 = t2 * t
+  0.5 *
+  (
+    2.0 * v1 +
+    (v2 - v0) * t +
+    (2.0 * v0 - 5.0 * v1 + 4.0 * v2 - v3) * t2 +
+    (-v0 + 3.0 * v1 - 3.0 * v2 + v3) * t3
+  )
+}
+
+///|
 fn premul_channel(channel : Byte, alpha : Byte) -> Double {
   channel.to_int().to_double() * alpha.to_int().to_double() / 255.0
+}
+
+///|
+fn clamp_premul_channel(premul : Double, alpha : Double) -> Double {
+  premul.max(0.0).min(alpha)
 }
 
 ///|

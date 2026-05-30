@@ -782,6 +782,44 @@ pub fn Canvas::draw_scaled_pixmap_bilinear(
 }
 
 ///|
+/// Draw a source pixmap scaled with bicubic sampling.
+pub fn Canvas::draw_scaled_pixmap_bicubic(
+  self : Canvas,
+  src : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  paint : Paint,
+) -> Unit {
+  guard paint.style is PaintStyle::Fill else { return }
+  guard width > 0 && height > 0 else { return }
+  guard src.get_width() > 0 && src.get_height() > 0 else { return }
+  let (x_start, y_start, x_end, y_end) = clipped_int_bounds(
+    self,
+    x,
+    y,
+    x + width,
+    y + height,
+  )
+  guard x_start < x_end && y_start < y_end else { return }
+  blend_scaled_pixmap_bicubic_region(
+    self.pixmap,
+    x,
+    y,
+    width,
+    height,
+    src,
+    paint.opacity,
+    x_start,
+    y_start,
+    x_end,
+    y_end,
+  )
+  self.mark_dirty_bounds(x_start, y_start, x_end, y_end)
+}
+
+///|
 /// Draw a source pixmap scaled with an explicit sampling mode.
 pub fn Canvas::draw_sampled_pixmap(
   self : Canvas,
@@ -798,6 +836,8 @@ pub fn Canvas::draw_sampled_pixmap(
       self.draw_scaled_pixmap(src, x, y, width, height, paint)
     ImageSampling::Bilinear =>
       self.draw_scaled_pixmap_bilinear(src, x, y, width, height, paint)
+    ImageSampling::Bicubic =>
+      self.draw_scaled_pixmap_bicubic(src, x, y, width, height, paint)
   }
 }
 
@@ -846,6 +886,30 @@ pub fn Canvas::draw_scaled_pixmap_rect_bilinear(
     height,
     paint,
     ImageSampling::Bilinear,
+  )
+}
+
+///|
+/// Draw a source pixmap rectangle scaled with bicubic sampling.
+pub fn Canvas::draw_scaled_pixmap_rect_bicubic(
+  self : Canvas,
+  src : Pixmap,
+  src_rect : PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  paint : Paint,
+) -> Unit {
+  self.draw_sampled_pixmap_rect(
+    src,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    paint,
+    ImageSampling::Bicubic,
   )
 }
 
@@ -1521,6 +1585,11 @@ fn sample_transformed_pixmap_rect(
       let src_x = src_rect.x.to_double() + u * src_rect.width.to_double() - 0.5
       let src_y = src_rect.y.to_double() + v * src_rect.height.to_double() - 0.5
       sample_bilinear_rect(src, src_x, src_y, src_rect)
+    }
+    ImageSampling::Bicubic => {
+      let src_x = src_rect.x.to_double() + u * src_rect.width.to_double() - 0.5
+      let src_y = src_rect.y.to_double() + v * src_rect.height.to_double() - 0.5
+      sample_bicubic_rect(src, src_x, src_y, src_rect)
     }
   }
 }
