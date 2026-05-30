@@ -13,6 +13,7 @@ pub struct NativeSurface {
   handle : UInt64
   mut width : Int
   mut height : Int
+  mut pre_present_hook : (() -> Unit)?
 }
 
 ///|
@@ -158,7 +159,7 @@ pub fn NativeSurface::new(
   width : Int,
   height : Int,
 ) -> NativeSurface {
-  { handle, width, height }
+  { handle, width, height, pre_present_hook: None }
 }
 
 ///|
@@ -195,10 +196,37 @@ pub fn NativeSurface::resize(
 }
 
 ///|
+/// Install a hook called immediately before a validated native present.
+pub fn NativeSurface::with_pre_present_hook(
+  self : NativeSurface,
+  hook : () -> Unit,
+) -> NativeSurface {
+  self.pre_present_hook = Some(hook)
+  self
+}
+
+///|
+pub fn NativeSurface::clear_pre_present_hook(
+  self : NativeSurface,
+) -> NativeSurface {
+  self.pre_present_hook = None
+  self
+}
+
+///|
+fn NativeSurface::notify_pre_present(self : NativeSurface) -> Unit {
+  match self.pre_present_hook {
+    Some(hook) => hook()
+    None => ()
+  }
+}
+
+///|
 pub fn NativeSurface::present(
   self : NativeSurface,
   pixels : FixedArray[Byte],
 ) -> Unit {
+  self.notify_pre_present()
   display_pixels(self.handle, pixels, self.width, self.height)
 }
 
@@ -233,6 +261,7 @@ pub fn NativeSurface::present_pixels(
     height,
     row_bytes,
     pixels,
+    pre_present_hook=self.pre_present_hook,
   )
 }
 
@@ -256,6 +285,7 @@ pub fn NativeSurface::present_pixels_rect(
     height,
     row_bytes,
     pixels,
+    pre_present_hook=self.pre_present_hook,
   )
 }
 
@@ -336,6 +366,7 @@ fn present_rect_to_handle(
   height : Int,
   row_bytes : Int,
   pixels : FixedArray[Byte],
+  pre_present_hook? : (() -> Unit)? = None,
 ) -> Result[Unit, @graphics.PresentError] {
   match
     @graphics.validate_present_rect(
@@ -343,6 +374,7 @@ fn present_rect_to_handle(
     ) {
     Err(error) => Err(error)
     Ok(info) => {
+      notify_pre_present(pre_present_hook)
       if row_bytes == info.required_row_bytes() {
         display_pixels_rect(handle, pixels, x, y, width, height)
       } else {
@@ -362,6 +394,14 @@ fn present_rect_to_handle(
       }
       Ok(())
     }
+  }
+}
+
+///|
+fn notify_pre_present(hook : (() -> Unit)?) -> Unit {
+  match hook {
+    Some(callback) => callback()
+    None => ()
   }
 }
 

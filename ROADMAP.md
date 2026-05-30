@@ -114,6 +114,7 @@ Application / GUI
 - `headless_render` 示例走 `RenderFrame + LayerTree + MemorySurface`，无需窗口即可自校验离屏渲染与 dirty present 路径
 - `graphics.validate_present_rect` 标准化 Surface rect present 的 bounds、row stride 和 buffer 长度校验，`MemorySurface` 与 `softbuffer.NativeSurface` 共享同一错误语义
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
+- `NativeSurface` 支持可选 pre-present hook，让窗口生命周期通知进入统一 present helper，而不是散落在示例事件处理器里
 - `hello_world` 示例走 `RenderFrame + LayerTree + softbuffer frame-present helpers`，并在 resize/redraw 中复用 frame 与 layer lifecycle，作为事件循环 dirty submit 的最小真实用例
 - TTF 字体解析（head, hhea, hmtx, cmap, glyf, kern 表）
 - 基础文本布局（自动换行、显式换行、空行、行高计算）
@@ -319,11 +320,12 @@ Application / GUI
 - [x] 将 softbuffer/外部原生窗口句柄适配为 `graphics.Surface`，打通 `Canvas/Pixmap -> Surface -> native present`
 - [x] 为 `MemorySurface` 和 softbuffer native adapter 增加 rect present 路径，支持 dirty rect 提交验证
 - [x] softbuffer 提供 `RenderFrame -> NativeSurface` dirty/full present helper，并覆盖 frame submit 回归
+- [x] `NativeSurface` 增加 pre-present hook，校验通过后、native present 前触发窗口生命周期通知
 - [ ] Windows 支持（Win32）从 demo 后端升级为稳定后端
 - [ ] Linux 支持（Wayland，X11 作为后续选项）
 - [ ] macOS 支持（AppKit/Cocoa）
 - [ ] WebAssembly 支持（Canvas2D/WebGL）
-- [ ] present lifecycle：dirty rect 调度、row stride、错误传播和 pre-present hook
+- [ ] present lifecycle：dirty rect 调度、row stride、错误传播和批量 present 调度策略
 
 #### 5.2 API 设计
 - [ ] 统一的渲染 API

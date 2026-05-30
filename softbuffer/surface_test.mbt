@@ -57,6 +57,35 @@ test "NativeSurface accepts padded row bytes through shared validation" {
 }
 
 ///|
+test "NativeSurface calls pre-present hook only after validation" {
+  let count = Ref(0)
+  let surface = NativeSurface::new(42, 2, 2).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+  let pixels : FixedArray[Byte] = FixedArray::make(16, 0)
+
+  assert_true(
+    surface.present_pixels(2, 2, 4, pixels) ==
+    Err(@graphics.PresentError::InvalidRowBytes(4, 8)),
+  )
+  assert_eq(count.val, 0)
+
+  assert_true(surface.present_pixels(2, 2, 8, pixels) == Ok(()))
+  assert_eq(count.val, 1)
+
+  assert_true(surface.present_pixels_rect(1, 1, 1, 1, 4, pixels) == Ok(()))
+  assert_eq(count.val, 2)
+
+  let padded : FixedArray[Byte] = FixedArray::make(12, 0)
+  assert_true(surface.present_pixels_rect(0, 0, 1, 2, 8, padded) == Ok(()))
+  assert_eq(count.val, 3)
+
+  let without_hook = surface.clear_pre_present_hook()
+  assert_true(without_hook.present_pixels(2, 2, 8, pixels) == Ok(()))
+  assert_eq(count.val, 3)
+}
+
+///|
 test "NativeSurface builds from RenderFrame dimensions" {
   let frame = @graphics.RenderFrame::new(3, 2)
   let surface = NativeSurface::from_frame(42, frame)

@@ -125,6 +125,7 @@ Pixel display library.
 - Pixel buffer presentation through `graphics.Surface`
 - `NativeSurface` adapter for external native window handles
 - `RenderFrame -> NativeSurface` dirty/full present helpers for window integration
+- Optional `NativeSurface` pre-present hook for window lifecycle notifications before validated native presents
 - Native full-frame and rectangle present entry points for dirty redraw plumbing
 - Event loop
 

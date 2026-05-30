@@ -256,7 +256,11 @@ fn present_frame_dirty(
   window : @windows.Window,
   frame : @graphics.RenderFrame,
 ) -> Unit {
-  match @softbuffer.present_render_frame_dirty(window.window_handle(), frame) {
+  let surface = @softbuffer.NativeSurface::from_frame(
+    window.window_handle(),
+    frame,
+  ).with_pre_present_hook(fn() { window.pre_present_notify() })
+  match surface.present_frame_dirty(frame) {
     Ok(_) => ()
     Err(_) => println("Present failed")
   }
@@ -267,7 +271,11 @@ fn present_frame_all(
   window : @windows.Window,
   frame : @graphics.RenderFrame,
 ) -> Unit {
-  match @softbuffer.present_render_frame_all(window.window_handle(), frame) {
+  let surface = @softbuffer.NativeSurface::from_frame(
+    window.window_handle(),
+    frame,
+  ).with_pre_present_hook(fn() { window.pre_present_notify() })
+  match surface.present_frame_all(frame) {
     Ok(_) => ()
     Err(_) => println("Present failed")
   }
@@ -376,13 +384,11 @@ pub impl @windows.ApplicationHandler for App with fn window_event(
     }
     @core.WindowEvent::RedrawRequested =>
       match self.window {
-        Some(w) => {
+        Some(w) =>
           match self.frame {
             Some(frame) => present_cached_frame(w, frame)
             None => self.frame = render_and_display(w, self.width, self.height)
           }
-          w.pre_present_notify()
-        }
         None => ()
       }
     _ => ()

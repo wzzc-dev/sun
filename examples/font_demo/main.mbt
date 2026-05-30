@@ -44,7 +44,7 @@ fn present_to_window(
     window.window_handle(),
     width,
     height,
-  )
+  ).with_pre_present_hook(fn() { window.pre_present_notify() })
   match @graphics.present_pixels(surface, width, height, width * 4, pixels) {
     Ok(_) => ()
     Err(_) => println("Present failed")
@@ -91,10 +91,7 @@ pub impl @windows.ApplicationHandler for App with fn window_event(
     @core.WindowEvent::RedrawRequested =>
       if self.rendered {
         match self.window {
-          Some(w) => {
-            present_to_window(w, self.pixels, self.width, self.height)
-            w.pre_present_notify()
-          }
+          Some(w) => present_to_window(w, self.pixels, self.width, self.height)
           None => ()
         }
       }
