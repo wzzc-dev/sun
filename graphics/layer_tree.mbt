@@ -269,8 +269,24 @@ pub fn[S : Surface] LayerTree::present_dirty_to_with_limit(
   surface : S,
   max_rects : Int,
 ) -> Result[Int, PresentError] {
-  ignore(self.composite_dirty_to(target, max_rects))
-  target.present_dirty_to_with_limit(surface, max_rects)
+  let rects = self.dirty_target_rects(target, max_rects)
+  guard rects.length() > 0 else {
+    return target.present_dirty_to_with_limit(surface, max_rects)
+  }
+  let dirty_snapshot = snapshot_canvas_dirty_region(target)
+  let pixel_snapshot = snapshot_canvas_pixels(target, rects)
+  ignore(self.composite_rects_to(target, rects))
+  match target.present_dirty_to_with_limit(surface, max_rects) {
+    Ok(presented) => {
+      self.clear_composited_dirty_regions()
+      Ok(presented)
+    }
+    Err(error) => {
+      restore_canvas_pixels(target, rects, pixel_snapshot)
+      restore_canvas_dirty_region(target, dirty_snapshot)
+      Err(error)
+    }
+  }
 }
 
 ///|
@@ -287,6 +303,139 @@ fn LayerTree::collect_dirty_region(self : LayerTree) -> DirtyRegion {
     }
   }
   region
+}
+
+///|
+fn LayerTree::dirty_target_rects(
+  self : LayerTree,
+  target : Canvas,
+  max_rects : Int,
+) -> Array[PixelRect] {
+  let target_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=target.get_pixmap().get_width(),
+    height=target.get_pixmap().get_height(),
+  )
+  let rects = []
+  for rect in self.dirty_rects(max_rects) {
+    match rect.clip_to(target_bounds) {
+      Some(clipped_rect) => rects.push(clipped_rect)
+      None => ()
+    }
+  }
+  rects
+}
+
+///|
+fn LayerTree::composite_rects_to(
+  self : LayerTree,
+  target : Canvas,
+  rects : Array[PixelRect],
+) -> Int {
+  let mut draw_count = 0
+  for rect in rects {
+    for layer in self.layers {
+      if layer_is_compositable(layer) {
+        draw_count = draw_count + composite_layer_rect(layer, target, rect)
+      }
+    }
+  }
+  draw_count
+}
+
+///|
+fn LayerTree::clear_composited_dirty_regions(self : LayerTree) -> Unit {
+  for layer in self.layers {
+    if layer_is_compositable(layer) {
+      layer.clear_dirty_region()
+    }
+  }
+  self.invalidation.clear()
+}
+
+///|
+fn snapshot_canvas_dirty_region(target : Canvas) -> Array[PixelRect] {
+  let rects = []
+  for rect in target.get_dirty_region().get_rects() {
+    rects.push(rect)
+  }
+  rects
+}
+
+///|
+fn restore_canvas_dirty_region(
+  target : Canvas,
+  rects : Array[PixelRect],
+) -> Unit {
+  let dirty_region = target.get_dirty_region()
+  dirty_region.clear()
+  for rect in rects {
+    dirty_region.add_rect(rect)
+  }
+}
+
+///|
+fn snapshot_canvas_pixels(
+  target : Canvas,
+  rects : Array[PixelRect],
+) -> Array[FixedArray[Byte]] {
+  let snapshots = []
+  let pixmap = target.get_pixmap()
+  for rect in rects {
+    let row_bytes = rect.width * 4
+    let pixels : FixedArray[Byte] = FixedArray::make(row_bytes * rect.height, 0)
+    for row in 0..<rect.height {
+      for column in 0..<rect.width {
+        let color = pixmap.get_pixel(rect.x + column, rect.y + row)
+        write_snapshot_color(pixels, row * row_bytes + column * 4, color)
+      }
+    }
+    snapshots.push(pixels)
+  }
+  snapshots
+}
+
+///|
+fn restore_canvas_pixels(
+  target : Canvas,
+  rects : Array[PixelRect],
+  snapshots : Array[FixedArray[Byte]],
+) -> Unit {
+  let pixmap = target.get_pixmap()
+  let count = rects.length().min(snapshots.length())
+  for i in 0..<count {
+    let rect = rects[i]
+    let snapshot = snapshots[i]
+    let row_bytes = rect.width * 4
+    for row in 0..<rect.height {
+      for column in 0..<rect.width {
+        let offset = row * row_bytes + column * 4
+        pixmap.set_pixel(
+          rect.x + column,
+          rect.y + row,
+          Color::new(
+            r=snapshot[offset],
+            g=snapshot[offset + 1],
+            b=snapshot[offset + 2],
+            a=snapshot[offset + 3],
+          ),
+        )
+      }
+    }
+  }
+}
+
+///|
+fn write_snapshot_color(
+  pixels : FixedArray[Byte],
+  offset : Int,
+  color : Color,
+) -> Unit {
+  pixels[offset] = color.r
+  pixels[offset + 1] = color.g
+  pixels[offset + 2] = color.b
+  pixels[offset + 3] = color.a
 }
 
 ///|

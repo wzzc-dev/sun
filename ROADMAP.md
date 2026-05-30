@@ -125,6 +125,7 @@ Application / GUI
 - Layer 支持 resize 时保留重叠像素并标记新 cache dirty
 - LayerTree 支持位置、尺寸、可见性、opacity、移除、替换和重排触发的旧/新 bounds invalidation
 - LayerTree 可将 dirty 合成到 frame canvas 并提交到 `Surface` partial present
+- LayerTree/RenderFrame 的 dirty present 失败路径保留可重试 dirty 状态，并回滚失败前合成像素，避免半透明图层重复混合
 - RenderFrame 封装 frame canvas、LayerTree、resize lifecycle、dirty query/marking、dirty/full present 与 dirty rect limit，作为事件循环提交单元
 - PixelRect/DirtyRegion 合并、Canvas dirty tracking 与 rect present API，作为局部重绘和图层缓存基础
 - Renderer Core 组合层：`Font -> render_text_mask -> Canvas.draw_mask`

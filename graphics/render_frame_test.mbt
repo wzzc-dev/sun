@@ -202,7 +202,7 @@ test "RenderFrame::resize presents resized frame and retained dirty layers" {
 }
 
 ///|
-test "RenderFrame preserves canvas dirty state after surface error" {
+test "RenderFrame preserves dirty state after surface error" {
   let frame = RenderFrame::new(2, 1)
   let surface = RenderFrameFailingSurface::new(2, 1)
   let layer = Layer::new(2, 1)
@@ -213,7 +213,14 @@ test "RenderFrame preserves canvas dirty state after surface error" {
     Err(PresentError::InvalidDimensions(0, 0)) => ()
     _ => abort("expected surface failure")
   }
-  assert_true(!frame.get_canvas().get_dirty_region().is_empty())
+  assert_true(frame.get_canvas().get_dirty_region().is_empty())
+  assert_true(
+    frame.get_layer_tree().dirty_bounds() ==
+    Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
+  assert_true(
+    frame.dirty_bounds() == Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
 }
 
 ///|

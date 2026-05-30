@@ -411,7 +411,7 @@ test "LayerTree::present_dirty_to_with_limit falls back to dirty bounds" {
 }
 
 ///|
-test "LayerTree::present_dirty_to preserves canvas dirty state on surface error" {
+test "LayerTree::present_dirty_to preserves dirty state on surface error" {
   let target = Canvas::new(2, 1)
   let surface = FailingSurface::new(2, 1)
 
@@ -425,8 +425,43 @@ test "LayerTree::present_dirty_to preserves canvas dirty state on surface error"
     Err(PresentError::InvalidDimensions(0, 0)) => ()
     _ => abort("expected rect out of bounds")
   }
+  assert_true(
+    tree.dirty_bounds() == Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
+  assert_true(target.get_dirty_region().is_empty())
+  assert_eq(target.get_pixmap().get_pixel(1, 0), Color::transparent())
+}
+
+///|
+test "LayerTree::present_dirty_to restores blended pixels before retry" {
+  let target = Canvas::new(1, 1)
+  target.clear(Color::white())
+  target.clear_dirty_region()
+
+  let layer = Layer::new(1, 1).set_opacity(0.5)
+  layer.get_canvas().draw_pixel(0, 0, Color::blue())
+
+  let tree = LayerTree::new()
+  ignore(tree.add_layer(layer))
+
+  match tree.present_dirty_to(target, FailingSurface::new(1, 1)) {
+    Err(PresentError::InvalidDimensions(0, 0)) => ()
+    _ => abort("expected surface failure")
+  }
+  assert_true(
+    tree.dirty_bounds() == Some(PixelRect::new(x=0, y=0, width=1, height=1)),
+  )
+  assert_eq(target.get_pixmap().get_pixel(0, 0), Color::white())
+
+  let surface = MemorySurface::new(1, 1)
+  assert_true(tree.present_dirty_to(target, surface) == Ok(1))
+  assert_eq(
+    target.get_pixmap().get_pixel(0, 0),
+    Color::new(r=127, g=127, b=255, a=255),
+  )
+  assert_eq(surface.get_pixel(0, 0), Color::new(r=127, g=127, b=255, a=255))
   assert_true(tree.dirty_bounds() == None)
-  assert_true(!target.get_dirty_region().is_empty())
+  assert_true(target.get_dirty_region().is_empty())
 }
 
 ///|
