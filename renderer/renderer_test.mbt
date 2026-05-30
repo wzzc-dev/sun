@@ -580,6 +580,50 @@ test "RendererTextResources reports cached text and glyph residency" {
 }
 
 ///|
+test "RendererTextResources snapshots cache and atlas telemetry" {
+  let resources = RendererTextResources::with_capacities(16, 8, 2, 3)
+  let empty = resources.snapshot()
+  assert_eq(empty.get_text_mask_count(), 0)
+  assert_eq(empty.get_text_mask_capacity(), 2)
+  assert_true(empty.is_text_mask_capacity_bounded())
+  assert_eq(empty.get_glyph_mask_count(), 0)
+  assert_eq(empty.get_glyph_mask_capacity(), 3)
+  assert_true(empty.is_glyph_mask_capacity_bounded())
+  assert_eq(empty.get_atlas_entry_count(), 0)
+  assert_eq(empty.get_atlas_width(), 16)
+  assert_eq(empty.get_atlas_height(), 8)
+  assert_eq(empty.get_atlas_capacity(), 128)
+  assert_eq(empty.get_atlas_used_pixel_count(), 0)
+  assert_eq(empty.get_atlas_free_pixel_count(), 128)
+  assert_eq(empty.get_atlas_occupancy_ratio(), 0.0)
+
+  ignore(
+    resources
+    .get_text_mask_cache()
+    .insert("label", @text.CoverageMask::new(1, 1, FixedArray::make(1, 8))),
+  )
+  let glyph_mask = @text.CoverageMask::new(2, 2, FixedArray::make(4, 16))
+  ignore(resources.get_glyph_mask_cache().insert("glyph:A", glyph_mask))
+  ignore(resources.get_glyph_mask_atlas().insert("glyph:A", glyph_mask))
+
+  let filled = resources.snapshot()
+  assert_eq(filled.get_text_mask_count(), 1)
+  assert_eq(filled.get_glyph_mask_count(), 1)
+  assert_eq(filled.get_atlas_entry_count(), 1)
+  assert_eq(filled.get_atlas_used_pixel_count(), 4)
+  assert_eq(filled.get_atlas_free_pixel_count(), 124)
+  assert_eq(filled.get_atlas_occupancy_ratio(), 0.03125)
+
+  resources.clear()
+  let cleared = resources.snapshot()
+  assert_eq(cleared.get_text_mask_count(), 0)
+  assert_eq(cleared.get_glyph_mask_count(), 0)
+  assert_eq(cleared.get_atlas_entry_count(), 0)
+  assert_eq(cleared.get_atlas_used_pixel_count(), 0)
+  assert_eq(cleared.get_atlas_free_pixel_count(), 128)
+}
+
+///|
 test "RendererResources configures bounded font text and image caches" {
   let resources = RendererResources::with_font_capacity(16, 16, 1, 2, 3, 1)
   let font_cache = resources.get_font_face_cache()
@@ -665,6 +709,53 @@ test "RendererResources reports unified cache residency" {
   assert_true(!resources.contains_text_mask("label"))
   assert_true(!resources.contains_glyph_mask("glyph:A"))
   assert_true(!resources.contains_image("icon"))
+}
+
+///|
+test "RendererResources snapshots unified resource telemetry" {
+  let resources = RendererResources::with_font_capacity(16, 8, 1, 2, 3, 4)
+  let empty = resources.snapshot()
+  assert_eq(empty.get_font_face_count(), 0)
+  assert_eq(empty.get_font_face_capacity(), 1)
+  assert_true(empty.is_font_face_capacity_bounded())
+  assert_eq(empty.get_image_count(), 0)
+  assert_eq(empty.get_image_capacity(), 4)
+  assert_true(empty.is_image_capacity_bounded())
+  let empty_text = empty.get_text_snapshot()
+  assert_eq(empty_text.get_text_mask_capacity(), 2)
+  assert_eq(empty_text.get_glyph_mask_capacity(), 3)
+  assert_eq(empty_text.get_atlas_capacity(), 128)
+
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  ignore(resources.get_font_face_cache().insert("ui-font", face))
+  ignore(
+    resources
+    .get_text_mask_cache()
+    .insert("label", @text.CoverageMask::new(1, 1, FixedArray::make(1, 8))),
+  )
+  let glyph_mask = @text.CoverageMask::new(2, 2, FixedArray::make(4, 16))
+  ignore(resources.get_glyph_mask_cache().insert("glyph:A", glyph_mask))
+  ignore(resources.get_glyph_mask_atlas().insert("glyph:A", glyph_mask))
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::green())
+  ignore(resources.get_image_cache().insert("icon", icon))
+
+  let filled = resources.snapshot()
+  assert_eq(filled.get_font_face_count(), 1)
+  assert_eq(filled.get_image_count(), 1)
+  let filled_text = filled.get_text_snapshot()
+  assert_eq(filled_text.get_text_mask_count(), 1)
+  assert_eq(filled_text.get_glyph_mask_count(), 1)
+  assert_eq(filled_text.get_atlas_entry_count(), 1)
+  assert_eq(filled_text.get_atlas_used_pixel_count(), 4)
+
+  resources.clear()
+  let cleared = resources.snapshot()
+  assert_eq(cleared.get_font_face_count(), 0)
+  assert_eq(cleared.get_image_count(), 0)
+  assert_eq(cleared.get_text_snapshot().get_text_mask_count(), 0)
+  assert_eq(cleared.get_text_snapshot().get_glyph_mask_count(), 0)
+  assert_eq(cleared.get_text_snapshot().get_atlas_entry_count(), 0)
 }
 
 ///|

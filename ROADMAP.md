@@ -275,8 +275,8 @@ Application / GUI
 - [x] 为 `GlyphMaskCache`/`TextMaskCache` 增加 opt-in LRU entry limit，覆盖最近访问刷新、最旧条目淘汰和非法容量 clamp 回归
 - [x] 增加最小 `GlyphMaskAtlas`，让 renderer/resource 代码可先获得确定性的 glyph mask 行打包 placement、占用 telemetry、hit/insert telemetry 与满载清空重插信号
 - [x] 将 `GlyphMaskAtlas` 接入 Renderer fallback line path，支持多字体 fallback span 的 per-glyph cache/atlas 复用与聚合 telemetry
-- [x] 增加 `RendererTextResources`，让 renderer 调用方复用 bounded text/glyph mask cache 与 glyph atlas，并覆盖 cached-mask/atlas draw path、membership 查询与 clear lifecycle
-- [x] 增加 `RendererResources`，让 GUI/resource 代码用单个对象复用 font cache、text cache、glyph cache、glyph atlas 与 image `PixmapCache`，并直接查询 font/text/glyph/image residency
+- [x] 增加 `RendererTextResources`，让 renderer 调用方复用 bounded text/glyph mask cache 与 glyph atlas，并覆盖 cached-mask/atlas draw path、membership 查询、snapshot telemetry 与 clear lifecycle
+- [x] 增加 `RendererResources`，让 GUI/resource 代码用单个对象复用 font cache、text cache、glyph cache、glyph atlas 与 image `PixmapCache`，并直接查询 font/text/glyph/image residency 与 snapshot telemetry
 - [x] 将 `FontFaceCache` 接入 RendererResources draw path，提供 checked font-byte cached text/atlas drawing，覆盖 parse hit/miss、解析错误保留与 clear lifecycle
 - [x] 将 `FontFaceCache` 接入 RendererResources fallback line draw path，支持 keyed font-byte fallback stack 解析复用、text-mask span 复用、完整 span telemetry 与 parse error 保留
 - [x] 将 `FontFaceCache` 接入 RendererResources fallback atlas draw path，支持 keyed font-byte fallback stack 解析复用、glyph mask/atlas 复用、完整 span/atlas telemetry 与 parse error 保留
@@ -496,7 +496,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态并暴露 residency 查询，并接入 checked font-byte text draw path 与 cached image draw path，后续补 image/font loader 集成策略
+- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态并暴露 residency 查询和 snapshot telemetry，并接入 checked font-byte text draw path 与 cached image draw path，后续补 image/font loader 集成策略
 
 ---
 

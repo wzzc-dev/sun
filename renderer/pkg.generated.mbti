@@ -160,8 +160,26 @@ pub fn RendererResources::get_image_cache(Self) -> @graphics.PixmapCache
 pub fn RendererResources::get_text_mask_cache(Self) -> @text.TextMaskCache
 pub fn RendererResources::get_text_resources(Self) -> RendererTextResources
 pub fn RendererResources::new(Int, Int) -> Self
+pub fn RendererResources::snapshot(Self) -> RendererResourcesSnapshot
 pub fn RendererResources::with_capacities(Int, Int, Int, Int, Int) -> Self
 pub fn RendererResources::with_font_capacity(Int, Int, Int, Int, Int, Int) -> Self
+
+pub struct RendererResourcesSnapshot {
+  font_face_count : Int
+  font_face_capacity : Int
+  font_face_is_bounded : Bool
+  text_snapshot : RendererTextResourcesSnapshot
+  image_count : Int
+  image_capacity : Int
+  image_is_bounded : Bool
+} derive(@debug.Debug)
+pub fn RendererResourcesSnapshot::get_font_face_capacity(Self) -> Int
+pub fn RendererResourcesSnapshot::get_font_face_count(Self) -> Int
+pub fn RendererResourcesSnapshot::get_image_capacity(Self) -> Int
+pub fn RendererResourcesSnapshot::get_image_count(Self) -> Int
+pub fn RendererResourcesSnapshot::get_text_snapshot(Self) -> RendererTextResourcesSnapshot
+pub fn RendererResourcesSnapshot::is_font_face_capacity_bounded(Self) -> Bool
+pub fn RendererResourcesSnapshot::is_image_capacity_bounded(Self) -> Bool
 
 pub struct RendererTextResources {
   text_cache : @text.TextMaskCache
@@ -175,7 +193,37 @@ pub fn RendererTextResources::get_glyph_mask_atlas(Self) -> @text.GlyphMaskAtlas
 pub fn RendererTextResources::get_glyph_mask_cache(Self) -> @text.GlyphMaskCache
 pub fn RendererTextResources::get_text_mask_cache(Self) -> @text.TextMaskCache
 pub fn RendererTextResources::new(Int, Int) -> Self
+pub fn RendererTextResources::snapshot(Self) -> RendererTextResourcesSnapshot
 pub fn RendererTextResources::with_capacities(Int, Int, Int, Int) -> Self
+
+pub struct RendererTextResourcesSnapshot {
+  text_mask_count : Int
+  text_mask_capacity : Int
+  text_mask_is_bounded : Bool
+  glyph_mask_count : Int
+  glyph_mask_capacity : Int
+  glyph_mask_is_bounded : Bool
+  atlas_entry_count : Int
+  atlas_width : Int
+  atlas_height : Int
+  atlas_capacity : Int
+  atlas_used_pixel_count : Int
+  atlas_free_pixel_count : Int
+  atlas_occupancy_ratio : Double
+} derive(@debug.Debug)
+pub fn RendererTextResourcesSnapshot::get_atlas_capacity(Self) -> Int
+pub fn RendererTextResourcesSnapshot::get_atlas_entry_count(Self) -> Int
+pub fn RendererTextResourcesSnapshot::get_atlas_free_pixel_count(Self) -> Int
+pub fn RendererTextResourcesSnapshot::get_atlas_height(Self) -> Int
+pub fn RendererTextResourcesSnapshot::get_atlas_occupancy_ratio(Self) -> Double
+pub fn RendererTextResourcesSnapshot::get_atlas_used_pixel_count(Self) -> Int
+pub fn RendererTextResourcesSnapshot::get_atlas_width(Self) -> Int
+pub fn RendererTextResourcesSnapshot::get_glyph_mask_capacity(Self) -> Int
+pub fn RendererTextResourcesSnapshot::get_glyph_mask_count(Self) -> Int
+pub fn RendererTextResourcesSnapshot::get_text_mask_capacity(Self) -> Int
+pub fn RendererTextResourcesSnapshot::get_text_mask_count(Self) -> Int
+pub fn RendererTextResourcesSnapshot::is_glyph_mask_capacity_bounded(Self) -> Bool
+pub fn RendererTextResourcesSnapshot::is_text_mask_capacity_bounded(Self) -> Bool
 
 pub struct TextAtlasDrawResult {
   glyph_count : Int
