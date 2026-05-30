@@ -463,6 +463,12 @@ pub fn GlyphMaskCache::is_capacity_bounded(self : GlyphMaskCache) -> Bool {
 }
 
 ///|
+/// Return whether the cache has a glyph mask for this key without refreshing LRU.
+pub fn GlyphMaskCache::contains(self : GlyphMaskCache, key : String) -> Bool {
+  self.masks.contains(key)
+}
+
+///|
 /// Look up a rendered glyph mask by caller-provided key.
 pub fn GlyphMaskCache::get(
   self : GlyphMaskCache,
@@ -642,6 +648,12 @@ pub fn TextMaskCache::capacity(self : TextMaskCache) -> Int {
 /// Return whether the cache has a configured entry limit.
 pub fn TextMaskCache::is_capacity_bounded(self : TextMaskCache) -> Bool {
   self.is_bounded
+}
+
+///|
+/// Return whether the cache has a text mask for this key without refreshing LRU.
+pub fn TextMaskCache::contains(self : TextMaskCache, key : String) -> Bool {
+  self.masks.contains(key)
 }
 
 ///|

@@ -121,6 +121,7 @@ pub struct FontFaceCache {
 } derive(@debug.Debug)
 pub fn FontFaceCache::capacity(Self) -> Int
 pub fn FontFaceCache::clear(Self) -> Unit
+pub fn FontFaceCache::contains(Self, String) -> Bool
 pub fn FontFaceCache::get(Self, String) -> FontFace?
 pub fn FontFaceCache::get_or_parse(Self, String, Bytes) -> Result[FontFace, FontParseError]
 pub fn FontFaceCache::get_or_parse_result(Self, String, Bytes) -> Result[FontFaceCacheParseResult, FontParseError]
@@ -291,6 +292,7 @@ pub struct GlyphMaskCache {
 } derive(@debug.Debug)
 pub fn GlyphMaskCache::capacity(Self) -> Int
 pub fn GlyphMaskCache::clear(Self) -> Unit
+pub fn GlyphMaskCache::contains(Self, String) -> Bool
 pub fn GlyphMaskCache::get(Self, String) -> CoverageMask?
 pub fn GlyphMaskCache::get_or_rasterize_glyph(Self, String, SimpleGlyph, Int, Int, Double, Double, Double) -> CoverageMask
 pub fn GlyphMaskCache::get_or_rasterize_glyph_result(Self, String, SimpleGlyph, Int, Int, Double, Double, Double) -> GlyphMaskCacheRasterizeResult
@@ -545,6 +547,7 @@ pub struct TextMaskCache {
 } derive(@debug.Debug)
 pub fn TextMaskCache::capacity(Self) -> Int
 pub fn TextMaskCache::clear(Self) -> Unit
+pub fn TextMaskCache::contains(Self, String) -> Bool
 pub fn TextMaskCache::get(Self, String) -> CoverageMask?
 pub fn TextMaskCache::get_or_render_face(Self, String, FontFace, String, Int, Int, Double, Double, LayoutConfig) -> CoverageMask
 pub fn TextMaskCache::get_or_render_face_result(Self, String, FontFace, String, Int, Int, Double, Double, LayoutConfig) -> TextMaskCacheRenderResult

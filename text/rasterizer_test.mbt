@@ -125,6 +125,26 @@ test "TextMaskCache::with_capacity evicts least recently used masks" {
 }
 
 ///|
+test "TextMaskCache::contains reports membership without refreshing LRU" {
+  let cache = TextMaskCache::with_capacity(2)
+  let first_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  first_pixels[0] = 10
+  let second_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  second_pixels[0] = 20
+  let third_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  third_pixels[0] = 30
+  ignore(cache.insert("first", CoverageMask::new(2, 2, first_pixels)))
+  ignore(cache.insert("second", CoverageMask::new(2, 2, second_pixels)))
+  assert_true(cache.contains("first"))
+  assert_true(!cache.contains("third"))
+  ignore(cache.insert("third", CoverageMask::new(2, 2, third_pixels)))
+  assert_eq(cache.len(), 2)
+  assert_true(!cache.contains("first"))
+  assert_true(cache.contains("second"))
+  assert_true(cache.contains("third"))
+}
+
+///|
 test "GlyphMaskCache::with_capacity evicts least recently used masks" {
   let cache = GlyphMaskCache::with_capacity(2)
   assert_true(cache.is_capacity_bounded())
@@ -146,6 +166,26 @@ test "GlyphMaskCache::with_capacity evicts least recently used masks" {
   assert_true(cache.get("second") is None)
   assert_true(cache.get("first") is Some(_))
   assert_true(cache.get("third") is Some(_))
+}
+
+///|
+test "GlyphMaskCache::contains reports membership without refreshing LRU" {
+  let cache = GlyphMaskCache::with_capacity(2)
+  let first_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  first_pixels[1] = 10
+  let second_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  second_pixels[1] = 20
+  let third_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  third_pixels[1] = 30
+  ignore(cache.insert("first", CoverageMask::new(2, 2, first_pixels)))
+  ignore(cache.insert("second", CoverageMask::new(2, 2, second_pixels)))
+  assert_true(cache.contains("first"))
+  assert_true(!cache.contains("third"))
+  ignore(cache.insert("third", CoverageMask::new(2, 2, third_pixels)))
+  assert_eq(cache.len(), 2)
+  assert_true(!cache.contains("first"))
+  assert_true(cache.contains("second"))
+  assert_true(cache.contains("third"))
 }
 
 ///|

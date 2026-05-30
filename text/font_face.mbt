@@ -109,6 +109,12 @@ pub fn FontFaceCache::is_capacity_bounded(self : FontFaceCache) -> Bool {
 }
 
 ///|
+/// Return whether the cache has a parsed face for this key without refreshing LRU.
+pub fn FontFaceCache::contains(self : FontFaceCache, key : String) -> Bool {
+  self.faces.contains(key)
+}
+
+///|
 /// Look up a parsed face by caller-provided key.
 pub fn FontFaceCache::get(self : FontFaceCache, key : String) -> FontFace? {
   match self.faces.get(key) {

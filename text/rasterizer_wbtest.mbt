@@ -358,6 +358,20 @@ test "FontFaceCache::with_capacity evicts least recently used faces" {
 }
 
 ///|
+test "FontFaceCache::contains reports membership without refreshing LRU" {
+  let cache = FontFaceCache::with_capacity(2)
+  ignore(cache.insert("first", FontFace::from_font(make_box_font())))
+  ignore(cache.insert("second", FontFace::from_font(make_space_only_font())))
+  assert_true(cache.contains("first"))
+  assert_true(!cache.contains("third"))
+  ignore(cache.insert("third", FontFace::from_font(make_box_font())))
+  assert_eq(cache.len(), 2)
+  assert_true(!cache.contains("first"))
+  assert_true(cache.contains("second"))
+  assert_true(cache.contains("third"))
+}
+
+///|
 test "FontFaceCache clamps invalid capacity" {
   let cache = FontFaceCache::with_capacity(0)
   assert_true(cache.is_capacity_bounded())

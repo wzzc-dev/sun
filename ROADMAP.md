@@ -159,7 +159,7 @@ Application / GUI
 - Pixmap blit、source-rect atlas drawing、source-rect coverage-mask drawing、tiled Pixmap fills、nearest-neighbor/bilinear scaled blit、fast/balanced/high quality strategy、transform-aware sampled Pixmap drawing、`Paint` blend modes、Layer cache、LayerTree 与 straight-alpha 图层合成原语
 - `Pixmap::to_ppm_bytes` 提供无依赖的确定性 PPM(P6) 导出，`headless_render` 示例校验导出字节，作为后续离屏 fixture 输出基础
 - Nine-patch Pixmap 缩放合成，作为 GUI 面板、边框和背景图的基础图像缩放能力
-- `PixmapCache` 支持按 key 复用 image/layer pixmap，并通过像素拷贝隔离缓存内容，同时提供 hit/insert telemetry，作为 GUI 图像资源缓存基础
+- `PixmapCache` 支持按 key 复用 image/layer pixmap，并通过像素拷贝隔离缓存内容，同时提供 membership 与 hit/insert telemetry，作为 GUI 图像资源缓存基础
 - Layer 支持 resize 时保留重叠像素并标记新 cache dirty
 - LayerTree 支持位置、尺寸、可见性、opacity、移除、替换和重排触发的旧/新 bounds invalidation
 - LayerTree 可将 dirty 合成到 frame canvas 并提交到 `Surface` partial present
@@ -168,11 +168,11 @@ Application / GUI
 - PixelRect/DirtyRegion 合并、Canvas dirty tracking 与 rect present API，作为局部重绘和图层缓存基础
 - Renderer Core 组合层：`Font -> render_text_mask -> Canvas.draw_mask`
 - Renderer parsed TTF printable ASCII 字符矩阵回归，覆盖 `FontFace -> TextLayout -> Renderer -> Pixmap` 公开路径
-- `GlyphMaskCache` 支持按 key 复用单 glyph rendered `CoverageMask`，并可报告 cache hit/rasterize miss telemetry，作为后续 glyph atlas 与 renderer glyph 复用的基础
+- `GlyphMaskCache` 支持按 key 复用单 glyph rendered `CoverageMask`，并可报告 membership 与 cache hit/rasterize miss telemetry，作为后续 glyph atlas 与 renderer glyph 复用的基础
 - `GlyphMaskAtlas` 支持把单 glyph `CoverageMask` 按行打包到 text-local atlas，并复制 mask 像素隔离调用方 mutation，同时暴露 capacity、used/free pixels、occupancy ratio、can-fit 查询、hit/new-insert telemetry 和满载清空重插 helper 供资源生命周期决策使用
 - Renderer 可从 `GlyphMaskAtlas` coverage snapshot 按 entry source rect 合成单个 glyph placement，避免为 atlas 子区域额外复制 mask
 - Renderer 提供 `draw_text_face_atlas`，让调用方传入 glyph mask cache 与 glyph atlas，按 `TextLayout` 逐 glyph 缓存、打包、合成，并返回 drawn/skipped/cache-hit/rasterized/atlas-hit/atlas-inserted/atlas-clear telemetry
-- `TextMaskCache` 支持按 key 复用 rendered `CoverageMask`，并通过像素拷贝隔离缓存内容，同时提供 hit/render miss telemetry，作为 GUI label/text run 缓存基础
+- `TextMaskCache` 支持按 key 复用 rendered `CoverageMask`，并通过像素拷贝隔离缓存内容，同时提供 membership 与 hit/render miss telemetry，作为 GUI label/text run 缓存基础
 - Renderer 提供 `draw_text_face_cached`，让调用方传入 `TextMaskCache` 直接绘制 repeated label/text run，并返回 text-mask cache hit/render telemetry
 - Renderer 提供 `draw_text_fallback_line`，消费 `FontFallbackPlan` 对有序 `FontFace` 栈进行单行 fallback 绘制并报告 missing span telemetry
 - Renderer 提供 `draw_text_fallback_line_cached`，让 repeated fallback label 可复用 `TextMaskCache` 中的 per-span rendered mask，并报告 span 级 render/cache-hit telemetry
@@ -267,9 +267,9 @@ Application / GUI
 - [x] 为 `FontParseError` 建立文档化契约，明确哪些错误属于稳定 public API，哪些仍是兼容迁移期细节，见 `docs/font-parser-errors.md`
 - [ ] 建立真实字体 fixture 矩阵：基础 Latin、带孔洞 glyph、复合 glyph、kerning、CJK fallback
 - [x] 明确 `text` 包中哪些结构是 facade stable，哪些仍是 implementation-adjacent，见 `docs/text-api-boundaries.md`
-- [x] 增加 `FontFaceCache`，让 GUI/resource 代码可按 key 复用 checked `FontFace`、保留解析错误语义，并报告 cache hit/parse telemetry
+- [x] 增加 `FontFaceCache`，让 GUI/resource 代码可按 key 复用 checked `FontFace`、保留解析错误语义，并报告 membership 与 cache hit/parse telemetry
 - [x] 为 `FontFaceCache` 增加 opt-in LRU entry limit，覆盖最近访问刷新、最旧条目淘汰和非法容量 clamp 回归
-- [x] 增加 `GlyphMaskCache`，让 renderer/resource 代码可按 key 复用单 glyph mask，并为 cache hit/miss telemetry 与后续 glyph atlas 铺底
+- [x] 增加 `GlyphMaskCache`，让 renderer/resource 代码可按 key 复用单 glyph mask，并为 membership、cache hit/miss telemetry 与后续 glyph atlas 铺底
 - [x] 将 `TextMaskCache` 接入 Renderer，提供 repeated label/text run 的 cached draw path 与 hit/render telemetry
 - [x] 将 `TextMaskCache` 接入 Renderer fallback line path，提供 repeated fallback label span 的 cached draw path 与 hit/render telemetry
 - [x] 为 `GlyphMaskCache`/`TextMaskCache` 增加 opt-in LRU entry limit，覆盖最近访问刷新、最旧条目淘汰和非法容量 clamp 回归
@@ -496,7 +496,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache`，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态，并接入 checked font-byte text draw path 与 cached image draw path，后续补 image/font loader 集成策略
+- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态，并接入 checked font-byte text draw path 与 cached image draw path，后续补 image/font loader 集成策略
 
 ---
 
