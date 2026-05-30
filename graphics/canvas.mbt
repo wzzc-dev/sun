@@ -197,6 +197,21 @@ pub fn Canvas::fill_rect(
 }
 
 ///|
+/// Draw a filled rounded rectangle.
+pub fn Canvas::fill_rounded_rect(
+  self : Canvas,
+  x : Double,
+  y : Double,
+  w : Double,
+  h : Double,
+  radius : Double,
+  paint : Paint,
+) -> Unit {
+  guard w > 0.0 && h > 0.0 else { return }
+  self.fill_path(Path::new().add_rounded_rect(x, y, w, h, radius), paint)
+}
+
+///|
 /// Fill a path with the given paint
 pub fn Canvas::fill_path(self : Canvas, path : Path, paint : Paint) -> Unit {
   guard paint.style is PaintStyle::Fill && !path.is_empty() else { return }
@@ -237,6 +252,21 @@ pub fn Canvas::fill_path(self : Canvas, path : Path, paint : Paint) -> Unit {
       }
     }
   }
+}
+
+///|
+/// Draw a stroked rounded rectangle.
+pub fn Canvas::stroke_rounded_rect(
+  self : Canvas,
+  x : Double,
+  y : Double,
+  w : Double,
+  h : Double,
+  radius : Double,
+  paint : Paint,
+) -> Unit {
+  guard w > 0.0 && h > 0.0 else { return }
+  self.stroke_path(Path::new().add_rounded_rect(x, y, w, h, radius), paint)
 }
 
 ///|

@@ -41,6 +41,7 @@ pub fn Canvas::draw_text(Self, String, Double, Double, Double, Color) -> Unit
 pub fn Canvas::draw_tiled_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint) -> Unit
 pub fn Canvas::fill_path(Self, Path, Paint) -> Unit
 pub fn Canvas::fill_rect(Self, Double, Double, Double, Double, Paint) -> Unit
+pub fn Canvas::fill_rounded_rect(Self, Double, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::get_clip_rect(Self) -> Rect?
 pub fn Canvas::get_dirty_region(Self) -> DirtyRegion
 pub fn Canvas::get_pixmap(Self) -> Pixmap
@@ -59,6 +60,7 @@ pub fn Canvas::scale(Self, sx~ : Double, sy~ : Double) -> Unit
 pub fn Canvas::set_clip_rect(Self, Rect) -> Unit
 pub fn Canvas::set_transform(Self, Transform) -> Unit
 pub fn Canvas::stroke_path(Self, Path, Paint) -> Unit
+pub fn Canvas::stroke_rounded_rect(Self, Double, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::translate(Self, tx~ : Double, ty~ : Double) -> Unit
 
 type CanvasEdge derive(@debug.Debug)
