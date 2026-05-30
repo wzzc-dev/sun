@@ -15,6 +15,13 @@ pub fn validate_present_rect(Int, Int, Int, Int, Int, Int, Int, FixedArray[Byte]
 // Errors
 
 // Types and methods
+pub(all) enum BlendMode {
+  SourceOver
+  Multiply
+  Screen
+  Add
+} derive(Eq, @debug.Debug)
+
 pub struct Canvas {
   pixmap : Pixmap
   mut transform : Transform
@@ -97,6 +104,7 @@ pub(all) struct Color {
 } derive(Eq, @debug.Debug)
 pub fn Color::black() -> Self
 pub fn Color::blend_over(Self, Self) -> Self
+pub fn Color::blend_with(Self, Self, BlendMode) -> Self
 pub fn Color::blue() -> Self
 pub fn Color::green() -> Self
 pub fn Color::new(r~ : Byte, g~ : Byte, b~ : Byte, a? : Byte) -> Self
@@ -303,6 +311,7 @@ type NinePatchSlices derive(@debug.Debug)
 pub struct Paint {
   mut color : Color
   mut style : PaintStyle
+  mut blend_mode : BlendMode
   mut stroke_width : Double
   mut stroke_cap : StrokeCap
   mut stroke_join : StrokeJoin
@@ -314,6 +323,7 @@ pub struct Paint {
 } derive(@debug.Debug)
 pub fn Paint::clear_stroke_dash(Self) -> Self
 pub fn Paint::new() -> Self
+pub fn Paint::set_blend_mode(Self, BlendMode) -> Self
 pub fn Paint::set_color(Self, Color) -> Self
 pub fn Paint::set_dotted_stroke(Self) -> Self
 pub fn Paint::set_fill_rule(Self, FillRule) -> Self

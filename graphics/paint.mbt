@@ -29,10 +29,20 @@ pub(all) enum StrokeJoin {
 } derive(Eq, Debug)
 
 ///|
+/// Pixel blend mode used when compositing paint over destination pixels.
+pub(all) enum BlendMode {
+  SourceOver
+  Multiply
+  Screen
+  Add
+} derive(Eq, Debug)
+
+///|
 /// Paint configuration for drawing operations
 pub struct Paint {
   mut color : Color
   mut style : PaintStyle
+  mut blend_mode : BlendMode
   mut stroke_width : Double
   mut stroke_cap : StrokeCap
   mut stroke_join : StrokeJoin
@@ -49,6 +59,7 @@ pub fn Paint::new() -> Paint {
   {
     color: Color::black(),
     style: PaintStyle::Fill,
+    blend_mode: BlendMode::SourceOver,
     stroke_width: 1.0,
     stroke_cap: StrokeCap::Butt,
     stroke_join: StrokeJoin::Miter,
@@ -71,6 +82,13 @@ pub fn Paint::set_color(self : Paint, color : Color) -> Paint {
 /// Set the paint style
 pub fn Paint::set_style(self : Paint, style : PaintStyle) -> Paint {
   self.style = style
+  self
+}
+
+///|
+/// Set pixel blend mode used when compositing this paint.
+pub fn Paint::set_blend_mode(self : Paint, blend_mode : BlendMode) -> Paint {
+  self.blend_mode = blend_mode
   self
 }
 

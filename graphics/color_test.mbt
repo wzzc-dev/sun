@@ -51,3 +51,39 @@ test "Color::blend_over preserves transparent source and opaque source" {
   assert_eq(Color::transparent().blend_over(dst), dst)
   assert_eq(Color::green().blend_over(dst), Color::green())
 }
+
+///|
+test "Color::blend_with applies opaque blend modes" {
+  let src = Color::new(r=200, g=100, b=50)
+  let dst = Color::new(r=100, g=150, b=200)
+  assert_eq(
+    src.blend_with(dst, BlendMode::Multiply),
+    Color::new(r=78, g=59, b=39),
+  )
+  assert_eq(
+    src.blend_with(dst, BlendMode::Screen),
+    Color::new(r=222, g=191, b=211),
+  )
+  assert_eq(
+    src.blend_with(dst, BlendMode::Add),
+    Color::new(r=255, g=250, b=250),
+  )
+}
+
+///|
+test "Color::blend_with respects straight alpha" {
+  let src = Color::new(r=200, g=100, b=50, a=128)
+  let dst = Color::new(r=100, g=150, b=200)
+  assert_eq(
+    src.blend_with(dst, BlendMode::Multiply),
+    Color::new(r=89, g=104, b=119),
+  )
+  assert_eq(
+    src.blend_with(dst, BlendMode::Screen),
+    Color::new(r=161, g=171, b=206),
+  )
+  assert_eq(
+    src.blend_with(dst, BlendMode::Add),
+    Color::new(r=178, g=200, b=225),
+  )
+}

@@ -17,6 +17,21 @@ test "Canvas::draw_mask composites coverage with paint opacity" {
 }
 
 ///|
+test "Canvas::draw_mask applies paint blend mode" {
+  let canvas = Canvas::new(1, 1)
+  canvas.clear(Color::new(r=100, g=150, b=200))
+  let mask : FixedArray[Byte] = FixedArray::make(1, 128)
+  let paint = Paint::new()
+    .set_color(Color::new(r=200, g=100, b=50))
+    .set_blend_mode(BlendMode::Screen)
+  canvas.draw_mask(0, 0, 1, 1, mask, paint)
+  assert_eq(
+    canvas.get_pixmap().get_pixel(0, 0),
+    Color::new(r=161, g=171, b=206),
+  )
+}
+
+///|
 test "Canvas::draw_mask_rect composites atlas source rect" {
   let canvas = Canvas::new(3, 2)
   canvas.clear(Color::white())
@@ -298,6 +313,19 @@ test "Canvas::draw_pixmap composites source pixels" {
 }
 
 ///|
+test "Canvas::draw_pixmap applies paint blend mode" {
+  let canvas = Canvas::new(1, 1)
+  canvas.clear(Color::new(r=100, g=150, b=200))
+  let src = Pixmap::new(1, 1)
+  src.set_pixel(0, 0, Color::new(r=200, g=100, b=50))
+  canvas.draw_pixmap(src, 0, 0, Paint::new().set_blend_mode(BlendMode::Add))
+  assert_eq(
+    canvas.get_pixmap().get_pixel(0, 0),
+    Color::new(r=255, g=250, b=250),
+  )
+}
+
+///|
 test "Canvas::draw_pixmap respects clip rect and paint opacity" {
   let canvas = Canvas::new(3, 1)
   canvas.clear(Color::white())
@@ -336,6 +364,25 @@ test "Canvas::draw_scaled_pixmap scales source pixels" {
   assert_eq(pixmap.get_pixel(1, 1), Color::red())
   assert_eq(pixmap.get_pixel(2, 0), Color::blue())
   assert_eq(pixmap.get_pixel(3, 1), Color::blue())
+}
+
+///|
+test "Canvas::draw_scaled_pixmap applies paint blend mode" {
+  let canvas = Canvas::new(2, 1)
+  canvas.clear(Color::new(r=100, g=150, b=200))
+  let src = Pixmap::new(1, 1)
+  src.set_pixel(0, 0, Color::new(r=200, g=100, b=50))
+  canvas.draw_scaled_pixmap(
+    src,
+    0,
+    0,
+    2,
+    1,
+    Paint::new().set_blend_mode(BlendMode::Multiply),
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::new(r=78, g=59, b=39))
+  assert_eq(pixmap.get_pixel(1, 0), Color::new(r=78, g=59, b=39))
 }
 
 ///|
@@ -798,6 +845,28 @@ test "Canvas::draw_transformed_sampled_pixmap covers full source pixmap" {
 }
 
 ///|
+test "Canvas::draw_transformed_sampled_pixmap_rect applies paint blend mode" {
+  let canvas = Canvas::new(1, 1)
+  canvas.clear(Color::new(r=100, g=150, b=200))
+  let src = Pixmap::new(1, 1)
+  src.set_pixel(0, 0, Color::new(r=200, g=100, b=50))
+  canvas.draw_transformed_sampled_pixmap_rect(
+    src,
+    PixelRect::new(x=0, y=0, width=1, height=1),
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    Paint::new().set_blend_mode(BlendMode::Screen),
+    ImageSampling::Nearest,
+  )
+  assert_eq(
+    canvas.get_pixmap().get_pixel(0, 0),
+    Color::new(r=222, g=191, b=211),
+  )
+}
+
+///|
 test "Canvas::draw_transformed_sampled_pixmap_rect ignores invalid state" {
   let canvas = Canvas::new(1, 1)
   canvas.clear(Color::white())
@@ -984,6 +1053,17 @@ test "Canvas::fill_rect respects and clears clip rect" {
   assert_true(canvas.get_clip_rect() == None)
   canvas.fill_rect(2.0, 0.0, 1.0, 1.0, Paint::new().set_color(Color::black()))
   assert_eq(canvas.get_pixmap().get_pixel(2, 0), Color::black())
+}
+
+///|
+test "Canvas::fill_rect applies paint blend mode" {
+  let canvas = Canvas::new(1, 1)
+  canvas.clear(Color::new(r=100, g=150, b=200))
+  let paint = Paint::new()
+    .set_color(Color::new(r=200, g=100, b=50))
+    .set_blend_mode(BlendMode::Multiply)
+  canvas.fill_rect(0.0, 0.0, 1.0, 1.0, paint)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), Color::new(r=78, g=59, b=39))
 }
 
 ///|
@@ -1291,6 +1371,18 @@ test "Canvas::fill_path composites paint opacity" {
 }
 
 ///|
+test "Canvas::fill_path applies paint blend mode" {
+  let canvas = Canvas::new(1, 1)
+  canvas.clear(Color::new(r=100, g=150, b=200))
+  let path = Path::new().add_rect(0.0, 0.0, 1.0, 1.0)
+  let paint = Paint::new()
+    .set_color(Color::new(r=200, g=100, b=50))
+    .set_blend_mode(BlendMode::Multiply)
+  canvas.fill_path(path, paint)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), Color::new(r=78, g=59, b=39))
+}
+
+///|
 test "Canvas::fill_path uses subpixel coverage" {
   let canvas = Canvas::new(2, 1)
   canvas.clear(Color::white())
@@ -1373,6 +1465,23 @@ test "Canvas::stroke_path composites paint opacity" {
   assert_eq(
     canvas.get_pixmap().get_pixel(1, 1),
     Color::new(r=127, g=127, b=127, a=255),
+  )
+}
+
+///|
+test "Canvas::stroke_path applies paint blend mode" {
+  let canvas = Canvas::new(3, 3)
+  canvas.clear(Color::new(r=100, g=150, b=200))
+  let path = Path::new().move_to(0.0, 1.0).line_to(3.0, 1.0)
+  let paint = Paint::new()
+    .set_color(Color::new(r=200, g=100, b=50))
+    .set_style(PaintStyle::Stroke)
+    .set_stroke_width(2.0)
+    .set_blend_mode(BlendMode::Screen)
+  canvas.stroke_path(path, paint)
+  assert_eq(
+    canvas.get_pixmap().get_pixel(1, 1),
+    Color::new(r=222, g=191, b=211),
   )
 }
 

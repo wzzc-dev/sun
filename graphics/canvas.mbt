@@ -186,12 +186,13 @@ pub fn Canvas::fill_rect(
   )
   guard x_start < x_end && y_start < y_end else { return }
 
-  self.pixmap.blend_rect(
+  self.pixmap.blend_rect_with_mode(
     x_start,
     y_start,
     x_end - x_start,
     y_end - y_start,
     paint.color.scale_alpha(paint.opacity),
+    paint.blend_mode,
   )
   self.mark_dirty_bounds(x_start, y_start, x_end, y_end)
 }
@@ -420,7 +421,15 @@ pub fn Canvas::fill_path(self : Canvas, path : Path, paint : Paint) -> Unit {
         }
       }
       if covered > 0 {
-        blend_coverage_pixel(self.pixmap, x, y, color, covered, sample_count_sq)
+        blend_coverage_pixel(
+          self.pixmap,
+          x,
+          y,
+          color,
+          covered,
+          sample_count_sq,
+          paint.blend_mode,
+        )
         self.mark_dirty_bounds(x, y, x + 1, y + 1)
       }
     }
@@ -528,7 +537,15 @@ pub fn Canvas::stroke_path(self : Canvas, path : Path, paint : Paint) -> Unit {
         }
       }
       if covered > 0 {
-        blend_coverage_pixel(self.pixmap, x, y, color, covered, sample_count_sq)
+        blend_coverage_pixel(
+          self.pixmap,
+          x,
+          y,
+          color,
+          covered,
+          sample_count_sq,
+          paint.blend_mode,
+        )
         self.mark_dirty_bounds(x, y, x + 1, y + 1)
       }
     }
@@ -566,7 +583,12 @@ pub fn Canvas::draw_mask(
       let coverage = mask[mask_y * width + mask_x].to_int()
       if coverage > 0 {
         let alpha = (color.a.to_int() * coverage + 127) / 255
-        self.pixmap.blend_pixel(px, py, color.with_alpha(clamp_byte(alpha)))
+        self.pixmap.blend_pixel_with_mode(
+          px,
+          py,
+          color.with_alpha(clamp_byte(alpha)),
+          paint.blend_mode,
+        )
         self.mark_dirty_bounds(px, py, px + 1, py + 1)
       }
     }
@@ -617,7 +639,12 @@ pub fn Canvas::draw_mask_rect(
           let coverage = mask[mask_y * mask_width + mask_x].to_int()
           if coverage > 0 {
             let alpha = (color.a.to_int() * coverage + 127) / 255
-            self.pixmap.blend_pixel(px, py, color.with_alpha(clamp_byte(alpha)))
+            self.pixmap.blend_pixel_with_mode(
+              px,
+              py,
+              color.with_alpha(clamp_byte(alpha)),
+              paint.blend_mode,
+            )
             self.mark_dirty_bounds(px, py, px + 1, py + 1)
           }
         }
@@ -651,7 +678,7 @@ pub fn Canvas::draw_pixmap(
     for px in x_start..<x_end {
       let color = src.get_pixel(px - x, py - y).scale_alpha(opacity)
       if color.a.to_int() > 0 {
-        self.pixmap.blend_pixel(px, py, color)
+        self.pixmap.blend_pixel_with_mode(px, py, color, paint.blend_mode)
         self.mark_dirty_bounds(px, py, px + 1, py + 1)
       }
     }
@@ -695,7 +722,7 @@ pub fn Canvas::draw_pixmap_rect(
           let src_y = clipped_src.y + py - dst_y
           let color = src.get_pixel(src_x, src_y).scale_alpha(opacity)
           if color.a.to_int() > 0 {
-            self.pixmap.blend_pixel(px, py, color)
+            self.pixmap.blend_pixel_with_mode(px, py, color, paint.blend_mode)
             self.mark_dirty_bounds(px, py, px + 1, py + 1)
           }
         }
@@ -735,6 +762,7 @@ pub fn Canvas::draw_scaled_pixmap(
     height,
     src,
     paint.opacity,
+    paint.blend_mode,
     x_start,
     y_start,
     x_end,
@@ -773,6 +801,7 @@ pub fn Canvas::draw_scaled_pixmap_bilinear(
     height,
     src,
     paint.opacity,
+    paint.blend_mode,
     x_start,
     y_start,
     x_end,
@@ -811,6 +840,7 @@ pub fn Canvas::draw_scaled_pixmap_bicubic(
     height,
     src,
     paint.opacity,
+    paint.blend_mode,
     x_start,
     y_start,
     x_end,
@@ -955,6 +985,7 @@ pub fn Canvas::draw_sampled_pixmap_rect(
         clipped_src,
         paint.opacity,
         sampling,
+        paint.blend_mode,
         x_start,
         y_start,
         x_end,
@@ -1046,7 +1077,7 @@ pub fn Canvas::draw_transformed_sampled_pixmap_rect(
               src, clipped_src, local_x, local_y, x, y, width, height, sampling,
             ).scale_alpha(opacity)
             if color.a.to_int() > 0 {
-              self.pixmap.blend_pixel(px, py, color)
+              self.pixmap.blend_pixel_with_mode(px, py, color, paint.blend_mode)
               dirty_left = dirty_left.min(px)
               dirty_top = dirty_top.min(py)
               dirty_right = dirty_right.max(px + 1)
@@ -1103,6 +1134,7 @@ pub fn Canvas::draw_tiled_pixmap_rect(
         src,
         clipped_src,
         paint.opacity,
+        paint.blend_mode,
         x_start,
         y_start,
         x_end,
@@ -1148,6 +1180,7 @@ pub fn Canvas::draw_nine_patch_pixmap(
     insets,
     paint.opacity,
     sampling,
+    paint.blend_mode,
     x_start,
     y_start,
     x_end,
@@ -1643,12 +1676,13 @@ fn blend_clipped_rect(
     y + h,
   )
   guard x_start < x_end && y_start < y_end else { return }
-  canvas.pixmap.blend_rect(
+  canvas.pixmap.blend_rect_with_mode(
     x_start,
     y_start,
     x_end - x_start,
     y_end - y_start,
     color,
+    BlendMode::SourceOver,
   )
   canvas.mark_dirty_bounds(x_start, y_start, x_end, y_end)
 }
@@ -2119,10 +2153,16 @@ fn blend_coverage_pixel(
   color : Color,
   covered : Int,
   sample_count : Int,
+  blend_mode : BlendMode,
 ) -> Unit {
   let coverage = coverage_to_byte(covered, sample_count).to_int()
   let alpha = (color.a.to_int() * coverage + 127) / 255
-  pixmap.blend_pixel(x, y, color.with_alpha(clamp_byte(alpha)))
+  pixmap.blend_pixel_with_mode(
+    x,
+    y,
+    color.with_alpha(clamp_byte(alpha)),
+    blend_mode,
+  )
 }
 
 ///|

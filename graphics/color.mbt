@@ -103,6 +103,98 @@ pub fn Color::blend_over(self : Color, dst : Color) -> Color {
 }
 
 ///|
+/// Composite this straight-alpha source color over a destination color using
+/// a configured blend mode.
+pub fn Color::blend_with(
+  self : Color,
+  dst : Color,
+  blend_mode : BlendMode,
+) -> Color {
+  match blend_mode {
+    BlendMode::SourceOver => self.blend_over(dst)
+    BlendMode::Multiply | BlendMode::Screen | BlendMode::Add =>
+      blend_non_source_over(self, dst, blend_mode)
+  }
+}
+
+///|
+fn blend_non_source_over(
+  src : Color,
+  dst : Color,
+  blend_mode : BlendMode,
+) -> Color {
+  let src_a = src.a.to_int()
+  let dst_a = dst.a.to_int()
+  let inv_src_a = 255 - src_a
+  let inv_dst_a = 255 - dst_a
+  let out_a = src_a + div_round(dst_a * inv_src_a, 255)
+  guard out_a > 0 else { return Color::transparent() }
+  Color::new(
+    r=blend_channel(
+      src.r,
+      src_a,
+      dst.r,
+      dst_a,
+      inv_src_a,
+      inv_dst_a,
+      out_a,
+      blend_mode,
+    ),
+    g=blend_channel(
+      src.g,
+      src_a,
+      dst.g,
+      dst_a,
+      inv_src_a,
+      inv_dst_a,
+      out_a,
+      blend_mode,
+    ),
+    b=blend_channel(
+      src.b,
+      src_a,
+      dst.b,
+      dst_a,
+      inv_src_a,
+      inv_dst_a,
+      out_a,
+      blend_mode,
+    ),
+    a=clamp_byte(out_a),
+  )
+}
+
+///|
+fn blend_channel(
+  src_channel : Byte,
+  src_a : Int,
+  dst_channel : Byte,
+  dst_a : Int,
+  inv_src_a : Int,
+  inv_dst_a : Int,
+  out_a : Int,
+  blend_mode : BlendMode,
+) -> Byte {
+  let src_c = src_channel.to_int()
+  let dst_c = dst_channel.to_int()
+  let blended = blend_unpremul_channel(src_c, dst_c, blend_mode)
+  let premul = blended * src_a * dst_a +
+    src_c * src_a * inv_dst_a +
+    dst_c * dst_a * inv_src_a
+  clamp_byte(div_round(premul, out_a * 255))
+}
+
+///|
+fn blend_unpremul_channel(src : Int, dst : Int, blend_mode : BlendMode) -> Int {
+  match blend_mode {
+    BlendMode::SourceOver => src
+    BlendMode::Multiply => div_round(src * dst, 255)
+    BlendMode::Screen => 255 - div_round((255 - src) * (255 - dst), 255)
+    BlendMode::Add => (src + dst).min(255)
+  }
+}
+
+///|
 fn div_round(numerator : Int, denominator : Int) -> Int {
   guard denominator > 0 else { return 0 }
   (numerator + denominator / 2) / denominator

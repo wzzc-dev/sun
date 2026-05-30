@@ -281,6 +281,18 @@ pub fn Pixmap::blend_pixel(
 }
 
 ///|
+fn Pixmap::blend_pixel_with_mode(
+  self : Pixmap,
+  x : Int,
+  y : Int,
+  color : Color,
+  blend_mode : BlendMode,
+) -> Unit {
+  guard x >= 0 && x < self.width && y >= 0 && y < self.height else { return }
+  self.set_pixel(x, y, color.blend_with(self.get_pixel(x, y), blend_mode))
+}
+
+///|
 /// Get the color at the given coordinates
 pub fn Pixmap::get_pixel(self : Pixmap, x : Int, y : Int) -> Color {
   guard x >= 0 && x < self.width && y >= 0 && y < self.height else {
@@ -335,6 +347,23 @@ pub fn Pixmap::blend_rect(
   for dy in 0..<h {
     for dx in 0..<w {
       self.blend_pixel(x + dx, y + dy, color)
+    }
+  }
+}
+
+///|
+fn Pixmap::blend_rect_with_mode(
+  self : Pixmap,
+  x : Int,
+  y : Int,
+  w : Int,
+  h : Int,
+  color : Color,
+  blend_mode : BlendMode,
+) -> Unit {
+  for dy in 0..<h {
+    for dx in 0..<w {
+      self.blend_pixel_with_mode(x + dx, y + dy, color, blend_mode)
     }
   }
 }
@@ -498,7 +527,18 @@ pub fn Pixmap::blend_scaled_pixmap(
   let y_end = (y + height).min(self.height)
   guard x_start < x_end && y_start < y_end else { return }
   blend_scaled_pixmap_region(
-    self, x, y, width, height, src, opacity, x_start, y_start, x_end, y_end,
+    self,
+    x,
+    y,
+    width,
+    height,
+    src,
+    opacity,
+    BlendMode::SourceOver,
+    x_start,
+    y_start,
+    x_end,
+    y_end,
   )
 }
 
@@ -521,7 +561,18 @@ pub fn Pixmap::blend_scaled_pixmap_bilinear(
   let y_end = (y + height).min(self.height)
   guard x_start < x_end && y_start < y_end else { return }
   blend_scaled_pixmap_bilinear_region(
-    self, x, y, width, height, src, opacity, x_start, y_start, x_end, y_end,
+    self,
+    x,
+    y,
+    width,
+    height,
+    src,
+    opacity,
+    BlendMode::SourceOver,
+    x_start,
+    y_start,
+    x_end,
+    y_end,
   )
 }
 
@@ -544,7 +595,18 @@ pub fn Pixmap::blend_scaled_pixmap_bicubic(
   let y_end = (y + height).min(self.height)
   guard x_start < x_end && y_start < y_end else { return }
   blend_scaled_pixmap_bicubic_region(
-    self, x, y, width, height, src, opacity, x_start, y_start, x_end, y_end,
+    self,
+    x,
+    y,
+    width,
+    height,
+    src,
+    opacity,
+    BlendMode::SourceOver,
+    x_start,
+    y_start,
+    x_end,
+    y_end,
   )
 }
 
@@ -671,8 +733,20 @@ pub fn Pixmap::blend_sampled_pixmap_rect(
       let y_end = (y + height).min(self.height)
       guard x_start < x_end && y_start < y_end else { return }
       blend_sampled_pixmap_rect_region(
-        self, x, y, width, height, src, clipped_src, opacity, sampling, x_start,
-        y_start, x_end, y_end,
+        self,
+        x,
+        y,
+        width,
+        height,
+        src,
+        clipped_src,
+        opacity,
+        sampling,
+        BlendMode::SourceOver,
+        x_start,
+        y_start,
+        x_end,
+        y_end,
       )
     }
     None => ()
@@ -707,7 +781,18 @@ pub fn Pixmap::blend_tiled_pixmap_rect(
       let y_end = (y + height).min(self.height)
       guard x_start < x_end && y_start < y_end else { return }
       blend_tiled_pixmap_rect_region(
-        self, x, y, width, height, src, clipped_src, opacity, x_start, y_start, x_end,
+        self,
+        x,
+        y,
+        width,
+        height,
+        src,
+        clipped_src,
+        opacity,
+        BlendMode::SourceOver,
+        x_start,
+        y_start,
+        x_end,
         y_end,
       )
     }
@@ -736,8 +821,20 @@ pub fn Pixmap::blend_nine_patch_pixmap(
   let y_end = (y + height).min(self.height)
   guard x_start < x_end && y_start < y_end else { return }
   blend_nine_patch_pixmap_region(
-    self, x, y, width, height, src, insets, opacity, sampling, x_start, y_start,
-    x_end, y_end,
+    self,
+    x,
+    y,
+    width,
+    height,
+    src,
+    insets,
+    opacity,
+    sampling,
+    BlendMode::SourceOver,
+    x_start,
+    y_start,
+    x_end,
+    y_end,
   )
 }
 
@@ -752,6 +849,7 @@ fn blend_nine_patch_pixmap_region(
   insets : NinePatchInsets,
   opacity : Double,
   sampling : ImageSampling,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -776,6 +874,7 @@ fn blend_nine_patch_pixmap_region(
     PixelRect::new(x=0, y=0, width=slices.src_left, height=slices.src_top),
     opacity,
     sampling,
+    blend_mode,
     x_start,
     y_start,
     x_end,
@@ -798,6 +897,7 @@ fn blend_nine_patch_pixmap_region(
     ),
     opacity,
     sampling,
+    blend_mode,
     x_start,
     y_start,
     x_end,
@@ -820,6 +920,7 @@ fn blend_nine_patch_pixmap_region(
     ),
     opacity,
     sampling,
+    blend_mode,
     x_start,
     y_start,
     x_end,
@@ -842,6 +943,7 @@ fn blend_nine_patch_pixmap_region(
     ),
     opacity,
     sampling,
+    blend_mode,
     x_start,
     y_start,
     x_end,
@@ -864,6 +966,7 @@ fn blend_nine_patch_pixmap_region(
     ),
     opacity,
     sampling,
+    blend_mode,
     x_start,
     y_start,
     x_end,
@@ -886,6 +989,7 @@ fn blend_nine_patch_pixmap_region(
     ),
     opacity,
     sampling,
+    blend_mode,
     x_start,
     y_start,
     x_end,
@@ -908,6 +1012,7 @@ fn blend_nine_patch_pixmap_region(
     ),
     opacity,
     sampling,
+    blend_mode,
     x_start,
     y_start,
     x_end,
@@ -930,6 +1035,7 @@ fn blend_nine_patch_pixmap_region(
     ),
     opacity,
     sampling,
+    blend_mode,
     x_start,
     y_start,
     x_end,
@@ -952,6 +1058,7 @@ fn blend_nine_patch_pixmap_region(
     ),
     opacity,
     sampling,
+    blend_mode,
     x_start,
     y_start,
     x_end,
@@ -1012,6 +1119,7 @@ fn blend_nine_patch_segment(
   src_rect : PixelRect,
   opacity : Double,
   sampling : ImageSampling,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -1029,8 +1137,8 @@ fn blend_nine_patch_segment(
     return
   }
   blend_sampled_pixmap_rect_region(
-    dst, dst_x, dst_y, dst_width, dst_height, src, src_rect, opacity, sampling, segment_x_start,
-    segment_y_start, segment_x_end, segment_y_end,
+    dst, dst_x, dst_y, dst_width, dst_height, src, src_rect, opacity, sampling, blend_mode,
+    segment_x_start, segment_y_start, segment_x_end, segment_y_end,
   )
 }
 
@@ -1045,6 +1153,7 @@ fn blend_sampled_pixmap_rect_region(
   src_rect : PixelRect,
   opacity : Double,
   sampling : ImageSampling,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -1053,18 +1162,18 @@ fn blend_sampled_pixmap_rect_region(
   match sampling {
     ImageSampling::Nearest =>
       blend_scaled_pixmap_rect_region(
-        dst, x, y, width, height, src, src_rect, opacity, x_start, y_start, x_end,
-        y_end,
+        dst, x, y, width, height, src, src_rect, opacity, blend_mode, x_start, y_start,
+        x_end, y_end,
       )
     ImageSampling::Bilinear =>
       blend_scaled_pixmap_rect_bilinear_region(
-        dst, x, y, width, height, src, src_rect, opacity, x_start, y_start, x_end,
-        y_end,
+        dst, x, y, width, height, src, src_rect, opacity, blend_mode, x_start, y_start,
+        x_end, y_end,
       )
     ImageSampling::Bicubic =>
       blend_scaled_pixmap_rect_bicubic_region(
-        dst, x, y, width, height, src, src_rect, opacity, x_start, y_start, x_end,
-        y_end,
+        dst, x, y, width, height, src, src_rect, opacity, blend_mode, x_start, y_start,
+        x_end, y_end,
       )
   }
 }
@@ -1079,6 +1188,7 @@ fn blend_tiled_pixmap_rect_region(
   src : Pixmap,
   src_rect : PixelRect,
   opacity : Double,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -1092,7 +1202,7 @@ fn blend_tiled_pixmap_rect_region(
       let src_x = src_rect.x + positive_mod(px - x, src_rect.width)
       let src_color = src.get_pixel(src_x, src_y).scale_alpha(opacity)
       if src_color.a.to_int() > 0 {
-        dst.blend_pixel(px, py, src_color)
+        dst.blend_pixel_with_mode(px, py, src_color, blend_mode)
       }
     }
   }
@@ -1108,6 +1218,7 @@ fn blend_scaled_pixmap_rect_region(
   src : Pixmap,
   src_rect : PixelRect,
   opacity : Double,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -1123,7 +1234,7 @@ fn blend_scaled_pixmap_rect_region(
         scaled_source_index(px - x, width, src_rect.width)
       let src_color = src.get_pixel(src_x, src_y).scale_alpha(opacity)
       if src_color.a.to_int() > 0 {
-        dst.blend_pixel(px, py, src_color)
+        dst.blend_pixel_with_mode(px, py, src_color, blend_mode)
       }
     }
   }
@@ -1139,6 +1250,7 @@ fn blend_scaled_pixmap_rect_bilinear_region(
   src : Pixmap,
   src_rect : PixelRect,
   opacity : Double,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -1156,7 +1268,7 @@ fn blend_scaled_pixmap_rect_bilinear_region(
         opacity,
       )
       if src_color.a.to_int() > 0 {
-        dst.blend_pixel(px, py, src_color)
+        dst.blend_pixel_with_mode(px, py, src_color, blend_mode)
       }
     }
   }
@@ -1172,6 +1284,7 @@ fn blend_scaled_pixmap_rect_bicubic_region(
   src : Pixmap,
   src_rect : PixelRect,
   opacity : Double,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -1189,7 +1302,7 @@ fn blend_scaled_pixmap_rect_bicubic_region(
         opacity,
       )
       if src_color.a.to_int() > 0 {
-        dst.blend_pixel(px, py, src_color)
+        dst.blend_pixel_with_mode(px, py, src_color, blend_mode)
       }
     }
   }
@@ -1204,6 +1317,7 @@ fn blend_scaled_pixmap_region(
   height : Int,
   src : Pixmap,
   opacity : Double,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -1215,7 +1329,7 @@ fn blend_scaled_pixmap_region(
       let src_x = scaled_source_index(px - x, width, src.get_width())
       let src_color = src.get_pixel(src_x, src_y).scale_alpha(opacity)
       if src_color.a.to_int() > 0 {
-        dst.blend_pixel(px, py, src_color)
+        dst.blend_pixel_with_mode(px, py, src_color, blend_mode)
       }
     }
   }
@@ -1238,6 +1352,7 @@ fn blend_scaled_pixmap_bilinear_region(
   height : Int,
   src : Pixmap,
   opacity : Double,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -1249,7 +1364,7 @@ fn blend_scaled_pixmap_bilinear_region(
       let src_x = scaled_source_position(px - x, width, src.get_width())
       let src_color = sample_bilinear(src, src_x, src_y).scale_alpha(opacity)
       if src_color.a.to_int() > 0 {
-        dst.blend_pixel(px, py, src_color)
+        dst.blend_pixel_with_mode(px, py, src_color, blend_mode)
       }
     }
   }
@@ -1264,6 +1379,7 @@ fn blend_scaled_pixmap_bicubic_region(
   height : Int,
   src : Pixmap,
   opacity : Double,
+  blend_mode : BlendMode,
   x_start : Int,
   y_start : Int,
   x_end : Int,
@@ -1275,7 +1391,7 @@ fn blend_scaled_pixmap_bicubic_region(
       let src_x = scaled_source_position(px - x, width, src.get_width())
       let src_color = sample_bicubic(src, src_x, src_y).scale_alpha(opacity)
       if src_color.a.to_int() > 0 {
-        dst.blend_pixel(px, py, src_color)
+        dst.blend_pixel_with_mode(px, py, src_color, blend_mode)
       }
     }
   }
