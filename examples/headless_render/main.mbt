@@ -83,6 +83,13 @@ fn present_headless(frame : @graphics.RenderFrame) -> @graphics.MemorySurface {
       guard result.get_presented_rect_count() > 0 else {
         abort("expected dirty rects to present")
       }
+      guard result.get_present_pixel_count() > 0 else {
+        abort("expected dirty pixels to present")
+      }
+      guard result.get_present_byte_count() >=
+        result.get_present_pixel_count() * 4 else {
+        abort("expected RGBA present byte budget")
+      }
       surface
     }
     Err(_) => abort("headless present failed")

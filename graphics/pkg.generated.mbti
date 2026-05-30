@@ -108,6 +108,8 @@ pub struct DirtyPresentPlan {
   rects : Array[PixelRect]
 } derive(@debug.Debug)
 pub fn DirtyPresentPlan::get_mode(Self) -> DirtyPresentPlanMode
+pub fn DirtyPresentPlan::get_present_byte_count(Self) -> Int
+pub fn DirtyPresentPlan::get_present_pixel_count(Self) -> Int
 pub fn DirtyPresentPlan::get_rect_count(Self) -> Int
 pub fn DirtyPresentPlan::get_rects(Self) -> Array[PixelRect]
 pub fn DirtyPresentPlan::is_empty(Self) -> Bool
@@ -139,6 +141,8 @@ pub struct DirtySubmitPlan {
   present_plan : DirtyPresentPlan
 } derive(@debug.Debug)
 pub fn DirtySubmitPlan::get_dirty_bounds(Self) -> PixelRect?
+pub fn DirtySubmitPlan::get_present_byte_count(Self) -> Int
+pub fn DirtySubmitPlan::get_present_pixel_count(Self) -> Int
 pub fn DirtySubmitPlan::get_present_plan(Self) -> DirtyPresentPlan
 pub fn DirtySubmitPlan::get_present_rect_count(Self) -> Int
 pub fn DirtySubmitPlan::get_state(Self) -> DirtySubmitState
@@ -152,6 +156,8 @@ pub struct DirtySubmitResult {
 } derive(@debug.Debug)
 pub fn DirtySubmitResult::did_present(Self) -> Bool
 pub fn DirtySubmitResult::get_dirty_bounds(Self) -> PixelRect?
+pub fn DirtySubmitResult::get_present_byte_count(Self) -> Int
+pub fn DirtySubmitResult::get_present_pixel_count(Self) -> Int
 pub fn DirtySubmitResult::get_presented_rect_count(Self) -> Int
 pub fn DirtySubmitResult::get_state(Self) -> DirtySubmitState
 pub fn DirtySubmitResult::get_submit_plan(Self) -> DirtySubmitPlan
@@ -327,6 +333,7 @@ pub struct PixelRect {
   width : Int
   height : Int
 } derive(Eq, @debug.Debug)
+pub fn PixelRect::area(Self) -> Int
 pub fn PixelRect::bottom(Self) -> Int
 pub fn PixelRect::clip_to(Self, Self) -> Self?
 pub fn PixelRect::contains(Self, Int, Int) -> Bool

@@ -121,6 +121,7 @@ Application / GUI
 - `DirtySubmitResult` 与 `RenderFrame::submit_dirty_to` 将调度状态和实际 present rect 数合成提交结果，供事件循环直接消费
 - `DirtySubmitResult` 暴露 needs-present、clipped-away、dirty bounds 与 fallback 等直达查询，减少事件循环继续拆 plan
 - `DirtySubmitResult` 暴露 did-present 事实查询，把提交前计划判断和提交后像素送达判断分开
+- `DirtyPresentPlan`/`DirtySubmitPlan`/`DirtySubmitResult` 暴露计划提交像素数与紧凑 RGBA 字节数，给事件循环提供可测试的 present 成本预算
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty-submit plan 查询，让窗口后端调度能复用 graphics 的统一 dirty snapshot
 - softbuffer 的 `NativeSurface` 暴露 state-aware dirty submit helper，返回 Clean/Present/DirtyClippedAway 与实际提交数量
@@ -313,6 +314,7 @@ Application / GUI
 - [x] `DirtySubmitResult` 与 `RenderFrame::submit_dirty_to` 返回调度状态和实际提交 rect 数，打通 plan 查询到可消费 submit 结果
 - [x] `DirtySubmitResult` 提供 needs-present、clipped-away、dirty bounds 与 fallback 直达查询，让示例和后端少拆一层 plan
 - [x] `DirtySubmitResult` 提供 did-present 查询，让窗口循环按提交后事实处理 present 通知与统计
+- [x] Dirty present/submit/result 暴露计划提交像素数与紧凑 RGBA 字节数，让事件循环能按成本预算做调度
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation
 - [x] `Layer::resize` 保留重叠像素并标记新 bounds dirty

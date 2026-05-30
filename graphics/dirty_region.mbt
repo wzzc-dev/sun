@@ -65,6 +65,23 @@ pub fn DirtyPresentPlan::get_rect_count(self : DirtyPresentPlan) -> Int {
 }
 
 ///|
+pub fn DirtyPresentPlan::get_present_pixel_count(
+  self : DirtyPresentPlan,
+) -> Int {
+  guard !self.is_empty() else { return 0 }
+  let mut pixels = 0
+  for rect in self.rects {
+    pixels = pixels + rect.area()
+  }
+  pixels
+}
+
+///|
+pub fn DirtyPresentPlan::get_present_byte_count(self : DirtyPresentPlan) -> Int {
+  self.get_present_pixel_count() * 4
+}
+
+///|
 pub fn DirtyPresentPlan::is_empty(self : DirtyPresentPlan) -> Bool {
   self.mode == DirtyPresentPlanMode::Empty || self.rects.length() == 0
 }
@@ -113,6 +130,16 @@ pub fn DirtySubmitPlan::get_state(self : DirtySubmitPlan) -> DirtySubmitState {
 ///|
 pub fn DirtySubmitPlan::get_present_rect_count(self : DirtySubmitPlan) -> Int {
   self.present_plan.get_rect_count()
+}
+
+///|
+pub fn DirtySubmitPlan::get_present_pixel_count(self : DirtySubmitPlan) -> Int {
+  self.present_plan.get_present_pixel_count()
+}
+
+///|
+pub fn DirtySubmitPlan::get_present_byte_count(self : DirtySubmitPlan) -> Int {
+  self.present_plan.get_present_byte_count()
 }
 
 ///|
@@ -176,6 +203,20 @@ pub fn DirtySubmitResult::get_presented_rect_count(
 }
 
 ///|
+pub fn DirtySubmitResult::get_present_pixel_count(
+  self : DirtySubmitResult,
+) -> Int {
+  self.submit_plan.get_present_pixel_count()
+}
+
+///|
+pub fn DirtySubmitResult::get_present_byte_count(
+  self : DirtySubmitResult,
+) -> Int {
+  self.submit_plan.get_present_byte_count()
+}
+
+///|
 pub fn PixelRect::new(
   x~ : Int,
   y~ : Int,
@@ -198,6 +239,14 @@ pub fn PixelRect::bottom(self : PixelRect) -> Int {
 ///|
 pub fn PixelRect::is_empty(self : PixelRect) -> Bool {
   self.width <= 0 || self.height <= 0
+}
+
+///|
+pub fn PixelRect::area(self : PixelRect) -> Int {
+  if self.is_empty() {
+    return 0
+  }
+  self.width * self.height
 }
 
 ///|
