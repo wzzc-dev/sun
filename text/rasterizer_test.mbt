@@ -59,6 +59,44 @@ test "TextMaskCache stores copies and clears entries" {
 }
 
 ///|
+test "GlyphMaskCache stores copies and clears entries" {
+  let cache = GlyphMaskCache::new()
+  assert_true(cache.is_empty())
+  let pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  pixels[2] = 144
+  let mask = CoverageMask::new(2, 2, pixels)
+  let inserted = cache.insert("glyph:A:10", mask)
+  assert_eq(cache.len(), 1)
+  assert_eq(inserted.get_pixels()[2], 144)
+
+  pixels[2] = 9
+  match cache.get("glyph:A:10") {
+    Some(cached) => {
+      assert_eq(cached.get_width(), 2)
+      assert_eq(cached.get_height(), 2)
+      assert_eq(cached.get_pixels()[2], 144)
+      let cached_pixels = cached.get_pixels()
+      cached_pixels[2] = 1
+    }
+    None => abort("expected cached glyph mask")
+  }
+
+  match cache.get("glyph:A:10") {
+    Some(cached) => assert_eq(cached.get_pixels()[2], 144)
+    None => abort("expected cached glyph mask")
+  }
+
+  cache.remove("glyph:A:10")
+  assert_true(cache.is_empty())
+  assert_true(cache.get("glyph:A:10") is None)
+
+  ignore(cache.insert("glyph:A:10", mask))
+  assert_eq(cache.len(), 1)
+  cache.clear()
+  assert_true(cache.is_empty())
+}
+
+///|
 test "Rasterizer::to_mask snapshots grayscale pixels" {
   let rasterizer = Rasterizer::new(4, 4)
   rasterizer.draw_line(1.0, 1.0, 1.0, 1.0)

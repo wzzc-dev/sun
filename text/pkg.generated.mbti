@@ -27,6 +27,8 @@ pub fn parse_font_result(Bytes) -> Result[Font, FontParseError]
 
 pub fn read_file(String) -> Bytes raise @fs.IOError
 
+pub fn render_glyph_mask(SimpleGlyph, Int, Int, Double, Double, Double) -> CoverageMask
+
 pub fn render_text_mask(Font, String, Int, Int, Double, Double, LayoutConfig) -> CoverageMask
 
 pub fn render_text_mask_face(FontFace, String, Int, Int, Double, Double, LayoutConfig) -> CoverageMask
@@ -187,6 +189,18 @@ pub struct GlyphInfo {
   cluster : Int
 } derive(Eq, @debug.Debug)
 pub fn GlyphInfo::new(glyph_id~ : GlyphId, cluster~ : Int) -> Self
+
+pub struct GlyphMaskCache {
+  mut masks : Map[String, CoverageMask]
+} derive(@debug.Debug)
+pub fn GlyphMaskCache::clear(Self) -> Unit
+pub fn GlyphMaskCache::get(Self, String) -> CoverageMask?
+pub fn GlyphMaskCache::get_or_rasterize_glyph(Self, String, SimpleGlyph, Int, Int, Double, Double, Double) -> CoverageMask
+pub fn GlyphMaskCache::insert(Self, String, CoverageMask) -> CoverageMask
+pub fn GlyphMaskCache::is_empty(Self) -> Bool
+pub fn GlyphMaskCache::len(Self) -> Int
+pub fn GlyphMaskCache::new() -> Self
+pub fn GlyphMaskCache::remove(Self, String) -> Unit
 
 pub struct GlyphPoint {
   x : Int

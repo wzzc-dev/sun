@@ -205,6 +205,15 @@ test "render_text_mask rasterizes shaped glyphs" {
 }
 
 ///|
+test "render_glyph_mask rasterizes a single glyph" {
+  let mask = render_glyph_mask(make_box_glyph(), 12, 12, 1.0, 11.0, 1.0)
+  assert_eq(mask.get_width(), 12)
+  assert_eq(mask.get_height(), 12)
+  assert_eq(mask.get_pixels()[1 * 12 + 1], 255)
+  assert_eq(mask.get_pixels()[0], 0)
+}
+
+///|
 test "FontFace and TextLayout expose stable text API" {
   let face = FontFace::from_font(make_box_font())
   let metrics = face.get_metrics()
@@ -314,6 +323,56 @@ test "TextMaskCache::get_or_render_face reuses rendered masks" {
     "label", space_face, " ", 12, 12, 1.0, 1.0, config,
   )
   assert_eq(rerendered.get_pixels()[1 * 12 + 1], 0)
+  assert_eq(cache.len(), 1)
+}
+
+///|
+test "GlyphMaskCache::get_or_rasterize_glyph reuses rendered masks" {
+  let cache = GlyphMaskCache::new()
+  let first = cache.get_or_rasterize_glyph(
+    "glyph:box",
+    make_box_glyph(),
+    12,
+    12,
+    1.0,
+    11.0,
+    1.0,
+  )
+  assert_eq(first.get_width(), 12)
+  assert_eq(first.get_height(), 12)
+  assert_eq(first.get_pixels()[1 * 12 + 1], 255)
+  assert_eq(cache.len(), 1)
+
+  let first_pixels = first.get_pixels()
+  first_pixels[1 * 12 + 1] = 0
+  match cache.get("glyph:box") {
+    Some(cached) => assert_eq(cached.get_pixels()[1 * 12 + 1], 255)
+    None => abort("expected cached glyph mask")
+  }
+
+  let second = cache.get_or_rasterize_glyph(
+    "glyph:box",
+    make_ring_glyph(),
+    12,
+    12,
+    1.0,
+    11.0,
+    1.0,
+  )
+  assert_eq(second.get_pixels()[5 * 12 + 5], 255)
+  assert_eq(cache.len(), 1)
+
+  cache.remove("glyph:box")
+  let rerendered = cache.get_or_rasterize_glyph(
+    "glyph:box",
+    make_ring_glyph(),
+    12,
+    12,
+    1.0,
+    11.0,
+    1.0,
+  )
+  assert_eq(rerendered.get_pixels()[5 * 12 + 5], 0)
   assert_eq(cache.len(), 1)
 }
 

@@ -163,6 +163,7 @@ Application / GUI
 - PixelRect/DirtyRegion 合并、Canvas dirty tracking 与 rect present API，作为局部重绘和图层缓存基础
 - Renderer Core 组合层：`Font -> render_text_mask -> Canvas.draw_mask`
 - Renderer parsed TTF printable ASCII 字符矩阵回归，覆盖 `FontFace -> TextLayout -> Renderer -> Pixmap` 公开路径
+- `GlyphMaskCache` 支持按 key 复用单 glyph rendered `CoverageMask`，作为后续 glyph atlas 与 renderer glyph 复用的基础
 - `TextMaskCache` 支持按 key 复用 rendered `CoverageMask`，并通过像素拷贝隔离缓存内容，作为 GUI label/text run 缓存基础
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
 - Canvas 路径描边（Butt/Round/Square cap，Miter/Round/Bevel join，dash/dotted）
@@ -242,6 +243,7 @@ Application / GUI
 - [ ] 建立真实字体 fixture 矩阵：基础 Latin、带孔洞 glyph、复合 glyph、kerning、CJK fallback
 - [x] 明确 `text` 包中哪些结构是 facade stable，哪些仍是 implementation-adjacent，见 `docs/text-api-boundaries.md`
 - [x] 增加 `FontFaceCache`，让 GUI/resource 代码可按 key 复用 checked `FontFace` 并保留解析错误语义
+- [x] 增加 `GlyphMaskCache`，让 renderer/resource 代码可按 key 复用单 glyph mask，并为后续 glyph atlas 铺底
 
 #### 2.1 OpenType 支持
 - [ ] 解析 CFF/CFF2 表（PostScript 轮廓）
@@ -420,7 +422,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有最小 `FontFaceCache`，text mask cache 已有最小 `TextMaskCache`，image cache 已有最小 `PixmapCache`，后续补 glyph atlas 和资源生命周期策略
+- [ ] 设计资源缓存：font cache 已有最小 `FontFaceCache`，glyph/text mask cache 已有最小 `GlyphMaskCache`/`TextMaskCache`，image cache 已有最小 `PixmapCache`，后续补 glyph atlas packing 和资源生命周期策略
 
 ---
 

@@ -14,6 +14,9 @@ the facade types below.
 - `FontFaceCache` is a small keyed cache for checked parsed faces. GUI and
   resource-loading code can use `get_or_parse` to avoid reparsing the same font
   bytes while preserving checked `FontParseError` results for cache misses.
+- `GlyphMaskCache` is a small keyed cache for individual glyph `CoverageMask`
+  values. Renderer and future atlas code can use `get_or_rasterize_glyph` when
+  a stable font/glyph/scale/subpixel key is already known.
 - `TextMaskCache` is a small keyed cache for rendered `CoverageMask` values.
   GUI and renderer code can use `get_or_render_face` for repeated labels or
   text runs, while `get` and `insert` copy mask pixels to keep cached entries
@@ -56,6 +59,8 @@ construct these types by hand.
   user-provided fonts.
 - Prefer `FontFaceCache::get_or_parse(key, data)` when a GUI or renderer owns a
   stable font-resource key and may request the same face repeatedly.
+- Prefer `GlyphMaskCache::get_or_rasterize_glyph(key, glyph, ...)` when renderer
+  code already owns a stable glyph-resource key and wants per-glyph reuse.
 - Prefer `TextMaskCache::get_or_render_face(key, face, text, ...)` when a GUI
   owns a stable text-resource key and may draw the same mask repeatedly.
 - Prefer `TextLayout::layout(face, text, config)` or `layout_text_face` over

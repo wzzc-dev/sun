@@ -67,6 +67,85 @@ pub fn CoverageMask::copy(self : CoverageMask) -> CoverageMask {
 }
 
 ///|
+/// Small keyed cache for rendered glyph coverage masks.
+pub struct GlyphMaskCache {
+  mut masks : Map[String, CoverageMask]
+} derive(Debug)
+
+///|
+/// Create an empty glyph mask cache.
+pub fn GlyphMaskCache::new() -> GlyphMaskCache {
+  { masks: {} }
+}
+
+///|
+/// Return the number of cached glyph masks.
+pub fn GlyphMaskCache::len(self : GlyphMaskCache) -> Int {
+  self.masks.length()
+}
+
+///|
+/// Return whether the cache currently has no glyph masks.
+pub fn GlyphMaskCache::is_empty(self : GlyphMaskCache) -> Bool {
+  self.len() is 0
+}
+
+///|
+/// Look up a rendered glyph mask by caller-provided key.
+pub fn GlyphMaskCache::get(
+  self : GlyphMaskCache,
+  key : String,
+) -> CoverageMask? {
+  match self.masks.get(key) {
+    Some(mask) => Some(mask.copy())
+    None => None
+  }
+}
+
+///|
+/// Insert or replace a rendered glyph mask under a caller-provided key.
+pub fn GlyphMaskCache::insert(
+  self : GlyphMaskCache,
+  key : String,
+  mask : CoverageMask,
+) -> CoverageMask {
+  let stored = mask.copy()
+  self.masks[key] = stored
+  stored.copy()
+}
+
+///|
+/// Rasterize a glyph on first use and return the cached mask afterwards.
+pub fn GlyphMaskCache::get_or_rasterize_glyph(
+  self : GlyphMaskCache,
+  key : String,
+  glyph : SimpleGlyph,
+  width : Int,
+  height : Int,
+  x : Double,
+  y : Double,
+  scale : Double,
+) -> CoverageMask {
+  match self.get(key) {
+    Some(mask) => mask
+    None =>
+      self.insert(key, render_glyph_mask(glyph, width, height, x, y, scale))
+  }
+}
+
+///|
+/// Remove a cached glyph mask by key.
+pub fn GlyphMaskCache::remove(self : GlyphMaskCache, key : String) -> Unit {
+  self.masks.remove(key)
+}
+
+///|
+/// Drop all cached glyph masks.
+pub fn GlyphMaskCache::clear(self : GlyphMaskCache) -> Unit {
+  self.masks = {}
+}
+
+///|
 /// Small keyed cache for rendered text coverage masks.
 pub struct TextMaskCache {
   mut masks : Map[String, CoverageMask]
@@ -267,6 +346,21 @@ pub fn Rasterizer::rasterize_text_face(
       }
     }
   }
+}
+
+///|
+/// Render one glyph into a grayscale coverage mask.
+pub fn render_glyph_mask(
+  glyph : SimpleGlyph,
+  width : Int,
+  height : Int,
+  x : Double,
+  y : Double,
+  scale : Double,
+) -> CoverageMask {
+  let rasterizer = Rasterizer::new(width, height)
+  rasterizer.rasterize_glyph(glyph, x, y, scale)
+  rasterizer.to_mask()
 }
 
 ///|
