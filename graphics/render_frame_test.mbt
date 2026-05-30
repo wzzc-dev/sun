@@ -153,6 +153,7 @@ test "RenderFrame::submit_dirty_to reports scheduler result" {
       assert_eq(submit_result.get_presented_rect_count(), 1)
       assert_true(submit_result.has_dirty())
       assert_true(submit_result.needs_present())
+      assert_true(submit_result.did_present())
       assert_true(!submit_result.was_clipped_away())
       assert_true(!submit_result.uses_bounds_fallback())
       assert_true(
@@ -171,6 +172,7 @@ test "RenderFrame::submit_dirty_to reports scheduler result" {
       assert_eq(submit_result.get_presented_rect_count(), 0)
       assert_true(!submit_result.has_dirty())
       assert_true(!submit_result.needs_present())
+      assert_true(!submit_result.did_present())
       assert_true(!submit_result.was_clipped_away())
       assert_true(submit_result.get_dirty_bounds() == None)
     }
@@ -194,6 +196,7 @@ test "RenderFrame::submit_dirty_to consumes surface-clipped dirty" {
       assert_eq(submit_result.get_presented_rect_count(), 0)
       assert_true(submit_result.has_dirty())
       assert_true(!submit_result.needs_present())
+      assert_true(!submit_result.did_present())
       assert_true(submit_result.was_clipped_away())
       assert_true(
         submit_result.get_dirty_bounds() ==

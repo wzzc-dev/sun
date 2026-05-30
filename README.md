@@ -88,7 +88,7 @@ wzzc-dev/
 - `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present/dirty-submit plans, scheduler states, and `Canvas` bounded dirty-present helpers
 - `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`
 - `LayerTree` z-order composition with dirty rectangle propagation, layer resize/remove/replace/reorder lifecycle, property-change invalidation, dirty-present planning, and partial present submission
-- `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, dirty queries/marking, dirty-submit planning/results, result-level scheduler queries, and dirty/full present helpers for future event-loop integration
+- `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, dirty queries/marking, dirty-submit planning/results, result-level scheduler and did-present queries, and dirty/full present helpers for future event-loop integration
 
 ### text
 Text processing library (font parsing, shaping, layout).

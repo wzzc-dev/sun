@@ -271,7 +271,7 @@ fn handle_dirty_submit_result(result : @graphics.DirtySubmitResult) -> Unit {
   if result.was_clipped_away() {
     return ()
   }
-  if result.needs_present() {
+  if result.did_present() {
     ignore(result.get_presented_rect_count())
   }
 }

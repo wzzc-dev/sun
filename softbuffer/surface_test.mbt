@@ -183,6 +183,7 @@ test "NativeSurface submits dirty frames with scheduler result" {
       assert_eq(result.get_presented_rect_count(), 1)
       assert_true(result.has_dirty())
       assert_true(result.needs_present())
+      assert_true(result.did_present())
       assert_true(!result.was_clipped_away())
     }
     Err(_) => abort("expected dirty submit result")
@@ -196,6 +197,7 @@ test "NativeSurface submits dirty frames with scheduler result" {
       assert_eq(result.get_presented_rect_count(), 0)
       assert_true(!result.has_dirty())
       assert_true(!result.needs_present())
+      assert_true(!result.did_present())
     }
     Err(_) => abort("expected clean submit result")
   }
@@ -219,6 +221,7 @@ test "NativeSurface dirty submit skips clipped-away presents" {
       assert_eq(result.get_presented_rect_count(), 0)
       assert_true(result.has_dirty())
       assert_true(!result.needs_present())
+      assert_true(!result.did_present())
       assert_true(result.was_clipped_away())
     }
     Err(_) => abort("expected clipped-away submit result")
@@ -251,6 +254,7 @@ test "render frame submit helper constructs NativeSurface internally" {
     Ok(result) => {
       assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
       assert_eq(result.get_presented_rect_count(), 1)
+      assert_true(result.did_present())
     }
     Err(_) => abort("expected constructed dirty submit result")
   }

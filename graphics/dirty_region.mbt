@@ -164,6 +164,11 @@ pub fn DirtySubmitResult::uses_bounds_fallback(
 }
 
 ///|
+pub fn DirtySubmitResult::did_present(self : DirtySubmitResult) -> Bool {
+  self.presented_rect_count > 0
+}
+
+///|
 pub fn DirtySubmitResult::get_presented_rect_count(
   self : DirtySubmitResult,
 ) -> Int {

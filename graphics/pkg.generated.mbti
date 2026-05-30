@@ -150,6 +150,7 @@ pub struct DirtySubmitResult {
   submit_plan : DirtySubmitPlan
   presented_rect_count : Int
 } derive(@debug.Debug)
+pub fn DirtySubmitResult::did_present(Self) -> Bool
 pub fn DirtySubmitResult::get_dirty_bounds(Self) -> PixelRect?
 pub fn DirtySubmitResult::get_presented_rect_count(Self) -> Int
 pub fn DirtySubmitResult::get_state(Self) -> DirtySubmitState
