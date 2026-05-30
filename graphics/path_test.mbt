@@ -47,6 +47,21 @@ test "Path::add_circle creates circle path" {
 }
 
 ///|
+test "Path::add_ellipse creates ellipse path" {
+  let path = Path::new()
+  ignore(path.add_ellipse(10.0, 8.0, 6.0, 3.0))
+  let segments = path.get_segments()
+  // move_to + 4 cubic_to + close = 6 segments
+  inspect(segments.length(), content="6")
+  assert_move_to(segments[0], 16.0, 8.0)
+  assert_cubic_to_end(segments[1], 10.0, 5.0)
+  assert_cubic_to_end(segments[2], 4.0, 8.0)
+  assert_cubic_to_end(segments[3], 10.0, 11.0)
+  assert_cubic_to_end(segments[4], 16.0, 8.0)
+  assert_close(segments[5])
+}
+
+///|
 fn assert_move_to(
   segment : PathSegment,
   expected_x : Double,

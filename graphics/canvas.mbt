@@ -225,6 +225,20 @@ pub fn Canvas::fill_circle(
 }
 
 ///|
+/// Draw a filled ellipse.
+pub fn Canvas::fill_ellipse(
+  self : Canvas,
+  cx : Double,
+  cy : Double,
+  rx : Double,
+  ry : Double,
+  paint : Paint,
+) -> Unit {
+  guard rx > 0.0 && ry > 0.0 else { return }
+  self.fill_path(Path::new().add_ellipse(cx, cy, rx, ry), paint)
+}
+
+///|
 /// Draw a stroked rectangle.
 pub fn Canvas::stroke_rect(
   self : Canvas,
@@ -262,6 +276,20 @@ pub fn Canvas::stroke_circle(
 ) -> Unit {
   guard radius > 0.0 else { return }
   self.stroke_path(Path::new().add_circle(cx, cy, radius), paint)
+}
+
+///|
+/// Draw a stroked ellipse.
+pub fn Canvas::stroke_ellipse(
+  self : Canvas,
+  cx : Double,
+  cy : Double,
+  rx : Double,
+  ry : Double,
+  paint : Paint,
+) -> Unit {
+  guard rx > 0.0 && ry > 0.0 else { return }
+  self.stroke_path(Path::new().add_ellipse(cx, cy, rx, ry), paint)
 }
 
 ///|

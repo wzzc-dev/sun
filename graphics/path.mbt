@@ -169,6 +169,27 @@ pub fn Path::add_circle(
 }
 
 ///|
+/// Add an ellipse approximation using cubic bezier curves
+pub fn Path::add_ellipse(
+  self : Path,
+  cx : Double,
+  cy : Double,
+  rx : Double,
+  ry : Double,
+) -> Path {
+  let k = 0.5522847498 // kappa for circle/ellipse approximation
+  let kx = k * rx
+  let ky = k * ry
+
+  ignore(self.move_to(cx + rx, cy))
+  ignore(self.cubic_to(cx + rx, cy - ky, cx + kx, cy - ry, cx, cy - ry))
+  ignore(self.cubic_to(cx - kx, cy - ry, cx - rx, cy - ky, cx - rx, cy))
+  ignore(self.cubic_to(cx - rx, cy + ky, cx - kx, cy + ry, cx, cy + ry))
+  ignore(self.cubic_to(cx + kx, cy + ry, cx + rx, cy + ky, cx + rx, cy))
+  self.close()
+}
+
+///|
 /// Get the segments of the path
 pub fn Path::get_segments(self : Path) -> Array[PathSegment] {
   self.segments
