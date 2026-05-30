@@ -394,8 +394,9 @@ Application / GUI
 - [x] `RenderFrame::resize_and_clear_layer` 抽出背景 layer resize/clear lifecycle helper，让 GUI resize 代码复用统一 dirty 语义
 - [x] `RenderFrame::resize_and_clear_layers` 支持批量验证并 resize/clear 多个 frame layer cache，让 GUI resize 可用一个调用处理背景、overlay 等多层 lifecycle
 - [x] `RenderFrame::replace_layer`/`replace_layers` 支持 frame 级 layer replacement lifecycle，批量预校验后复用 LayerTree 旧/新 bounds invalidation，减少 GUI 直接操作 LayerTree
+- [x] `RenderFrame::resize_clear_and_replace_layers` 支持 GUI resize/redraw 一次性预校验与应用，统一背景清除和重绘 layer replacement lifecycle
 - [ ] 脏矩形渲染调度与窗口事件循环深度集成
-- [ ] GUI 级 layer lifecycle：更通用的 redraw policy 和 present 调度 API
+- [ ] GUI 级 layer lifecycle：更通用的 redraw policy 编排和 present 调度 API
 - [x] 添加确定性 microbenchmark smoke：覆盖 fill_rect、path fill、stroke、glyph raster/mask composition、pixmap blit 与 present copy telemetry
 - [ ] GPU 加速（可选，WebGPU/Vulkan）
 

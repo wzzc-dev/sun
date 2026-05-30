@@ -378,12 +378,54 @@ pub fn RenderFrame::resize_and_clear_layers(
 ) -> Bool {
   guard width > 0 && height > 0 else { return false }
   guard requests.length() > 0 else { return false }
+  guard self.can_clear_layers(requests) else { return false }
+  ignore(self.resize(width, height))
+  self.clear_resized_layers(width, height, requests)
+}
+
+///|
+/// Resize the frame, clear frame-sized layer caches, and replace redrawn layers.
+/// This validates every requested layer before mutating frame or layer state.
+pub fn RenderFrame::resize_clear_and_replace_layers(
+  self : RenderFrame,
+  width : Int,
+  height : Int,
+  clear_requests : Array[RenderFrameLayerClearRequest],
+  replacement_requests : Array[RenderFrameLayerReplacementRequest],
+) -> Bool {
+  guard width > 0 && height > 0 else { return false }
+  guard clear_requests.length() > 0 || replacement_requests.length() > 0 else {
+    return false
+  }
+  guard self.can_clear_layers(clear_requests) else { return false }
+  guard self.can_replace_layers(replacement_requests) else { return false }
+  ignore(self.resize(width, height))
+  guard self.clear_resized_layers(width, height, clear_requests) else {
+    return false
+  }
+  self.apply_layer_replacements(replacement_requests)
+}
+
+///|
+fn RenderFrame::can_clear_layers(
+  self : RenderFrame,
+  requests : Array[RenderFrameLayerClearRequest],
+) -> Bool {
   for request in requests {
     guard self.layer_tree.get_layer(request.get_layer_index()) is Some(_) else {
       return false
     }
   }
-  ignore(self.resize(width, height))
+  true
+}
+
+///|
+fn RenderFrame::clear_resized_layers(
+  self : RenderFrame,
+  width : Int,
+  height : Int,
+  requests : Array[RenderFrameLayerClearRequest],
+) -> Bool {
   for request in requests {
     let layer_index = request.get_layer_index()
     ignore(self.layer_tree.resize_layer(layer_index, width, height))
@@ -412,11 +454,28 @@ pub fn RenderFrame::replace_layers(
   requests : Array[RenderFrameLayerReplacementRequest],
 ) -> Bool {
   guard requests.length() > 0 else { return false }
+  guard self.can_replace_layers(requests) else { return false }
+  self.apply_layer_replacements(requests)
+}
+
+///|
+fn RenderFrame::can_replace_layers(
+  self : RenderFrame,
+  requests : Array[RenderFrameLayerReplacementRequest],
+) -> Bool {
   for request in requests {
     guard self.layer_tree.get_layer(request.get_layer_index()) is Some(_) else {
       return false
     }
   }
+  true
+}
+
+///|
+fn RenderFrame::apply_layer_replacements(
+  self : RenderFrame,
+  requests : Array[RenderFrameLayerReplacementRequest],
+) -> Bool {
   for request in requests {
     ignore(
       self.layer_tree.replace_layer(

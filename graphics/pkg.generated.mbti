@@ -553,6 +553,7 @@ pub fn RenderFrame::replace_layers(Self, Array[RenderFrameLayerReplacementReques
 pub fn RenderFrame::resize(Self, Int, Int) -> Self
 pub fn RenderFrame::resize_and_clear_layer(Self, Int, Int, Int, Color) -> Bool
 pub fn RenderFrame::resize_and_clear_layers(Self, Int, Int, Array[RenderFrameLayerClearRequest]) -> Bool
+pub fn RenderFrame::resize_clear_and_replace_layers(Self, Int, Int, Array[RenderFrameLayerClearRequest], Array[RenderFrameLayerReplacementRequest]) -> Bool
 pub fn RenderFrame::set_dirty_rect_limit(Self, Int) -> Self
 pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(Self, S) -> RenderFrameSubmitPlan
 pub fn[S : Surface] RenderFrame::submit_by_strategy_to(Self, S) -> Result[RenderFrameSubmitResult, PresentError]

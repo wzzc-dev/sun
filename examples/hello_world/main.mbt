@@ -229,15 +229,17 @@ fn update_hello_world_frame(
 ) -> Bool {
   guard width > 0 && height > 0 else { return false }
 
-  guard frame.resize_and_clear_layers(width, height, [
-    @graphics.RenderFrameLayerClearRequest::new(0, @graphics.Color::white()),
-  ]) else {
-    return false
-  }
-  match frame.replace_layer(1, build_text_layer(width, height)) {
-    Some(_) => true
-    None => false
-  }
+  frame.resize_clear_and_replace_layers(
+    width,
+    height,
+    [@graphics.RenderFrameLayerClearRequest::new(0, @graphics.Color::white())],
+    [
+      @graphics.RenderFrameLayerReplacementRequest::new(
+        1,
+        build_text_layer(width, height),
+      ),
+    ],
+  )
 }
 
 ///|

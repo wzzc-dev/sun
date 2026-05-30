@@ -838,6 +838,114 @@ test "RenderFrame::replace_layers validates all layers before mutation" {
 }
 
 ///|
+test "RenderFrame::resize_clear_and_replace_layers applies GUI redraw lifecycle" {
+  let frame = RenderFrame::new(2, 1)
+  let background = Layer::new(2, 1)
+  background.clear(Color::white())
+  let text = Layer::new(1, 1).set_position(1, 0)
+  text.get_canvas().draw_pixel(0, 0, Color::red())
+  assert_eq(frame.get_layer_tree().add_layer(background), 0)
+  assert_eq(frame.get_layer_tree().add_layer(text), 1)
+  assert_true(frame.present_dirty_to(MemorySurface::new(2, 1)) == Ok(1))
+  assert_true(!frame.has_dirty())
+
+  let new_text = Layer::new(1, 1).set_position(2, 1)
+  new_text.get_canvas().draw_pixel(0, 0, Color::green())
+  assert_true(
+    frame.resize_clear_and_replace_layers(
+      3,
+      2,
+      [RenderFrameLayerClearRequest::new(0, Color::blue())],
+      [RenderFrameLayerReplacementRequest::new(1, new_text)],
+    ),
+  )
+  assert_eq(frame.get_width(), 3)
+  assert_eq(frame.get_height(), 2)
+  match frame.get_layer_tree().get_layer(0) {
+    Some(layer) => {
+      assert_eq(layer.get_width(), 3)
+      assert_eq(layer.get_height(), 2)
+      assert_eq(layer.get_pixmap().get_pixel(0, 0), Color::blue())
+      assert_eq(layer.get_pixmap().get_pixel(2, 1), Color::blue())
+    }
+    None => abort("expected resized background layer")
+  }
+  match frame.get_layer_tree().get_layer(1) {
+    Some(layer) => {
+      assert_eq(layer.get_x(), 2)
+      assert_eq(layer.get_y(), 1)
+      assert_eq(layer.get_pixmap().get_pixel(0, 0), Color::green())
+    }
+    None => abort("expected replacement layer")
+  }
+  assert_true(
+    frame.dirty_bounds() == Some(PixelRect::new(x=0, y=0, width=3, height=2)),
+  )
+
+  let surface = MemorySurface::new(3, 2)
+  assert_true(frame.present_dirty_to(surface) == Ok(1))
+  assert_eq(surface.get_pixel(0, 0), Color::blue())
+  assert_eq(surface.get_pixel(1, 0), Color::blue())
+  assert_eq(surface.get_pixel(2, 1), Color::green())
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "RenderFrame::resize_clear_and_replace_layers validates before mutation" {
+  let frame = RenderFrame::new(2, 1)
+  let background = Layer::new(2, 1)
+  background.clear(Color::white())
+  let text = Layer::new(1, 1).set_position(1, 0)
+  text.get_canvas().draw_pixel(0, 0, Color::red())
+  assert_eq(frame.get_layer_tree().add_layer(background), 0)
+  assert_eq(frame.get_layer_tree().add_layer(text), 1)
+  assert_true(frame.present_dirty_to(MemorySurface::new(2, 1)) == Ok(1))
+  assert_true(!frame.has_dirty())
+
+  let invalid_text = Layer::new(1, 1)
+  invalid_text.get_canvas().draw_pixel(0, 0, Color::green())
+  assert_true(
+    !frame.resize_clear_and_replace_layers(
+      3,
+      2,
+      [RenderFrameLayerClearRequest::new(0, Color::blue())],
+      [RenderFrameLayerReplacementRequest::new(3, invalid_text)],
+    ),
+  )
+  assert_eq(frame.get_width(), 2)
+  assert_eq(frame.get_height(), 1)
+  match frame.get_layer_tree().get_layer(0) {
+    Some(layer) => {
+      assert_eq(layer.get_width(), 2)
+      assert_eq(layer.get_height(), 1)
+      assert_eq(layer.get_pixmap().get_pixel(0, 0), Color::white())
+      assert_true(layer.dirty_bounds() == None)
+    }
+    None => abort("expected original background layer")
+  }
+  match frame.get_layer_tree().get_layer(1) {
+    Some(layer) => {
+      assert_eq(layer.get_x(), 1)
+      assert_eq(layer.get_pixmap().get_pixel(0, 0), Color::red())
+      assert_true(layer.dirty_bounds() == None)
+    }
+    None => abort("expected original text layer")
+  }
+  assert_true(!frame.has_dirty())
+
+  assert_true(!frame.resize_clear_and_replace_layers(2, 1, [], []))
+  assert_true(
+    !frame.resize_clear_and_replace_layers(
+      0,
+      1,
+      [RenderFrameLayerClearRequest::new(0, Color::blue())],
+      [],
+    ),
+  )
+  assert_true(!frame.has_dirty())
+}
+
+///|
 test "RenderFrame::resize_and_clear_layer rejects invalid lifecycle requests" {
   let frame = RenderFrame::new(2, 1)
   let background = Layer::new(2, 1)
