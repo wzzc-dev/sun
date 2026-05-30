@@ -412,16 +412,22 @@ pub fn Pixmap::set_pixel(Self, Int, Int, Color) -> Unit
 
 pub struct PixmapCache {
   mut pixmaps : Map[String, Pixmap]
+  mut access_order : Array[String]
+  capacity : Int
+  is_bounded : Bool
 } derive(@debug.Debug)
+pub fn PixmapCache::capacity(Self) -> Int
 pub fn PixmapCache::clear(Self) -> Unit
 pub fn PixmapCache::get(Self, String) -> Pixmap?
 pub fn PixmapCache::get_or_insert(Self, String, Pixmap) -> Pixmap
 pub fn PixmapCache::get_or_insert_result(Self, String, Pixmap) -> PixmapCacheInsertResult
 pub fn PixmapCache::insert(Self, String, Pixmap) -> Pixmap
+pub fn PixmapCache::is_capacity_bounded(Self) -> Bool
 pub fn PixmapCache::is_empty(Self) -> Bool
 pub fn PixmapCache::len(Self) -> Int
 pub fn PixmapCache::new() -> Self
 pub fn PixmapCache::remove(Self, String) -> Unit
+pub fn PixmapCache::with_capacity(Int) -> Self
 
 pub struct PixmapCacheInsertResult {
   pixmap : Pixmap

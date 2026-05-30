@@ -79,6 +79,9 @@ pub fn Pixmap::copy(self : Pixmap) -> Pixmap {
 /// Small keyed cache for reusable pixmap resources.
 pub struct PixmapCache {
   mut pixmaps : Map[String, Pixmap]
+  mut access_order : Array[String]
+  capacity : Int
+  is_bounded : Bool
 } derive(Debug)
 
 ///|
@@ -91,7 +94,13 @@ pub struct PixmapCacheInsertResult {
 ///|
 /// Create an empty pixmap cache.
 pub fn PixmapCache::new() -> PixmapCache {
-  { pixmaps: {} }
+  { pixmaps: {}, access_order: [], capacity: 0, is_bounded: false }
+}
+
+///|
+/// Create an empty pixmap cache with least-recently-used eviction.
+pub fn PixmapCache::with_capacity(capacity : Int) -> PixmapCache {
+  { pixmaps: {}, access_order: [], capacity: capacity.max(1), is_bounded: true }
 }
 
 ///|
@@ -131,10 +140,25 @@ pub fn PixmapCache::is_empty(self : PixmapCache) -> Bool {
 }
 
 ///|
+/// Return the maximum number of cached pixmaps, or 0 for an unbounded cache.
+pub fn PixmapCache::capacity(self : PixmapCache) -> Int {
+  self.capacity
+}
+
+///|
+/// Return whether the cache has a configured entry limit.
+pub fn PixmapCache::is_capacity_bounded(self : PixmapCache) -> Bool {
+  self.is_bounded
+}
+
+///|
 /// Look up a pixmap by caller-provided key.
 pub fn PixmapCache::get(self : PixmapCache, key : String) -> Pixmap? {
   match self.pixmaps.get(key) {
-    Some(pixmap) => Some(pixmap.copy())
+    Some(pixmap) => {
+      self.touch_key(key)
+      Some(pixmap.copy())
+    }
     None => None
   }
 }
@@ -148,6 +172,8 @@ pub fn PixmapCache::insert(
 ) -> Pixmap {
   let stored = pixmap.copy()
   self.pixmaps[key] = stored
+  self.touch_key(key)
+  self.evict_over_capacity()
   stored.copy()
 }
 
@@ -178,12 +204,41 @@ pub fn PixmapCache::get_or_insert_result(
 /// Remove a cached pixmap by key.
 pub fn PixmapCache::remove(self : PixmapCache, key : String) -> Unit {
   self.pixmaps.remove(key)
+  self.remove_access_key(key)
 }
 
 ///|
 /// Drop all cached pixmaps.
 pub fn PixmapCache::clear(self : PixmapCache) -> Unit {
   self.pixmaps = {}
+  self.access_order = []
+}
+
+///|
+fn PixmapCache::touch_key(self : PixmapCache, key : String) -> Unit {
+  self.remove_access_key(key)
+  self.access_order.push(key)
+}
+
+///|
+fn PixmapCache::remove_access_key(self : PixmapCache, key : String) -> Unit {
+  let mut index = 0
+  while index < self.access_order.length() {
+    if self.access_order[index] == key {
+      ignore(self.access_order.remove(index))
+    } else {
+      index += 1
+    }
+  }
+}
+
+///|
+fn PixmapCache::evict_over_capacity(self : PixmapCache) -> Unit {
+  guard self.is_bounded && self.capacity > 0 else { return }
+  while self.pixmaps.length() > self.capacity && self.access_order.length() > 0 {
+    let key = self.access_order.remove(0)
+    self.pixmaps.remove(key)
+  }
 }
 
 ///|

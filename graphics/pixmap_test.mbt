@@ -32,6 +32,8 @@ test "Pixmap::copy duplicates raw pixel storage" {
 test "PixmapCache stores copies and manages entries" {
   let cache = PixmapCache::new()
   assert_true(cache.is_empty())
+  assert_true(!cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 0)
   let pixmap = Pixmap::new(2, 1)
   pixmap.set_pixel(0, 0, Color::red())
   let inserted = cache.insert("icon", pixmap)
@@ -120,6 +122,51 @@ test "PixmapCache::get_or_insert_result reports cache hits" {
   assert_true(second.did_hit_cache())
   assert_eq(second.get_pixmap().get_pixel(0, 0), Color::red())
   assert_eq(cache.len(), 1)
+}
+
+///|
+test "PixmapCache::with_capacity evicts least recently used pixmaps" {
+  let cache = PixmapCache::with_capacity(2)
+  assert_true(cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 2)
+  let red = Pixmap::new(1, 1)
+  red.set_pixel(0, 0, Color::red())
+  let green = Pixmap::new(1, 1)
+  green.set_pixel(0, 0, Color::green())
+  let blue = Pixmap::new(1, 1)
+  blue.set_pixel(0, 0, Color::blue())
+  ignore(cache.insert("red", red))
+  ignore(cache.insert("green", green))
+  match cache.get("red") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), Color::red())
+    None => abort("expected red pixmap")
+  }
+  ignore(cache.insert("blue", blue))
+  assert_eq(cache.len(), 2)
+  assert_true(cache.get("green") is None)
+  assert_true(cache.get("red") is Some(_))
+  assert_true(cache.get("blue") is Some(_))
+}
+
+///|
+test "PixmapCache::with_capacity clamps invalid capacity" {
+  let cache = PixmapCache::with_capacity(0)
+  assert_true(cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 1)
+  let red = Pixmap::new(1, 1)
+  red.set_pixel(0, 0, Color::red())
+  let blue = Pixmap::new(1, 1)
+  blue.set_pixel(0, 0, Color::blue())
+  let inserted = cache.get_or_insert_result("red", red)
+  assert_true(inserted.did_insert())
+  assert_eq(cache.len(), 1)
+  ignore(cache.insert("blue", blue))
+  assert_eq(cache.len(), 1)
+  assert_true(cache.get("red") is None)
+  match cache.get("blue") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), Color::blue())
+    None => abort("expected blue pixmap")
+  }
 }
 
 ///|
