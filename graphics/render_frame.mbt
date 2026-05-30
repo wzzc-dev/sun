@@ -32,6 +32,13 @@ pub struct RenderFrameLayerClearRequest {
 } derive(Eq, Debug)
 
 ///|
+/// Request to replace one frame-owned layer cache.
+pub struct RenderFrameLayerReplacementRequest {
+  layer_index : Int
+  layer : Layer
+} derive(Debug)
+
+///|
 /// Create a layer clear request for a RenderFrame resize lifecycle operation.
 pub fn RenderFrameLayerClearRequest::new(
   layer_index : Int,
@@ -54,6 +61,31 @@ pub fn RenderFrameLayerClearRequest::get_color(
   self : RenderFrameLayerClearRequest,
 ) -> Color {
   self.color
+}
+
+///|
+/// Create a layer replacement request for a RenderFrame lifecycle operation.
+pub fn RenderFrameLayerReplacementRequest::new(
+  layer_index : Int,
+  layer : Layer,
+) -> RenderFrameLayerReplacementRequest {
+  { layer_index, layer }
+}
+
+///|
+/// Return the target layer index.
+pub fn RenderFrameLayerReplacementRequest::get_layer_index(
+  self : RenderFrameLayerReplacementRequest,
+) -> Int {
+  self.layer_index
+}
+
+///|
+/// Return the replacement layer.
+pub fn RenderFrameLayerReplacementRequest::get_layer(
+  self : RenderFrameLayerReplacementRequest,
+) -> Layer {
+  self.layer
 }
 
 ///|
@@ -359,6 +391,39 @@ pub fn RenderFrame::resize_and_clear_layers(
       Some(layer) => layer.clear(request.get_color())
       None => return false
     }
+  }
+  true
+}
+
+///|
+/// Replace one frame-owned layer and invalidate the old and new layer bounds.
+pub fn RenderFrame::replace_layer(
+  self : RenderFrame,
+  layer_index : Int,
+  layer : Layer,
+) -> Layer? {
+  self.layer_tree.replace_layer(layer_index, layer)
+}
+
+///|
+/// Replace multiple frame-owned layers after validating every target index.
+pub fn RenderFrame::replace_layers(
+  self : RenderFrame,
+  requests : Array[RenderFrameLayerReplacementRequest],
+) -> Bool {
+  guard requests.length() > 0 else { return false }
+  for request in requests {
+    guard self.layer_tree.get_layer(request.get_layer_index()) is Some(_) else {
+      return false
+    }
+  }
+  for request in requests {
+    ignore(
+      self.layer_tree.replace_layer(
+        request.get_layer_index(),
+        request.get_layer(),
+      ),
+    )
   }
   true
 }

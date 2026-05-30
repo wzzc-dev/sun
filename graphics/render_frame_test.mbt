@@ -751,6 +751,93 @@ test "RenderFrame::resize_and_clear_layers validates all layers before mutation"
 }
 
 ///|
+test "RenderFrame::replace_layer invalidates old and new layer bounds" {
+  let frame = RenderFrame::new(4, 1)
+  let background = Layer::new(4, 1)
+  background.clear(Color::white())
+  let old_top = Layer::new(1, 1).set_position(1, 0)
+  old_top.get_canvas().draw_pixel(0, 0, Color::red())
+  let tree = frame.get_layer_tree()
+  assert_eq(tree.add_layer(background), 0)
+  assert_eq(tree.add_layer(old_top), 1)
+  let surface = MemorySurface::new(4, 1)
+  assert_true(frame.present_dirty_to(surface) == Ok(1))
+  assert_true(!frame.has_dirty())
+
+  let new_top = Layer::new(1, 1).set_position(2, 0)
+  new_top.get_canvas().draw_pixel(0, 0, Color::green())
+  match frame.replace_layer(1, new_top) {
+    Some(replaced) => {
+      assert_eq(replaced.get_x(), 1)
+      assert_eq(replaced.get_pixmap().get_pixel(0, 0), Color::red())
+    }
+    None => abort("expected replaced frame layer")
+  }
+  assert_true(
+    frame.dirty_bounds() == Some(PixelRect::new(x=1, y=0, width=2, height=1)),
+  )
+
+  assert_true(frame.present_dirty_to(surface) == Ok(1))
+  assert_eq(surface.get_pixel(0, 0), Color::white())
+  assert_eq(surface.get_pixel(1, 0), Color::white())
+  assert_eq(surface.get_pixel(2, 0), Color::green())
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "RenderFrame::replace_layers validates all layers before mutation" {
+  let frame = RenderFrame::new(3, 1)
+  let background = Layer::new(3, 1)
+  background.clear(Color::white())
+  let left = Layer::new(1, 1)
+  left.get_canvas().draw_pixel(0, 0, Color::red())
+  let middle = Layer::new(1, 1).set_position(1, 0)
+  middle.get_canvas().draw_pixel(0, 0, Color::green())
+  assert_eq(frame.get_layer_tree().add_layer(background), 0)
+  assert_eq(frame.get_layer_tree().add_layer(left), 1)
+  assert_eq(frame.get_layer_tree().add_layer(middle), 2)
+  assert_true(frame.present_dirty_to(MemorySurface::new(3, 1)) == Ok(1))
+  assert_true(!frame.has_dirty())
+
+  let new_left = Layer::new(1, 1)
+  new_left.get_canvas().draw_pixel(0, 0, Color::blue())
+  let invalid_layer = Layer::new(1, 1).set_position(2, 0)
+  invalid_layer.get_canvas().draw_pixel(0, 0, Color::black())
+  assert_true(
+    !frame.replace_layers([
+      RenderFrameLayerReplacementRequest::new(1, new_left),
+      RenderFrameLayerReplacementRequest::new(4, invalid_layer),
+    ]),
+  )
+  match frame.get_layer_tree().get_layer(1) {
+    Some(layer) => assert_eq(layer.get_pixmap().get_pixel(0, 0), Color::red())
+    None => abort("expected original left layer")
+  }
+  assert_true(!frame.has_dirty())
+  assert_true(!frame.replace_layers([]))
+
+  let replacement_left = Layer::new(1, 1)
+  replacement_left.get_canvas().draw_pixel(0, 0, Color::blue())
+  let replacement_middle = Layer::new(1, 1).set_position(2, 0)
+  replacement_middle.get_canvas().draw_pixel(0, 0, Color::black())
+  assert_true(
+    frame.replace_layers([
+      RenderFrameLayerReplacementRequest::new(1, replacement_left),
+      RenderFrameLayerReplacementRequest::new(2, replacement_middle),
+    ]),
+  )
+  assert_true(
+    frame.dirty_bounds() == Some(PixelRect::new(x=0, y=0, width=3, height=1)),
+  )
+  let surface = MemorySurface::new(3, 1)
+  assert_true(frame.present_dirty_to(surface) == Ok(1))
+  assert_eq(surface.get_pixel(0, 0), Color::blue())
+  assert_eq(surface.get_pixel(1, 0), Color::white())
+  assert_eq(surface.get_pixel(2, 0), Color::black())
+  assert_true(!frame.has_dirty())
+}
+
+///|
 test "RenderFrame::resize_and_clear_layer rejects invalid lifecycle requests" {
   let frame = RenderFrame::new(2, 1)
   let background = Layer::new(2, 1)

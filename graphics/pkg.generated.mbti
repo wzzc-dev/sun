@@ -548,6 +548,8 @@ pub fn RenderFrame::new(Int, Int) -> Self
 pub fn[S : Surface] RenderFrame::present_all_to(Self, S) -> Result[Int, PresentError]
 pub fn[S : Surface] RenderFrame::present_dirty_to(Self, S) -> Result[Int, PresentError]
 pub fn[S : Surface] RenderFrame::present_strategy(Self, S) -> DirtyPresentStrategy
+pub fn RenderFrame::replace_layer(Self, Int, Layer) -> Layer?
+pub fn RenderFrame::replace_layers(Self, Array[RenderFrameLayerReplacementRequest]) -> Bool
 pub fn RenderFrame::resize(Self, Int, Int) -> Self
 pub fn RenderFrame::resize_and_clear_layer(Self, Int, Int, Int, Color) -> Bool
 pub fn RenderFrame::resize_and_clear_layers(Self, Int, Int, Array[RenderFrameLayerClearRequest]) -> Bool
@@ -563,6 +565,14 @@ pub struct RenderFrameLayerClearRequest {
 pub fn RenderFrameLayerClearRequest::get_color(Self) -> Color
 pub fn RenderFrameLayerClearRequest::get_layer_index(Self) -> Int
 pub fn RenderFrameLayerClearRequest::new(Int, Color) -> Self
+
+pub struct RenderFrameLayerReplacementRequest {
+  layer_index : Int
+  layer : Layer
+} derive(@debug.Debug)
+pub fn RenderFrameLayerReplacementRequest::get_layer(Self) -> Layer
+pub fn RenderFrameLayerReplacementRequest::get_layer_index(Self) -> Int
+pub fn RenderFrameLayerReplacementRequest::new(Int, Layer) -> Self
 
 pub struct RenderFrameSubmitPlan {
   dirty_submit_plan : DirtySubmitPlan
