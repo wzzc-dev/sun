@@ -152,6 +152,18 @@ test "NativeSurface exposes RenderFrame dirty submit plans" {
     constructed_plan.get_present_plan().get_rects()[0] ==
     submit_plan.get_present_plan().get_rects()[0],
   )
+  assert_true(
+    surface.dirty_frame_present_strategy(frame) ==
+    @graphics.DirtyPresentStrategy::Partial,
+  )
+  assert_true(
+    NativeSurface::new(42, 7, 1).dirty_frame_present_strategy(frame) ==
+    @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_true(
+    dirty_render_frame_present_strategy(42, frame) ==
+    @graphics.DirtyPresentStrategy::Partial,
+  )
 }
 
 ///|
@@ -180,6 +192,10 @@ test "NativeSurface dirty submit plan preserves clipped-away dirty without prese
   assert_true(
     submit_plan.get_present_plan().get_mode() ==
     @graphics.DirtyPresentPlanMode::Empty,
+  )
+  assert_true(
+    surface.dirty_frame_present_strategy(frame) ==
+    @graphics.DirtyPresentStrategy::Skip,
   )
   assert_eq(count.val, 0)
   assert_true(frame.has_dirty())
@@ -216,6 +232,10 @@ test "NativeSurface submits dirty frames with scheduler result" {
   }
   assert_eq(count.val, 1)
   assert_true(!frame.has_dirty())
+  assert_true(
+    surface.dirty_frame_present_strategy(frame) ==
+    @graphics.DirtyPresentStrategy::Skip,
+  )
 
   match surface.submit_frame_dirty(frame) {
     Ok(result) => {

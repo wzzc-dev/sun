@@ -248,18 +248,34 @@ fn present_frame(
   window : @windows.Window,
   frame : @graphics.RenderFrame,
 ) -> Unit {
-  present_frame_dirty(window, frame)
+  let surface = frame_native_surface(window, frame)
+  match surface.dirty_frame_present_strategy(frame) {
+    @graphics.DirtyPresentStrategy::Skip =>
+      if frame.has_dirty() {
+        present_frame_dirty(surface, frame)
+      }
+    @graphics.DirtyPresentStrategy::Partial =>
+      present_frame_dirty(surface, frame)
+    @graphics.DirtyPresentStrategy::Full => present_frame_all(surface, frame)
+  }
+}
+
+///|
+fn frame_native_surface(
+  window : @windows.Window,
+  frame : @graphics.RenderFrame,
+) -> @softbuffer.NativeSurface {
+  @softbuffer.NativeSurface::from_frame(window.window_handle(), frame).with_pre_present_hook(fn() {
+      window.pre_present_notify()
+    },
+  )
 }
 
 ///|
 fn present_frame_dirty(
-  window : @windows.Window,
+  surface : @softbuffer.NativeSurface,
   frame : @graphics.RenderFrame,
 ) -> Unit {
-  let surface = @softbuffer.NativeSurface::from_frame(
-    window.window_handle(),
-    frame,
-  ).with_pre_present_hook(fn() { window.pre_present_notify() })
   match surface.submit_frame_dirty(frame) {
     Ok(result) => handle_dirty_submit_result(result)
     Err(_) => println("Present failed")
@@ -278,13 +294,9 @@ fn handle_dirty_submit_result(result : @graphics.DirtySubmitResult) -> Unit {
 
 ///|
 fn present_frame_all(
-  window : @windows.Window,
+  surface : @softbuffer.NativeSurface,
   frame : @graphics.RenderFrame,
 ) -> Unit {
-  let surface = @softbuffer.NativeSurface::from_frame(
-    window.window_handle(),
-    frame,
-  ).with_pre_present_hook(fn() { window.pre_present_notify() })
   match surface.present_frame_all(frame) {
     Ok(_) => ()
     Err(_) => println("Present failed")
@@ -328,7 +340,7 @@ fn present_cached_frame(
   window : @windows.Window,
   frame : @graphics.RenderFrame,
 ) -> Unit {
-  present_frame_all(window, frame)
+  present_frame_all(frame_native_surface(window, frame), frame)
 }
 
 ///|

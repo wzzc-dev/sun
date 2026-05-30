@@ -124,7 +124,7 @@ Pixel display library.
 - Window creation (Win32 API)
 - Pixel buffer presentation through `graphics.Surface`
 - `NativeSurface` adapter for external native window handles
-- `RenderFrame -> NativeSurface` dirty/full present helpers plus dirty-submit plan/result queries for window integration
+- `RenderFrame -> NativeSurface` dirty/full present helpers plus dirty-submit plan/result/strategy queries for window integration
 - Optional `NativeSurface` pre-present hook for window lifecycle notifications before validated native presents
 - Native full-frame and rectangle present entry points for dirty redraw plumbing
 - Event loop
@@ -134,7 +134,7 @@ Small build-checked programs that exercise the public packages together.
 
 **Features:**
 - `headless_render` renders a GUI-style frame through `RenderFrame`, `LayerTree`, and `MemorySurface`, then self-checks state-aware dirty submit output without creating a window
-- `hello_world` uses `graphics.RenderFrame`, `LayerTree`, and `softbuffer` state-aware frame-submit helpers as a minimal window submit path with resize/redraw lifecycle reuse
+- `hello_world` uses `graphics.RenderFrame`, `LayerTree`, and `softbuffer` strategy-aware frame-submit helpers as a minimal window submit path with resize/redraw lifecycle reuse
 - `font_demo` renders real TTF text through the `renderer` package
 - `triangle_window` keeps a simple native pixel-output smoke test
 

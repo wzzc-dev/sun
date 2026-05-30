@@ -314,6 +314,16 @@ pub fn NativeSurface::dirty_frame_submit_plan(
 }
 
 ///|
+pub fn NativeSurface::dirty_frame_present_strategy(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+) -> @graphics.DirtyPresentStrategy {
+  self
+  .dirty_frame_submit_plan(frame)
+  .get_present_strategy(self.get_width(), self.get_height())
+}
+
+///|
 pub fn NativeSurface::present_frame_all(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
@@ -343,6 +353,14 @@ pub fn dirty_render_frame_submit_plan(
   frame : @graphics.RenderFrame,
 ) -> @graphics.DirtySubmitPlan {
   NativeSurface::from_frame(handle, frame).dirty_frame_submit_plan(frame)
+}
+
+///|
+pub fn dirty_render_frame_present_strategy(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+) -> @graphics.DirtyPresentStrategy {
+  NativeSurface::from_frame(handle, frame).dirty_frame_present_strategy(frame)
 }
 
 ///|

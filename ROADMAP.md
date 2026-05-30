@@ -126,10 +126,12 @@ Application / GUI
 - `DirtyPresentStrategy` 将 Skip/Partial/Full present 选择显式化，让事件循环能直接消费统一调度决策
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty-submit plan 查询，让窗口后端调度能复用 graphics 的统一 dirty snapshot
+- softbuffer 的 `NativeSurface` 暴露 `RenderFrame` Skip/Partial/Full 策略查询，让窗口后端可直接消费统一 present 决策
 - softbuffer 的 `NativeSurface` 暴露 state-aware dirty submit helper，返回 Clean/Present/DirtyClippedAway 与实际提交数量
 - `NativeSurface` 支持可选 pre-present hook，让窗口生命周期通知进入统一 present helper，而不是散落在示例事件处理器里
 - `headless_render` 示例通过 `RenderFrame::submit_dirty_to` 自校验 dirty submit 状态，让 CI 覆盖可执行的调度结果路径
 - `hello_world` 示例走 `RenderFrame + LayerTree + softbuffer state-aware frame-submit helpers`，并在 resize/redraw 中复用 frame 与 layer lifecycle，作为事件循环 dirty submit 的最小真实用例
+- `hello_world` 示例按 `DirtyPresentStrategy` 分派 Skip/Partial/Full present，把统一 dirty present 策略接入窗口提交路径
 - TTF 字体解析（head, hhea, hmtx, cmap, glyf, kern 表）
 - 基础文本布局（自动换行、显式换行、空行、行高计算）
 - 字形光栅化（直线、二次贝塞尔曲线）与 `CoverageMask` 输出
@@ -319,6 +321,7 @@ Application / GUI
 - [x] Dirty present/submit/result 暴露计划提交像素数与紧凑 RGBA 字节数，让事件循环能按成本预算做调度
 - [x] Dirty present/submit/result 暴露 partial present 是否节省整帧像素的判定，减少事件循环重复比较逻辑
 - [x] `DirtyPresentStrategy` 暴露 Skip/Partial/Full present 决策，给事件循环一个可测试的统一策略枚举
+- [x] softbuffer 暴露 `RenderFrame` present strategy 查询，让窗口后端无需拆 dirty-submit plan 就能调度 present
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation
 - [x] `Layer::resize` 保留重叠像素并标记新 bounds dirty
@@ -332,6 +335,7 @@ Application / GUI
 - [x] `hello_world` 示例接入 `RenderFrame`，覆盖窗口 resize/redraw 上的 frame submit 路径
 - [x] `hello_world` resize 复用 `RenderFrame + LayerTree`，通过背景 resize/clear 与文本层 replace/recenter 覆盖 GUI 级 layer lifecycle 基线
 - [x] `headless_render` 和 `hello_world` 示例消费 state-aware dirty submit 结果，让无窗口 CI 与窗口 demo 都走统一 submit 语义
+- [x] `hello_world` 示例按 Skip/Partial/Full 策略选择跳过、dirty submit 或 full present，推进事件循环 dirty present 调度集成
 - [ ] 脏矩形渲染调度与窗口事件循环深度集成
 - [ ] GUI 级 layer lifecycle：更通用的背景清除策略和 present 调度 API
 - [ ] 添加微基准：fill_rect、path fill、stroke、glyph raster、pixmap blit、present copy
