@@ -164,7 +164,7 @@ Application / GUI
 - Renderer Core 组合层：`Font -> render_text_mask -> Canvas.draw_mask`
 - Renderer parsed TTF printable ASCII 字符矩阵回归，覆盖 `FontFace -> TextLayout -> Renderer -> Pixmap` 公开路径
 - `GlyphMaskCache` 支持按 key 复用单 glyph rendered `CoverageMask`，作为后续 glyph atlas 与 renderer glyph 复用的基础
-- `GlyphMaskAtlas` 支持把单 glyph `CoverageMask` 按行打包到 text-local atlas，并复制 mask 像素隔离调用方 mutation
+- `GlyphMaskAtlas` 支持把单 glyph `CoverageMask` 按行打包到 text-local atlas，并复制 mask 像素隔离调用方 mutation，同时暴露 capacity、used/free pixels、occupancy ratio 和 can-fit 查询供资源生命周期决策使用
 - `TextMaskCache` 支持按 key 复用 rendered `CoverageMask`，并通过像素拷贝隔离缓存内容，作为 GUI label/text run 缓存基础
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
 - Canvas 路径描边（Butt/Round/Square cap，Miter/Round/Bevel join，dash/dotted）
@@ -424,7 +424,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有最小 `FontFaceCache`，glyph/text mask cache 已有最小 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas`，image cache 已有最小 `PixmapCache`，后续补资源生命周期、eviction 和 renderer 集成策略
+- [ ] 设计资源缓存：font cache 已有最小 `FontFaceCache`，glyph/text mask cache 已有最小 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry，image cache 已有最小 `PixmapCache`，后续补 eviction 和 renderer 集成策略
 
 ---
 

@@ -101,6 +101,10 @@ test "GlyphMaskAtlas packs masks into rows" {
   let atlas = GlyphMaskAtlas::new(4, 3)
   assert_eq(atlas.get_width(), 4)
   assert_eq(atlas.get_height(), 3)
+  assert_eq(atlas.get_capacity(), 12)
+  assert_eq(atlas.get_used_pixel_count(), 0)
+  assert_eq(atlas.get_free_pixel_count(), 12)
+  assert_eq(atlas.get_occupancy_ratio(), 0.0)
   assert_true(atlas.is_empty())
 
   let a_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
@@ -118,6 +122,8 @@ test "GlyphMaskAtlas packs masks into rows" {
     None => abort("expected first atlas entry")
   }
   assert_eq(atlas.len(), 1)
+  assert_eq(atlas.get_used_pixel_count(), 4)
+  assert_eq(atlas.get_free_pixel_count(), 8)
 
   let b_pixels : FixedArray[Byte] = FixedArray::make(2, 0)
   b_pixels[0] = 50
@@ -142,6 +148,8 @@ test "GlyphMaskAtlas packs masks into rows" {
     }
     None => abort("expected wrapped atlas entry")
   }
+  assert_eq(atlas.get_used_pixel_count(), 8)
+  assert_eq(atlas.get_free_pixel_count(), 4)
 
   a_pixels[0] = 99
   let packed = atlas.to_mask()
@@ -153,6 +161,55 @@ test "GlyphMaskAtlas packs masks into rows" {
   assert_eq(packed.get_pixels()[3], 60)
   assert_eq(packed.get_pixels()[2 * 4], 70)
   assert_eq(packed.get_pixels()[2 * 4 + 1], 80)
+}
+
+///|
+test "GlyphMaskAtlas reports lifecycle metrics and fit" {
+  let atlas = GlyphMaskAtlas::new(4, 2)
+  assert_eq(atlas.get_capacity(), 8)
+  assert_eq(atlas.get_used_pixel_count(), 0)
+  assert_eq(atlas.get_free_pixel_count(), 8)
+  assert_eq(atlas.get_occupancy_ratio(), 0.0)
+
+  let small = CoverageMask::new(2, 1, FixedArray::make(2, 1))
+  assert_true(atlas.can_fit(small))
+  match atlas.insert("small", small) {
+    Some(entry) => {
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 0)
+    }
+    None => abort("expected small atlas entry")
+  }
+  assert_eq(atlas.get_used_pixel_count(), 2)
+  assert_eq(atlas.get_free_pixel_count(), 6)
+  assert_eq(atlas.get_occupancy_ratio(), 0.25)
+
+  let tall_pixels : FixedArray[Byte] = FixedArray::make(4, 1)
+  let tall = CoverageMask::new(2, 2, tall_pixels)
+  assert_true(atlas.can_fit(tall))
+  ignore(atlas.insert("tall", tall))
+  assert_eq(atlas.get_used_pixel_count(), 6)
+  assert_eq(atlas.get_free_pixel_count(), 2)
+  assert_eq(atlas.get_occupancy_ratio(), 0.75)
+
+  let duplicate_pixels : FixedArray[Byte] = FixedArray::make(2, 1)
+  let duplicate = CoverageMask::new(2, 1, duplicate_pixels)
+  ignore(atlas.insert("small", duplicate))
+  assert_eq(atlas.get_used_pixel_count(), 6)
+  assert_eq(atlas.get_free_pixel_count(), 2)
+
+  let wrapped_tall_pixels : FixedArray[Byte] = FixedArray::make(2, 1)
+  let wrapped_tall = CoverageMask::new(1, 2, wrapped_tall_pixels)
+  assert_true(!atlas.can_fit(wrapped_tall))
+  assert_true(atlas.insert("wrapped-tall", wrapped_tall) is None)
+  assert_eq(atlas.get_used_pixel_count(), 6)
+  assert_eq(atlas.get_free_pixel_count(), 2)
+
+  atlas.clear()
+  assert_eq(atlas.get_used_pixel_count(), 0)
+  assert_eq(atlas.get_free_pixel_count(), 8)
+  assert_eq(atlas.get_occupancy_ratio(), 0.0)
+  assert_true(atlas.can_fit(wrapped_tall))
 }
 
 ///|

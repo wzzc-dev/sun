@@ -212,10 +212,16 @@ pub struct GlyphMaskAtlas {
   mut cursor_x : Int
   mut cursor_y : Int
   mut row_height : Int
+  mut used_pixel_count : Int
 } derive(@debug.Debug)
+pub fn GlyphMaskAtlas::can_fit(Self, CoverageMask) -> Bool
 pub fn GlyphMaskAtlas::clear(Self) -> Unit
 pub fn GlyphMaskAtlas::get(Self, String) -> GlyphAtlasEntry?
+pub fn GlyphMaskAtlas::get_capacity(Self) -> Int
+pub fn GlyphMaskAtlas::get_free_pixel_count(Self) -> Int
 pub fn GlyphMaskAtlas::get_height(Self) -> Int
+pub fn GlyphMaskAtlas::get_occupancy_ratio(Self) -> Double
+pub fn GlyphMaskAtlas::get_used_pixel_count(Self) -> Int
 pub fn GlyphMaskAtlas::get_width(Self) -> Int
 pub fn GlyphMaskAtlas::insert(Self, String, CoverageMask) -> GlyphAtlasEntry?
 pub fn GlyphMaskAtlas::is_empty(Self) -> Bool

@@ -77,6 +77,13 @@ pub struct GlyphAtlasEntry {
 } derive(Debug)
 
 ///|
+priv struct GlyphAtlasPlacement {
+  x : Int
+  y : Int
+  row_height : Int
+}
+
+///|
 /// Create a glyph atlas entry.
 pub fn GlyphAtlasEntry::new(
   key~ : String,
@@ -128,6 +135,7 @@ pub struct GlyphMaskAtlas {
   mut cursor_x : Int
   mut cursor_y : Int
   mut row_height : Int
+  mut used_pixel_count : Int
 } derive(Debug)
 
 ///|
@@ -141,6 +149,7 @@ pub fn GlyphMaskAtlas::new(width : Int, height : Int) -> GlyphMaskAtlas {
     cursor_x: 0,
     cursor_y: 0,
     row_height: 0,
+    used_pixel_count: 0,
   }
 }
 
@@ -154,6 +163,35 @@ pub fn GlyphMaskAtlas::get_width(self : GlyphMaskAtlas) -> Int {
 /// Get the atlas height.
 pub fn GlyphMaskAtlas::get_height(self : GlyphMaskAtlas) -> Int {
   self.height
+}
+
+///|
+/// Return the total pixel capacity of the atlas.
+pub fn GlyphMaskAtlas::get_capacity(self : GlyphMaskAtlas) -> Int {
+  self.width * self.height
+}
+
+///|
+/// Return the number of atlas pixels occupied by placed glyph masks.
+pub fn GlyphMaskAtlas::get_used_pixel_count(self : GlyphMaskAtlas) -> Int {
+  self.used_pixel_count
+}
+
+///|
+/// Return atlas capacity minus placed mask pixels.
+pub fn GlyphMaskAtlas::get_free_pixel_count(self : GlyphMaskAtlas) -> Int {
+  self.get_capacity() - self.used_pixel_count
+}
+
+///|
+/// Return placed mask pixels divided by total atlas capacity.
+pub fn GlyphMaskAtlas::get_occupancy_ratio(self : GlyphMaskAtlas) -> Double {
+  let capacity = self.get_capacity()
+  if capacity <= 0 {
+    0.0
+  } else {
+    self.used_pixel_count.to_double() / capacity.to_double()
+  }
 }
 
 ///|
@@ -184,6 +222,18 @@ pub fn GlyphMaskAtlas::to_mask(self : GlyphMaskAtlas) -> CoverageMask {
 }
 
 ///|
+/// Return whether this mask can be placed as a new atlas entry.
+pub fn GlyphMaskAtlas::can_fit(
+  self : GlyphMaskAtlas,
+  mask : CoverageMask,
+) -> Bool {
+  match self.next_placement(mask) {
+    Some(_) => true
+    None => false
+  }
+}
+
+///|
 /// Insert a rendered glyph mask if there is space, or return the existing entry.
 pub fn GlyphMaskAtlas::insert(
   self : GlyphMaskAtlas,
@@ -203,17 +253,17 @@ pub fn GlyphMaskAtlas::clear(self : GlyphMaskAtlas) -> Unit {
   self.cursor_x = 0
   self.cursor_y = 0
   self.row_height = 0
+  self.used_pixel_count = 0
   for i in 0..<self.pixels.length() {
     self.pixels[i] = b"\x00"[0]
   }
 }
 
 ///|
-fn GlyphMaskAtlas::place(
+fn GlyphMaskAtlas::next_placement(
   self : GlyphMaskAtlas,
-  key : String,
   mask : CoverageMask,
-) -> GlyphAtlasEntry? {
+) -> GlyphAtlasPlacement? {
   let mask_width = mask.get_width()
   let mask_height = mask.get_height()
   guard mask_width > 0 && mask_height > 0 else { return None }
@@ -231,19 +281,35 @@ fn GlyphMaskAtlas::place(
     (self.cursor_x, self.cursor_y, self.row_height)
   }
   guard entry_y + mask_height <= self.height else { return None }
+  Some({ x: entry_x, y: entry_y, row_height: current_row_height })
+}
+
+///|
+fn GlyphMaskAtlas::place(
+  self : GlyphMaskAtlas,
+  key : String,
+  mask : CoverageMask,
+) -> GlyphAtlasEntry? {
+  let mask_width = mask.get_width()
+  let mask_height = mask.get_height()
+  let placement = match self.next_placement(mask) {
+    Some(placement) => placement
+    None => return None
+  }
 
   let entry = GlyphAtlasEntry::new(
     key~,
-    x=entry_x,
-    y=entry_y,
+    x=placement.x,
+    y=placement.y,
     width=mask_width,
     height=mask_height,
   )
   copy_mask_into_atlas(self, entry, mask)
   self.entries[key] = entry
-  self.cursor_x = entry_x + mask_width
-  self.cursor_y = entry_y
-  self.row_height = current_row_height.max(mask_height)
+  self.cursor_x = placement.x + mask_width
+  self.cursor_y = placement.y
+  self.row_height = placement.row_height.max(mask_height)
+  self.used_pixel_count += mask_width * mask_height
   Some(entry)
 }
 
