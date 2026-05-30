@@ -203,6 +203,38 @@ test "Canvas::present_dirty_to_with_limit falls back to dirty bounds" {
 }
 
 ///|
+test "Canvas::dirty_present_plan matches bounded dirty submit strategy" {
+  let canvas = Canvas::new(8, 2)
+  canvas.draw_pixel(0, 0, Color::red())
+  canvas.draw_pixel(3, 0, Color::green())
+  canvas.draw_pixel(6, 0, Color::blue())
+
+  let surface = MemorySurface::new(8, 2)
+  let rect_plan = canvas.dirty_present_plan(surface, 4)
+  assert_true(rect_plan.get_mode() == DirtyPresentPlanMode::Rects)
+  assert_eq(rect_plan.get_rect_count(), 3)
+  assert_true(
+    rect_plan.get_rects()[2] == PixelRect::new(x=6, y=0, width=1, height=1),
+  )
+
+  let bounds_plan = canvas.dirty_present_plan(surface, 2)
+  assert_true(bounds_plan.get_mode() == DirtyPresentPlanMode::Bounds)
+  assert_true(bounds_plan.uses_bounds_fallback())
+  assert_eq(bounds_plan.get_rect_count(), 1)
+  assert_true(
+    bounds_plan.get_rects()[0] == PixelRect::new(x=0, y=0, width=7, height=1),
+  )
+  assert_true(!canvas.get_dirty_region().is_empty())
+
+  assert_true(canvas.present_dirty_to_with_limit(surface, 2) == Ok(1))
+  assert_true(canvas.get_dirty_region().is_empty())
+
+  let empty_plan = canvas.dirty_present_plan(surface, 2)
+  assert_true(empty_plan.is_empty())
+  assert_true(empty_plan.get_mode() == DirtyPresentPlanMode::Empty)
+}
+
+///|
 test "Canvas::present_dirty_to clips dirty rectangles to surface bounds" {
   let canvas = Canvas::new(3, 3)
   canvas.draw_pixel(2, 2, Color::white())

@@ -321,13 +321,15 @@ pub fn[S : Surface] Canvas::present_dirty_to(
 }
 
 ///|
-pub fn[S : Surface] Canvas::present_dirty_to_with_limit(
+pub fn[S : Surface] Canvas::dirty_present_plan(
   self : Canvas,
   surface : S,
   max_rects : Int,
-) -> Result[Int, PresentError] {
+) -> DirtyPresentPlan {
   let dirty_region = self.get_dirty_region()
-  guard !dirty_region.is_empty() else { return Ok(0) }
+  guard !dirty_region.is_empty() else {
+    return { mode: DirtyPresentPlanMode::Empty, rects: [] }
+  }
   let surface_bounds = PixelRect::new(
     x=0,
     y=0,
@@ -340,25 +342,34 @@ pub fn[S : Surface] Canvas::present_dirty_to_with_limit(
     width=self.get_pixmap().get_width(),
     height=self.get_pixmap().get_height(),
   )
-  let bounds = surface_bounds.intersection(pixmap_bounds)
+  match surface_bounds.intersection(pixmap_bounds) {
+    Some(present_bounds) => dirty_region.present_plan(present_bounds, max_rects)
+    None => { mode: DirtyPresentPlanMode::Empty, rects: [] }
+  }
+}
+
+///|
+pub fn[S : Surface] Canvas::present_dirty_to_with_limit(
+  self : Canvas,
+  surface : S,
+  max_rects : Int,
+) -> Result[Int, PresentError] {
+  let dirty_region = self.get_dirty_region()
+  guard !dirty_region.is_empty() else { return Ok(0) }
+  let plan = self.dirty_present_plan(surface, max_rects)
+  guard !plan.is_empty() else {
+    self.clear_dirty_region()
+    return Ok(0)
+  }
   let mut presented = 0
-  match bounds {
-    None => {
-      self.clear_dirty_region()
-      Ok(0)
-    }
-    Some(present_bounds) => {
-      let present_rects = dirty_region.present_rects(present_bounds, max_rects)
-      for rect in present_rects {
-        match self.get_pixmap().present_rect_to(surface, rect) {
-          Ok(_) => presented = presented + 1
-          Err(error) => return Err(error)
-        }
-      }
-      self.clear_dirty_region()
-      Ok(presented)
+  for rect in plan.get_rects() {
+    match self.get_pixmap().present_rect_to(surface, rect) {
+      Ok(_) => presented = presented + 1
+      Err(error) => return Err(error)
     }
   }
+  self.clear_dirty_region()
+  Ok(presented)
 }
 
 ///|

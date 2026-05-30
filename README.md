@@ -85,7 +85,7 @@ wzzc-dev/
 - `Surface` trait, `MemorySurface`, and full/rect present helpers for `Canvas` and `Pixmap`
 - Pixmap blitting, source-rect atlas drawing, tiled Pixmap fills, explicit nearest/bilinear sampling modes, and straight-alpha composition for image and layer caching
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition
-- `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present plans, and bounded dirty-present helpers
+- `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present plans, and `Canvas` bounded dirty-present helpers
 - `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`
 - `LayerTree` z-order composition with dirty rectangle propagation, layer resize/remove/replace/reorder lifecycle, property-change invalidation, and partial present submission
 - `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, dirty queries/marking, and dirty/full present helpers for future event-loop integration
