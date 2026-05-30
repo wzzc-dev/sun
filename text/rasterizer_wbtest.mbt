@@ -93,6 +93,21 @@ fn make_box_font() -> Font {
 }
 
 ///|
+fn make_space_only_font() -> Font {
+  let cmap : Map[Int, Int] = {}
+  cmap[' '.to_int()] = 1
+  {
+    head: { units_per_em: 10, index_to_loc_format: 0 },
+    hhea: { ascent: 10, descent: 0, line_gap: 0, num_h_metrics: 2 },
+    hmtx: [{ advance_width: 0, lsb: 0 }, { advance_width: 5, lsb: 0 }],
+    cmap,
+    glyphs: [GlyphData::Empty, GlyphData::Empty],
+    glyph_count: 2,
+    kern: [],
+  }
+}
+
+///|
 test "Rasterizer::rasterize_glyph preserves opposite-winding holes" {
   let rasterizer = Rasterizer::new(12, 12)
   rasterizer.rasterize_glyph(make_ring_glyph(), 1.0, 11.0, 1.0)
@@ -211,6 +226,56 @@ test "FontFace and TextLayout expose stable text API" {
   assert_eq(runs[0].glyph_count(), 1)
   assert_eq(runs[0].get_width(), 10.0)
   assert_eq(runs[0].get_baseline_y(), 10.0)
+}
+
+///|
+test "FontFaceCache stores and replaces checked faces" {
+  let cache = FontFaceCache::new()
+  assert_true(cache.is_empty())
+  let face = FontFace::from_font(make_box_font())
+  let inserted = cache.insert("ui", face)
+  assert_eq(cache.len(), 1)
+  assert_eq(inserted.char_to_glyph('A'.to_int()), 1)
+  match cache.get("ui") {
+    Some(cached) => assert_eq(cached.char_to_glyph('A'.to_int()), 1)
+    None => abort("expected cached font face")
+  }
+
+  let replacement = FontFace::from_font(make_space_only_font())
+  ignore(cache.insert("ui", replacement))
+  assert_eq(cache.len(), 1)
+  match cache.get("ui") {
+    Some(cached) => {
+      assert_eq(cached.char_to_glyph('A'.to_int()), 0)
+      assert_eq(cached.char_to_glyph(' '.to_int()), 1)
+    }
+    None => abort("expected replacement font face")
+  }
+
+  cache.remove("ui")
+  assert_true(cache.is_empty())
+  assert_true(cache.get("ui") is None)
+}
+
+///|
+test "FontFaceCache::get_or_parse reuses cached face and preserves errors" {
+  let cache = FontFaceCache::new()
+  let face = FontFace::from_font(make_box_font())
+  ignore(cache.insert("known", face))
+  match cache.get_or_parse("known", b"not a font") {
+    Ok(cached) => assert_eq(cached.char_to_glyph('A'.to_int()), 1)
+    Err(_) => abort("expected cache hit to avoid parsing invalid bytes")
+  }
+  assert_eq(cache.len(), 1)
+
+  match cache.get_or_parse("bad", b"not a font") {
+    Err(FontParseError::UnexpectedEndOfData(0, 12, 10)) => ()
+    _ => abort("expected checked parser error")
+  }
+  assert_eq(cache.len(), 1)
+
+  cache.clear()
+  assert_true(cache.is_empty())
 }
 
 ///|

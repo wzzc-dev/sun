@@ -11,6 +11,9 @@ the facade types below.
 - `FontFace` is a checked parsed font face. Construct it with
   `FontFace::from_bytes`, `FontFace::from_data`, or `FontData::parse` so parse
   failures stay in `Result` instead of aborting.
+- `FontFaceCache` is a small keyed cache for checked parsed faces. GUI and
+  resource-loading code can use `get_or_parse` to avoid reparsing the same font
+  bytes while preserving checked `FontParseError` results for cache misses.
 - `TextLayout` is the layout result intended for renderer and GUI code. It owns
   layout metrics and an array of `GlyphRun` values.
 - `GlyphRun` is one positioned run of glyphs with width and baseline. It is the
@@ -47,6 +50,8 @@ construct these types by hand.
 
 - Prefer `FontFace::from_bytes(data)` over `parse_font(data)` for untrusted or
   user-provided fonts.
+- Prefer `FontFaceCache::get_or_parse(key, data)` when a GUI or renderer owns a
+  stable font-resource key and may request the same face repeatedly.
 - Prefer `TextLayout::layout(face, text, config)` or `layout_text_face` over
   calling `layout_text` directly from application code.
 - Prefer `render_text_mask_face` and `Renderer::draw_text_face` when connecting

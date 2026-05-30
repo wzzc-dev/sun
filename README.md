@@ -98,6 +98,7 @@ Text processing library (font parsing, shaping, layout).
 - `parse_font_result` for checked TTF structural validation while retaining the legacy `parse_font` compatibility entry point
 - Documented `FontParseError` categories for callers that load untrusted font bytes
 - `FontFace`, `GlyphRun`, and `TextLayout` facades for renderer and GUI-facing text APIs
+- `FontFaceCache` for keyed reuse of checked parsed faces in GUI/resource code
 - Left, center, right, and basic non-final-line justify alignment through the `TextLayout` facade
 - Explicit newline and empty-line preservation in `TextLayout`, text masks, and renderer text drawing
 - Configurable letter spacing and word spacing through `LayoutConfig`

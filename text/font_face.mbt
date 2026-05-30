@@ -32,6 +32,77 @@ pub fn FontData::parse(self : FontData) -> Result[FontFace, FontParseError] {
 }
 
 ///|
+/// Small checked font-face cache for GUI/resource code that repeatedly asks for
+/// the same parsed face.
+pub struct FontFaceCache {
+  mut faces : Map[String, FontFace]
+} derive(Debug)
+
+///|
+/// Create an empty font-face cache.
+pub fn FontFaceCache::new() -> FontFaceCache {
+  { faces: {} }
+}
+
+///|
+/// Return the number of cached font faces.
+pub fn FontFaceCache::len(self : FontFaceCache) -> Int {
+  self.faces.length()
+}
+
+///|
+/// Return whether the cache currently has no parsed faces.
+pub fn FontFaceCache::is_empty(self : FontFaceCache) -> Bool {
+  self.len() is 0
+}
+
+///|
+/// Look up a parsed face by caller-provided key.
+pub fn FontFaceCache::get(self : FontFaceCache, key : String) -> FontFace? {
+  self.faces.get(key)
+}
+
+///|
+/// Insert or replace a parsed face under a caller-provided key.
+pub fn FontFaceCache::insert(
+  self : FontFaceCache,
+  key : String,
+  face : FontFace,
+) -> FontFace {
+  self.faces[key] = face
+  face
+}
+
+///|
+/// Parse bytes on first use and return the cached checked face afterwards.
+pub fn FontFaceCache::get_or_parse(
+  self : FontFaceCache,
+  key : String,
+  data : Bytes,
+) -> Result[FontFace, FontParseError] {
+  match self.get(key) {
+    Some(face) => Ok(face)
+    None =>
+      match FontFace::from_bytes(data) {
+        Ok(face) => Ok(self.insert(key, face))
+        Err(error) => Err(error)
+      }
+  }
+}
+
+///|
+/// Remove a cached face by key.
+pub fn FontFaceCache::remove(self : FontFaceCache, key : String) -> Unit {
+  self.faces.remove(key)
+}
+
+///|
+/// Drop all cached faces.
+pub fn FontFaceCache::clear(self : FontFaceCache) -> Unit {
+  self.faces = {}
+}
+
+///|
 /// Get the parsed font backing this face.
 pub fn FontFace::get_font(self : FontFace) -> Font {
   self.font

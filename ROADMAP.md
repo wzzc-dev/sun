@@ -239,6 +239,7 @@ Application / GUI
 - [x] 为 `FontParseError` 建立文档化契约，明确哪些错误属于稳定 public API，哪些仍是兼容迁移期细节，见 `docs/font-parser-errors.md`
 - [ ] 建立真实字体 fixture 矩阵：基础 Latin、带孔洞 glyph、复合 glyph、kerning、CJK fallback
 - [x] 明确 `text` 包中哪些结构是 facade stable，哪些仍是 implementation-adjacent，见 `docs/text-api-boundaries.md`
+- [x] 增加 `FontFaceCache`，让 GUI/resource 代码可按 key 复用 checked `FontFace` 并保留解析错误语义
 
 #### 2.1 OpenType 支持
 - [ ] 解析 CFF/CFF2 表（PostScript 轮廓）
@@ -416,7 +417,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache、glyph atlas/mask cache、image cache
+- [ ] 设计资源缓存：font cache 已有最小 `FontFaceCache`，后续补 glyph atlas/mask cache、image cache
 
 ---
 
@@ -467,7 +468,7 @@ Application / GUI
 ### P0（立即修复）
 1. 保持 `scripts/check_ci.sh` 作为提交前验证入口
 2. 将测试字体矩阵继续扩展到更多真实字体 fixture（printable ASCII fixture 已覆盖映射、布局与渲染，仍需更多真实轮廓）
-3. 扩展 `FontFace`/`TextLayout` facade 使用面：更多示例、renderer helper 和未来 GUI 代码优先走 checked face API
+3. 扩展 `FontFace`/`TextLayout`/`FontFaceCache` facade 使用面：更多示例、renderer helper 和未来 GUI 代码优先走 checked face API
 4. 继续推进 parser 错误处理迁移：`parse_font_result` 主链路已覆盖核心表、cmap、glyf、kern 的逐字段 Result 读取；下一步是继续减少上层 legacy `parse_font` 使用，并审查 `InvalidTable` 是否保留为迁移期兜底
 5. 改进反锯齿质量，并保留确定性像素回归
 
