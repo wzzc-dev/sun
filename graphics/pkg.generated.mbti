@@ -449,6 +449,7 @@ pub fn[S : Surface] RenderFrame::submit_dirty_to(Self, S) -> Result[DirtySubmitR
 pub struct RenderFrameSubmitPlan {
   dirty_submit_plan : DirtySubmitPlan
   strategy : DirtyPresentStrategy
+  present_rect_count : Int
   present_pixel_count : Int
   present_byte_count : Int
 } derive(@debug.Debug)
@@ -456,6 +457,7 @@ pub fn RenderFrameSubmitPlan::get_dirty_bounds(Self) -> PixelRect?
 pub fn RenderFrameSubmitPlan::get_dirty_submit_plan(Self) -> DirtySubmitPlan
 pub fn RenderFrameSubmitPlan::get_present_byte_count(Self) -> Int
 pub fn RenderFrameSubmitPlan::get_present_pixel_count(Self) -> Int
+pub fn RenderFrameSubmitPlan::get_present_rect_count(Self) -> Int
 pub fn RenderFrameSubmitPlan::get_present_strategy(Self) -> DirtyPresentStrategy
 pub fn RenderFrameSubmitPlan::get_state(Self) -> DirtySubmitState
 pub fn RenderFrameSubmitPlan::has_dirty(Self) -> Bool
@@ -472,6 +474,7 @@ pub fn RenderFrameSubmitResult::did_present(Self) -> Bool
 pub fn RenderFrameSubmitResult::get_dirty_bounds(Self) -> PixelRect?
 pub fn RenderFrameSubmitResult::get_present_byte_count(Self) -> Int
 pub fn RenderFrameSubmitResult::get_present_pixel_count(Self) -> Int
+pub fn RenderFrameSubmitResult::get_present_rect_count(Self) -> Int
 pub fn RenderFrameSubmitResult::get_present_strategy(Self) -> DirtyPresentStrategy
 pub fn RenderFrameSubmitResult::get_presented_rect_count(Self) -> Int
 pub fn RenderFrameSubmitResult::get_state(Self) -> DirtySubmitState

@@ -12,6 +12,7 @@ pub struct RenderFrame {
 pub struct RenderFrameSubmitPlan {
   dirty_submit_plan : DirtySubmitPlan
   strategy : DirtyPresentStrategy
+  present_rect_count : Int
   present_pixel_count : Int
   present_byte_count : Int
 } derive(Debug)
@@ -78,6 +79,13 @@ pub fn RenderFrameSubmitPlan::uses_bounds_fallback(
 }
 
 ///|
+pub fn RenderFrameSubmitPlan::get_present_rect_count(
+  self : RenderFrameSubmitPlan,
+) -> Int {
+  self.present_rect_count
+}
+
+///|
 pub fn RenderFrameSubmitPlan::get_present_pixel_count(
   self : RenderFrameSubmitPlan,
 ) -> Int {
@@ -110,6 +118,13 @@ pub fn RenderFrameSubmitResult::get_present_strategy(
   self : RenderFrameSubmitResult,
 ) -> DirtyPresentStrategy {
   self.submit_plan.get_present_strategy()
+}
+
+///|
+pub fn RenderFrameSubmitResult::get_present_rect_count(
+  self : RenderFrameSubmitResult,
+) -> Int {
+  self.submit_plan.get_present_rect_count()
 }
 
 ///|
@@ -193,10 +208,17 @@ pub fn RenderFrameSubmitResult::saves_full_present_pixels(
 fn render_frame_submit_plan(
   dirty_submit_plan : DirtySubmitPlan,
   strategy : DirtyPresentStrategy,
+  present_rect_count : Int,
   present_pixel_count : Int,
   present_byte_count : Int,
 ) -> RenderFrameSubmitPlan {
-  { dirty_submit_plan, strategy, present_pixel_count, present_byte_count }
+  {
+    dirty_submit_plan,
+    strategy,
+    present_rect_count,
+    present_pixel_count,
+    present_byte_count,
+  }
 }
 
 ///|
@@ -358,9 +380,11 @@ pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(
     DirtyPresentStrategy::Full => {
       let present_pixels = surface.get_width().max(0) *
         surface.get_height().max(0)
+      let present_rect_count = if present_pixels > 0 { 1 } else { 0 }
       render_frame_submit_plan(
         dirty_plan,
         strategy,
+        present_rect_count,
         present_pixels,
         present_pixels * 4,
       )
@@ -369,6 +393,7 @@ pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(
       render_frame_submit_plan(
         dirty_plan,
         strategy,
+        dirty_plan.get_present_rect_count(),
         dirty_plan.get_present_pixel_count(),
         dirty_plan.get_present_byte_count(),
       )

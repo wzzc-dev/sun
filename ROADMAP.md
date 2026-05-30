@@ -125,6 +125,7 @@ Application / GUI
 - dirty present/submit/result 暴露相对整帧 present 是否节省像素的判定，给事件循环选择 partial/full present 提供统一语义
 - `DirtyPresentStrategy` 将 Skip/Partial/Full present 选择显式化，让事件循环能直接消费统一调度决策
 - `RenderFrame` 在 graphics 核心层提供 strategy-aware submit plan/result/helper，让 MemorySurface、窗口后端和未来 backend 复用同一套 Skip/Partial/Full 调度
+- `RenderFrame` strategy-aware submit plan/result 暴露计划 present rect 数，让后端在提交前后都能复用同一份批量调度 telemetry
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty-submit plan 查询，让窗口后端调度能复用 graphics 的统一 dirty snapshot
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` Skip/Partial/Full 策略查询，让窗口后端可直接消费统一 present 决策
@@ -132,6 +133,7 @@ Application / GUI
 - softbuffer 的 `NativeSurface` 暴露 strategy-aware frame submit helper，把 Skip/Partial/Full 分派收敛为后端可复用入口
 - softbuffer 的 strategy-aware submit result 暴露 state、present rect 数和像素/字节成本，方便窗口后端统一做 telemetry
 - softbuffer 的 strategy-aware submit plan 支持提交前 dry-run state/cost 查询，不触发 hook、不清 dirty
+- softbuffer 的 strategy-aware submit plan/result 暴露计划 present rect 数，方便窗口后端做批量 present 调度和成本统计
 - softbuffer 的 strategy-aware submit plan/result 暴露相对整帧 present 的 savings 查询，让窗口后端直接区分 partial/full 成本收益
 - `NativeSurface` 支持可选 pre-present hook，让窗口生命周期通知进入统一 present helper，而不是散落在示例事件处理器里
 - `headless_render` 示例通过 `RenderFrame::submit_dirty_to` 自校验 dirty submit 状态，让 CI 覆盖可执行的调度结果路径
@@ -328,10 +330,12 @@ Application / GUI
 - [x] Dirty present/submit/result 暴露 partial present 是否节省整帧像素的判定，减少事件循环重复比较逻辑
 - [x] `DirtyPresentStrategy` 暴露 Skip/Partial/Full present 决策，给事件循环一个可测试的统一策略枚举
 - [x] `RenderFrame` 暴露通用 strategy-aware submit plan/result/helper，把 Skip/Partial/Full 调度从 softbuffer 下沉到 graphics 核心层
+- [x] `RenderFrame` strategy-aware submit plan/result 暴露计划 present rect 数，补齐 dry-run 与实际提交结果的批量调度 telemetry
 - [x] softbuffer 暴露 `RenderFrame` present strategy 查询，让窗口后端无需拆 dirty-submit plan 就能调度 present
 - [x] softbuffer 暴露 strategy-aware frame submit helper，让窗口后端复用统一 Skip/Partial/Full 分派和提交结果
 - [x] softbuffer strategy submit result 暴露 state、present rect 数和像素/字节成本，给窗口后端提供统一 telemetry
 - [x] softbuffer 暴露 strategy-aware frame submit plan，让窗口后端可在 present 前 dry-run Skip/Partial/Full 调度
+- [x] softbuffer strategy submit plan/result 暴露计划 present rect 数，给窗口后端提供提交前批量调度 telemetry
 - [x] softbuffer strategy submit plan/result 暴露 full-present savings 查询，减少窗口后端重复比较 partial/full 成本
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation

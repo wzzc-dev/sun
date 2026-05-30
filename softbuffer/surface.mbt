@@ -22,6 +22,7 @@ pub struct NativeSurface {
 pub struct NativeFrameSubmitPlan {
   strategy : @graphics.DirtyPresentStrategy
   state : @graphics.DirtySubmitState
+  present_rect_count : Int
   present_pixel_count : Int
   present_byte_count : Int
 } derive(Debug)
@@ -68,6 +69,13 @@ pub fn NativeFrameSubmitPlan::was_clipped_away(
 }
 
 ///|
+pub fn NativeFrameSubmitPlan::get_present_rect_count(
+  self : NativeFrameSubmitPlan,
+) -> Int {
+  self.present_rect_count
+}
+
+///|
 pub fn NativeFrameSubmitPlan::get_present_pixel_count(
   self : NativeFrameSubmitPlan,
 ) -> Int {
@@ -100,6 +108,13 @@ pub fn NativeFrameSubmitResult::get_present_strategy(
   self : NativeFrameSubmitResult,
 ) -> @graphics.DirtyPresentStrategy {
   self.submit_plan.get_present_strategy()
+}
+
+///|
+pub fn NativeFrameSubmitResult::get_present_rect_count(
+  self : NativeFrameSubmitResult,
+) -> Int {
+  self.submit_plan.get_present_rect_count()
 }
 
 ///|
@@ -169,10 +184,17 @@ pub fn NativeFrameSubmitResult::did_present(
 fn native_frame_submit_plan(
   strategy : @graphics.DirtyPresentStrategy,
   state : @graphics.DirtySubmitState,
+  present_rect_count : Int,
   present_pixel_count : Int,
   present_byte_count : Int,
 ) -> NativeFrameSubmitPlan {
-  { strategy, state, present_pixel_count, present_byte_count }
+  {
+    strategy,
+    state,
+    present_rect_count,
+    present_pixel_count,
+    present_byte_count,
+  }
 }
 
 ///|
@@ -182,6 +204,7 @@ fn native_frame_submit_plan_from_frame(
   native_frame_submit_plan(
     plan.get_present_strategy(),
     plan.get_state(),
+    plan.get_present_rect_count(),
     plan.get_present_pixel_count(),
     plan.get_present_byte_count(),
   )
