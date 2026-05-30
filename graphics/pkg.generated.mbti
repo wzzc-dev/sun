@@ -295,6 +295,8 @@ pub struct MemorySurface {
   mut present_count : Int
   present_records : Array[MemoryPresentRecord]
 } derive(@debug.Debug)
+pub fn MemorySurface::checksum(Self) -> Int
+pub fn MemorySurface::checksum_rect(Self, PixelRect) -> Result[Int, PresentError]
 pub fn MemorySurface::get_height(Self) -> Int
 pub fn MemorySurface::get_last_present_record(Self) -> MemoryPresentRecord?
 pub fn MemorySurface::get_pixel(Self, Int, Int) -> Color
@@ -430,6 +432,8 @@ pub fn Pixmap::blend_scaled_pixmap_rect(Self, Int, Int, Int, Int, Self, PixelRec
 pub fn Pixmap::blend_scaled_pixmap_rect_bicubic(Self, Int, Int, Int, Int, Self, PixelRect, Double) -> Unit
 pub fn Pixmap::blend_scaled_pixmap_rect_bilinear(Self, Int, Int, Int, Int, Self, PixelRect, Double) -> Unit
 pub fn Pixmap::blend_tiled_pixmap_rect(Self, Int, Int, Int, Int, Self, PixelRect, Double) -> Unit
+pub fn Pixmap::checksum(Self) -> Int
+pub fn Pixmap::checksum_rect(Self, PixelRect) -> Result[Int, PresentError]
 pub fn Pixmap::clear(Self, Color) -> Unit
 pub fn Pixmap::copy(Self) -> Self
 pub fn Pixmap::copy_rect(Self, PixelRect) -> Result[Self, PresentError]

@@ -29,6 +29,14 @@ test "Pixmap::copy duplicates raw pixel storage" {
 }
 
 ///|
+test "Pixmap::checksum reports deterministic raw byte checksum" {
+  let pixmap = Pixmap::new(2, 1)
+  pixmap.set_pixel(0, 0, Color::new(r=1, g=2, b=3, a=4))
+  pixmap.set_pixel(1, 0, Color::new(r=5, g=6, b=7, a=8))
+  assert_eq(pixmap.checksum(), 204)
+}
+
+///|
 test "Pixmap::to_ppm_bytes encodes deterministic P6 RGB output" {
   let pixmap = Pixmap::new(2, 1)
   pixmap.set_pixel(0, 0, Color::new(r=1, g=2, b=3, a=4))

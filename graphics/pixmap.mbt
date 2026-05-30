@@ -96,6 +96,14 @@ pub fn Pixmap::copy(self : Pixmap) -> Pixmap {
 }
 
 ///|
+/// Return a deterministic lightweight checksum of the raw RGBA pixel bytes.
+/// This is intended for compact regression assertions and smoke telemetry, not
+/// for cryptographic or collision-resistant validation.
+pub fn Pixmap::checksum(self : Pixmap) -> Int {
+  checksum_rgba_bytes(self.pixels)
+}
+
+///|
 /// Encode this pixmap as a binary PPM (P6) image, dropping the alpha channel.
 /// The result is a deterministic, dependency-free fixture format for headless
 /// render tests and simple CPU-rendered pixel dumps.
@@ -303,6 +311,15 @@ fn copy_pixmap_pixels(pixmap : Pixmap) -> FixedArray[Byte] {
     dst[i] = src[i]
   }
   dst
+}
+
+///|
+fn checksum_rgba_bytes(pixels : FixedArray[Byte]) -> Int {
+  let mut checksum = 0
+  for i in 0..<pixels.length() {
+    checksum = (checksum + pixels[i].to_int() * (i % 251 + 1)) % 1000003
+  }
+  checksum
 }
 
 ///|

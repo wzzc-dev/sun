@@ -35,9 +35,12 @@ export paths without adding filesystem or image codec dependencies to the
 graphics core. `MemorySurface::to_pixmap`, `MemorySurface::to_pixmap_rect`,
 `MemorySurface::to_ppm_bytes`, and `MemorySurface::to_ppm_rect_bytes` expose
 the same output paths directly from the reference surface, so examples and
-tests do not need to hand-copy surface pixels. The `headless_render` example
-checks the exported header, byte length, and first rendered RGB pixel as an
-executable smoke test for off-screen output.
+tests do not need to hand-copy surface pixels. For compact regression checks
+and benchmark telemetry, `Pixmap::checksum`, `Pixmap::checksum_rect`,
+`MemorySurface::checksum`, and `MemorySurface::checksum_rect` use the same
+deterministic raw RGBA byte checksum without treating it as a cryptographic
+hash. The `headless_render` example checks the exported header, byte length,
+and first rendered RGB pixel as an executable smoke test for off-screen output.
 
 The `softbuffer` package implements the `graphics.Surface` present contract for
 native windows. Its tests cover validation and trait dispatch without requiring

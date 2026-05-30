@@ -344,6 +344,12 @@ pub fn MemorySurface::to_ppm_bytes(self : MemorySurface) -> Bytes {
 }
 
 ///|
+/// Return a deterministic lightweight checksum of the current surface pixels.
+pub fn MemorySurface::checksum(self : MemorySurface) -> Int {
+  checksum_rgba_bytes(self.pixels)
+}
+
+///|
 /// Snapshot a rectangle of this in-memory surface into an isolated pixmap.
 pub fn MemorySurface::to_pixmap_rect(
   self : MemorySurface,
@@ -371,6 +377,19 @@ pub fn MemorySurface::to_ppm_rect_bytes(
   match self.to_pixmap_rect(rect) {
     Ok(pixmap) => Ok(pixmap.to_ppm_bytes())
     Err(error) => Err(error)
+  }
+}
+
+///|
+/// Return a deterministic lightweight checksum of a surface rectangle.
+pub fn MemorySurface::checksum_rect(
+  self : MemorySurface,
+  rect : PixelRect,
+) -> Result[Int, PresentError] {
+  match validate_pixel_rect_bounds(self.width, self.height, rect) {
+    Err(error) => Err(error)
+    Ok(_) =>
+      Ok(checksum_rgba_bytes(copy_rgba_rect(self.pixels, self.width, rect)))
   }
 }
 
@@ -581,6 +600,18 @@ pub fn Pixmap::copy_rect(
           copy_pixmap_rect(self, rect),
         ),
       )
+  }
+}
+
+///|
+/// Return a deterministic lightweight checksum of a pixmap rectangle.
+pub fn Pixmap::checksum_rect(
+  self : Pixmap,
+  rect : PixelRect,
+) -> Result[Int, PresentError] {
+  match validate_pixmap_present_rect(self, rect) {
+    Err(error) => Err(error)
+    Ok(_) => Ok(checksum_rgba_bytes(copy_pixmap_rect(self, rect)))
   }
 }
 

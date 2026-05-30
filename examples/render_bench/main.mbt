@@ -186,15 +186,6 @@ fn run_blit_workload(canvas : @graphics.Canvas) -> Int {
 }
 
 ///|
-fn checksum_pixels(pixels : FixedArray[Byte]) -> Int {
-  let mut checksum = 0
-  for i in 0..<pixels.length() {
-    checksum = (checksum + pixels[i].to_int() * (i % 251 + 1)) % 1000003
-  }
-  checksum
-}
-
-///|
 fn run_bench() -> BenchSummary {
   let canvas = @graphics.Canvas::new(bench_width, bench_height)
   canvas.clear(@graphics.Color::new(r=238, g=241, b=246))
@@ -235,7 +226,7 @@ fn run_bench() -> BenchSummary {
     glyph_ops,
     blit_ops,
     present_ops: surface.get_present_count(),
-    checksum: checksum_pixels(surface.get_pixels()),
+    checksum: surface.checksum(),
   }
 }
 

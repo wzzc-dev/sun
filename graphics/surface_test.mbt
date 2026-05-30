@@ -129,6 +129,16 @@ test "MemorySurface::to_ppm_bytes exports current RGB pixels" {
 }
 
 ///|
+test "MemorySurface::checksum reports deterministic raw byte checksum" {
+  let surface = MemorySurface::new(2, 1)
+  let pixels : FixedArray[Byte] = FixedArray::make(8, 0)
+  write_rgba(pixels, 0, Color::new(r=1, g=2, b=3, a=4))
+  write_rgba(pixels, 4, Color::new(r=5, g=6, b=7, a=8))
+  assert_true(surface.present_pixels(2, 1, 8, pixels) == Ok(()))
+  assert_eq(surface.checksum(), 204)
+}
+
+///|
 test "MemorySurface::to_pixmap_rect snapshots a clipped-free rectangle" {
   let surface = MemorySurface::new(3, 2)
   let pixels : FixedArray[Byte] = FixedArray::make(24, 0)
@@ -174,6 +184,21 @@ test "MemorySurface::to_ppm_rect_bytes exports a surface rectangle" {
 }
 
 ///|
+test "MemorySurface::checksum_rect reports deterministic rect checksum" {
+  let surface = MemorySurface::new(3, 1)
+  let pixels : FixedArray[Byte] = FixedArray::make(12, 0)
+  write_rgba(pixels, 0, Color::red())
+  write_rgba(pixels, 4, Color::green())
+  write_rgba(pixels, 8, Color::blue())
+  assert_true(surface.present_pixels(3, 1, 12, pixels) == Ok(()))
+
+  match surface.checksum_rect(PixelRect::new(x=1, y=0, width=2, height=1)) {
+    Ok(checksum) => assert_eq(checksum, 5355)
+    Err(_) => abort("expected surface rect checksum")
+  }
+}
+
+///|
 test "MemorySurface rect snapshots reject invalid rectangles" {
   let surface = MemorySurface::new(2, 2)
   match surface.to_pixmap_rect(PixelRect::new(x=1, y=1, width=2, height=1)) {
@@ -183,6 +208,10 @@ test "MemorySurface rect snapshots reject invalid rectangles" {
   match surface.to_ppm_rect_bytes(PixelRect::new(x=0, y=0, width=0, height=1)) {
     Err(PresentError::InvalidDimensions(0, 1)) => ()
     _ => abort("expected surface rect ppm dimension error")
+  }
+  match surface.checksum_rect(PixelRect::new(x=0, y=0, width=3, height=1)) {
+    Err(PresentError::RectOutOfBounds(0, 0, 3, 1, 2, 2)) => ()
+    _ => abort("expected surface rect checksum bounds error")
   }
 }
 
@@ -358,6 +387,19 @@ test "Pixmap::to_ppm_rect_bytes exports a source rectangle" {
 }
 
 ///|
+test "Pixmap::checksum_rect reports deterministic rect checksum" {
+  let pixmap = Pixmap::new(3, 1)
+  pixmap.set_pixel(0, 0, Color::red())
+  pixmap.set_pixel(1, 0, Color::green())
+  pixmap.set_pixel(2, 0, Color::blue())
+
+  match pixmap.checksum_rect(PixelRect::new(x=1, y=0, width=2, height=1)) {
+    Ok(checksum) => assert_eq(checksum, 5355)
+    Err(_) => abort("expected pixmap rect checksum")
+  }
+}
+
+///|
 test "Pixmap rect snapshots reuse present rect validation" {
   let pixmap = Pixmap::new(2, 2)
   match pixmap.copy_rect(PixelRect::new(x=-1, y=0, width=1, height=1)) {
@@ -367,6 +409,10 @@ test "Pixmap rect snapshots reuse present rect validation" {
   match pixmap.to_ppm_rect_bytes(PixelRect::new(x=0, y=0, width=1, height=0)) {
     Err(PresentError::InvalidDimensions(1, 0)) => ()
     _ => abort("expected pixmap rect ppm dimension error")
+  }
+  match pixmap.checksum_rect(PixelRect::new(x=2, y=0, width=1, height=1)) {
+    Err(PresentError::RectOutOfBounds(2, 0, 1, 1, 2, 2)) => ()
+    _ => abort("expected pixmap rect checksum bounds error")
   }
 }
 
