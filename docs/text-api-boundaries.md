@@ -110,6 +110,9 @@ construct these types by hand.
   spans plus missing-glyph telemetry. Prefer
   `Renderer::draw_text_fallback_line_cached` when those repeated labels also
   need ordered fallback spans through a caller-owned `TextMaskCache`. Prefer
+  `Renderer::draw_font_bytes_fallback_line_cached_with_renderer_resources` when
+  the GUI/resource layer starts from keyed font bytes and wants checked
+  font-face cache reuse before fallback span rendering. Prefer
   `Renderer::draw_text_face_cached` for repeated single-face labels or text
   runs with a caller-owned `TextMaskCache`.
 - Add layout-level and renderer-level regressions when changing alignment,

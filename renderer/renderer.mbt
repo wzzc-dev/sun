@@ -21,6 +21,13 @@ pub struct RendererResources {
 } derive(Debug)
 
 ///|
+/// One keyed font-byte source in an ordered fallback stack.
+pub struct FontBytesFallbackSource {
+  font_key : String
+  font_data : Bytes
+} derive(Debug)
+
+///|
 /// Result of drawing text through glyph-mask cache and atlas resources.
 pub struct TextAtlasDrawResult {
   glyph_count : Int
@@ -63,6 +70,15 @@ pub struct CachedFontTextDrawResult {
 pub struct CachedFontAtlasDrawResult {
   did_parse_font : Bool
   atlas_result : TextAtlasDrawResult
+} derive(Debug)
+
+///|
+/// Result of parsing a font-byte fallback stack and drawing cached fallback
+/// text.
+pub struct CachedFontFallbackDrawResult {
+  parsed_font_count : Int
+  font_cache_hit_count : Int
+  fallback_result : TextFallbackDrawResult
 } derive(Debug)
 
 ///|
@@ -258,6 +274,31 @@ pub fn RendererResources::clear(self : RendererResources) -> Unit {
 /// Get the renderer canvas.
 pub fn Renderer::get_canvas(self : Renderer) -> @graphics.Canvas {
   self.canvas
+}
+
+///|
+/// Create one keyed font-byte source for fallback rendering.
+pub fn FontBytesFallbackSource::new(
+  font_key : String,
+  font_data : Bytes,
+) -> FontBytesFallbackSource {
+  { font_key, font_data }
+}
+
+///|
+/// Return the stable font-resource key for this fallback source.
+pub fn FontBytesFallbackSource::get_font_key(
+  self : FontBytesFallbackSource,
+) -> String {
+  self.font_key
+}
+
+///|
+/// Return the font bytes for this fallback source.
+pub fn FontBytesFallbackSource::get_font_data(
+  self : FontBytesFallbackSource,
+) -> Bytes {
+  self.font_data
 }
 
 ///|
@@ -541,6 +582,70 @@ pub fn CachedFontAtlasDrawResult::did_clear_atlas(
 }
 
 ///|
+/// Return the number of fallback font sources parsed on this draw.
+pub fn CachedFontFallbackDrawResult::get_parsed_font_count(
+  self : CachedFontFallbackDrawResult,
+) -> Int {
+  self.parsed_font_count
+}
+
+///|
+/// Return the number of fallback font sources reused from the font cache.
+pub fn CachedFontFallbackDrawResult::get_font_cache_hit_count(
+  self : CachedFontFallbackDrawResult,
+) -> Int {
+  self.font_cache_hit_count
+}
+
+///|
+/// Return the underlying fallback line draw result.
+pub fn CachedFontFallbackDrawResult::get_fallback_result(
+  self : CachedFontFallbackDrawResult,
+) -> TextFallbackDrawResult {
+  self.fallback_result
+}
+
+///|
+/// Return the number of fallback spans drawn with a covering face.
+pub fn CachedFontFallbackDrawResult::get_drawn_span_count(
+  self : CachedFontFallbackDrawResult,
+) -> Int {
+  self.fallback_result.get_drawn_span_count()
+}
+
+///|
+/// Return the number of missing-glyph spans skipped by this draw.
+pub fn CachedFontFallbackDrawResult::get_skipped_span_count(
+  self : CachedFontFallbackDrawResult,
+) -> Int {
+  self.fallback_result.get_skipped_span_count()
+}
+
+///|
+/// Return the number of text scalars not covered by any fallback face.
+pub fn CachedFontFallbackDrawResult::get_missing_char_count(
+  self : CachedFontFallbackDrawResult,
+) -> Int {
+  self.fallback_result.get_missing_char_count()
+}
+
+///|
+/// Return the number of fallback spans that rendered a fresh mask.
+pub fn CachedFontFallbackDrawResult::get_rendered_mask_count(
+  self : CachedFontFallbackDrawResult,
+) -> Int {
+  self.fallback_result.get_rendered_mask_count()
+}
+
+///|
+/// Return the number of fallback spans reused from the text-mask cache.
+pub fn CachedFontFallbackDrawResult::get_text_cache_hit_count(
+  self : CachedFontFallbackDrawResult,
+) -> Int {
+  self.fallback_result.get_cache_hit_count()
+}
+
+///|
 /// Return whether this draw inserted a pixmap into the image cache.
 pub fn CachedPixmapDrawResult::did_insert_pixmap(
   self : CachedPixmapDrawResult,
@@ -821,6 +926,45 @@ pub fn Renderer::draw_font_bytes_cached_with_renderer_resources(
     }
     Err(error) => Err(error)
   }
+}
+
+///|
+/// Parse an ordered font-byte stack through renderer resources, then draw a
+/// cached fallback line through the shared text-mask cache.
+pub fn Renderer::draw_font_bytes_fallback_line_cached_with_renderer_resources(
+  self : Renderer,
+  sources : Array[FontBytesFallbackSource],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  text_key_prefix : String,
+  paint : @graphics.Paint,
+) -> Result[CachedFontFallbackDrawResult, @text.FontParseError] {
+  let faces : Array[@text.FontFace] = []
+  let mut parsed_font_count = 0
+  let mut font_cache_hit_count = 0
+  for source in sources {
+    match
+      resources
+      .get_font_face_cache()
+      .get_or_parse_result(source.get_font_key(), source.get_font_data()) {
+      Ok(parse_result) => {
+        faces.push(parse_result.get_face())
+        if parse_result.did_parse() {
+          parsed_font_count += 1
+        } else {
+          font_cache_hit_count += 1
+        }
+      }
+      Err(error) => return Err(error)
+    }
+  }
+  let fallback_result = self.draw_text_fallback_line_cached_with_renderer_resources(
+    faces, text, x, y, config, resources, text_key_prefix, paint,
+  )
+  Ok({ parsed_font_count, font_cache_hit_count, fallback_result })
 }
 
 ///|

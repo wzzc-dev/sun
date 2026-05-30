@@ -43,6 +43,20 @@ pub fn CachedFontAtlasDrawResult::get_glyph_count(Self) -> Int
 pub fn CachedFontAtlasDrawResult::get_rasterized_glyph_count(Self) -> Int
 pub fn CachedFontAtlasDrawResult::get_skipped_glyph_count(Self) -> Int
 
+pub struct CachedFontFallbackDrawResult {
+  parsed_font_count : Int
+  font_cache_hit_count : Int
+  fallback_result : TextFallbackDrawResult
+} derive(@debug.Debug)
+pub fn CachedFontFallbackDrawResult::get_drawn_span_count(Self) -> Int
+pub fn CachedFontFallbackDrawResult::get_fallback_result(Self) -> TextFallbackDrawResult
+pub fn CachedFontFallbackDrawResult::get_font_cache_hit_count(Self) -> Int
+pub fn CachedFontFallbackDrawResult::get_missing_char_count(Self) -> Int
+pub fn CachedFontFallbackDrawResult::get_parsed_font_count(Self) -> Int
+pub fn CachedFontFallbackDrawResult::get_rendered_mask_count(Self) -> Int
+pub fn CachedFontFallbackDrawResult::get_skipped_span_count(Self) -> Int
+pub fn CachedFontFallbackDrawResult::get_text_cache_hit_count(Self) -> Int
+
 pub struct CachedFontTextDrawResult {
   did_parse_font : Bool
   text_result : TextMaskDrawResult
@@ -59,12 +73,21 @@ pub struct CachedPixmapDrawResult {
 pub fn CachedPixmapDrawResult::did_hit_cache(Self) -> Bool
 pub fn CachedPixmapDrawResult::did_insert_pixmap(Self) -> Bool
 
+pub struct FontBytesFallbackSource {
+  font_key : String
+  font_data : Bytes
+} derive(@debug.Debug)
+pub fn FontBytesFallbackSource::get_font_data(Self) -> Bytes
+pub fn FontBytesFallbackSource::get_font_key(Self) -> String
+pub fn FontBytesFallbackSource::new(String, Bytes) -> Self
+
 pub struct Renderer {
   canvas : @graphics.Canvas
 } derive(@debug.Debug)
 pub fn Renderer::draw_coverage_mask(Self, @text.CoverageMask, @graphics.Paint) -> Unit
 pub fn Renderer::draw_font_bytes_atlas_with_renderer_resources(Self, Bytes, String, Double, Double, @text.LayoutConfig, RendererResources, String, String, @graphics.Paint) -> Result[CachedFontAtlasDrawResult, @text.FontParseError]
 pub fn Renderer::draw_font_bytes_cached_with_renderer_resources(Self, Bytes, String, Double, Double, @text.LayoutConfig, RendererResources, String, String, @graphics.Paint) -> Result[CachedFontTextDrawResult, @text.FontParseError]
+pub fn Renderer::draw_font_bytes_fallback_line_cached_with_renderer_resources(Self, Array[FontBytesFallbackSource], String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> Result[CachedFontFallbackDrawResult, @text.FontParseError]
 pub fn Renderer::draw_glyph_atlas_entry(Self, @text.CoverageMask, @text.GlyphAtlasEntry, Int, Int, @graphics.Paint) -> Unit
 pub fn Renderer::draw_pixmap_cached(Self, @graphics.Pixmap, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::draw_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, RendererResources, String, @graphics.Paint) -> CachedPixmapDrawResult
