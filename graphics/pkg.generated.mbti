@@ -45,6 +45,7 @@ pub fn Canvas::fill_path(Self, Path, Paint) -> Unit
 pub fn Canvas::fill_polygon(Self, Array[Point], Paint) -> Unit
 pub fn Canvas::fill_rect(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::fill_rounded_rect(Self, Double, Double, Double, Double, Double, Paint) -> Unit
+pub fn Canvas::fill_rounded_rect_corners(Self, Double, Double, Double, Double, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::get_clip_rect(Self) -> Rect?
 pub fn Canvas::get_dirty_region(Self) -> DirtyRegion
 pub fn Canvas::get_pixmap(Self) -> Pixmap
@@ -70,6 +71,7 @@ pub fn Canvas::stroke_polygon(Self, Array[Point], Paint) -> Unit
 pub fn Canvas::stroke_polyline(Self, Array[Point], Paint) -> Unit
 pub fn Canvas::stroke_rect(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::stroke_rounded_rect(Self, Double, Double, Double, Double, Double, Paint) -> Unit
+pub fn Canvas::stroke_rounded_rect_corners(Self, Double, Double, Double, Double, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::translate(Self, tx~ : Double, ty~ : Double) -> Unit
 
 type CanvasEdge derive(@debug.Debug)
@@ -243,6 +245,7 @@ pub fn Path::add_polygon(Self, Array[Point]) -> Self
 pub fn Path::add_polyline(Self, Array[Point]) -> Self
 pub fn Path::add_rect(Self, Double, Double, Double, Double) -> Self
 pub fn Path::add_rounded_rect(Self, Double, Double, Double, Double, Double) -> Self
+pub fn Path::add_rounded_rect_corners(Self, Double, Double, Double, Double, Double, Double, Double, Double) -> Self
 pub fn Path::close(Self) -> Self
 pub fn Path::cubic_to(Self, Double, Double, Double, Double, Double, Double) -> Self
 pub fn Path::get_segments(Self) -> Array[PathSegment]

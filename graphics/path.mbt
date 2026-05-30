@@ -161,6 +161,71 @@ pub fn Path::add_rounded_rect(
 }
 
 ///|
+/// Add a rounded rectangle with independent corner radii in clockwise order.
+pub fn Path::add_rounded_rect_corners(
+  self : Path,
+  x : Double,
+  y : Double,
+  w : Double,
+  h : Double,
+  top_left : Double,
+  top_right : Double,
+  bottom_right : Double,
+  bottom_left : Double,
+) -> Path {
+  guard w > 0.0 && h > 0.0 else { return self.add_rect(x, y, w, h) }
+  let tl = clamp_corner_radius(top_left, w, h)
+  let tr = clamp_corner_radius(top_right, w, h)
+  let br = clamp_corner_radius(bottom_right, w, h)
+  let bl = clamp_corner_radius(bottom_left, w, h)
+  guard tl > 0.0 || tr > 0.0 || br > 0.0 || bl > 0.0 else {
+    return self.add_rect(x, y, w, h)
+  }
+  let k = 0.5522847498
+  let right = x + w
+  let bottom = y + h
+
+  ignore(self.move_to(x + tl, y))
+  ignore(self.line_to(right - tr, y))
+  if tr > 0.0 {
+    let kr = k * tr
+    ignore(self.cubic_to(right - tr + kr, y, right, y + tr - kr, right, y + tr))
+  }
+  ignore(self.line_to(right, bottom - br))
+  if br > 0.0 {
+    let kr = k * br
+    ignore(
+      self.cubic_to(
+        right,
+        bottom - br + kr,
+        right - br + kr,
+        bottom,
+        right - br,
+        bottom,
+      ),
+    )
+  }
+  ignore(self.line_to(x + bl, bottom))
+  if bl > 0.0 {
+    let kr = k * bl
+    ignore(
+      self.cubic_to(x + bl - kr, bottom, x, bottom - bl + kr, x, bottom - bl),
+    )
+  }
+  ignore(self.line_to(x, y + tl))
+  if tl > 0.0 {
+    let kr = k * tl
+    ignore(self.cubic_to(x, y + tl - kr, x + tl - kr, y, x + tl, y))
+  }
+  self.close()
+}
+
+///|
+fn clamp_corner_radius(radius : Double, w : Double, h : Double) -> Double {
+  radius.max(0.0).min(w / 2.0).min(h / 2.0)
+}
+
+///|
 /// Add a circle approximation using cubic bezier curves
 pub fn Path::add_circle(
   self : Path,

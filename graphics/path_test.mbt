@@ -81,6 +81,39 @@ test "Path::add_rounded_rect clamps radius and falls back to rect" {
 }
 
 ///|
+test "Path::add_rounded_rect_corners creates independent corner path" {
+  let path = Path::new().add_rounded_rect_corners(
+    0.0, 0.0, 10.0, 6.0, 2.0, 3.0, 0.0, 0.0,
+  )
+  let segments = path.get_segments()
+  inspect(segments.length(), content="8")
+  assert_move_to(segments[0], 2.0, 0.0)
+  assert_line_to(segments[1], 7.0, 0.0)
+  assert_cubic_to_end(segments[2], 10.0, 3.0)
+  assert_line_to(segments[3], 10.0, 6.0)
+  assert_line_to(segments[4], 0.0, 6.0)
+  assert_line_to(segments[5], 0.0, 2.0)
+  assert_cubic_to_end(segments[6], 2.0, 0.0)
+  assert_close(segments[7])
+}
+
+///|
+test "Path::add_rounded_rect_corners clamps and falls back to rect" {
+  let clamped = Path::new().add_rounded_rect_corners(
+    0.0, 0.0, 10.0, 4.0, 9.0, -1.0, 0.0, 0.0,
+  )
+  let segments = clamped.get_segments()
+  assert_move_to(segments[0], 2.0, 0.0)
+  assert_line_to(segments[1], 10.0, 0.0)
+  assert_cubic_to_end(segments[5], 2.0, 0.0)
+
+  let rect = Path::new().add_rounded_rect_corners(
+    0.0, 0.0, 10.0, 4.0, 0.0, 0.0, 0.0, 0.0,
+  )
+  assert_true(rect.get_segments().length() == 5)
+}
+
+///|
 test "Path::add_circle creates circle path" {
   let path = Path::new()
   ignore(path.add_circle(50.0, 50.0, 25.0))

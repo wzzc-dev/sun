@@ -212,6 +212,29 @@ pub fn Canvas::fill_rounded_rect(
 }
 
 ///|
+/// Draw a filled rounded rectangle with independent corner radii.
+pub fn Canvas::fill_rounded_rect_corners(
+  self : Canvas,
+  x : Double,
+  y : Double,
+  w : Double,
+  h : Double,
+  top_left : Double,
+  top_right : Double,
+  bottom_right : Double,
+  bottom_left : Double,
+  paint : Paint,
+) -> Unit {
+  guard w > 0.0 && h > 0.0 else { return }
+  self.fill_path(
+    Path::new().add_rounded_rect_corners(
+      x, y, w, h, top_left, top_right, bottom_right, bottom_left,
+    ),
+    paint,
+  )
+}
+
+///|
 /// Draw a filled circle.
 pub fn Canvas::fill_circle(
   self : Canvas,
@@ -381,6 +404,29 @@ pub fn Canvas::stroke_rounded_rect(
 ) -> Unit {
   guard w > 0.0 && h > 0.0 else { return }
   self.stroke_path(Path::new().add_rounded_rect(x, y, w, h, radius), paint)
+}
+
+///|
+/// Draw a stroked rounded rectangle with independent corner radii.
+pub fn Canvas::stroke_rounded_rect_corners(
+  self : Canvas,
+  x : Double,
+  y : Double,
+  w : Double,
+  h : Double,
+  top_left : Double,
+  top_right : Double,
+  bottom_right : Double,
+  bottom_left : Double,
+  paint : Paint,
+) -> Unit {
+  guard w > 0.0 && h > 0.0 else { return }
+  self.stroke_path(
+    Path::new().add_rounded_rect_corners(
+      x, y, w, h, top_left, top_right, bottom_right, bottom_left,
+    ),
+    paint,
+  )
 }
 
 ///|
