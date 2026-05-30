@@ -103,6 +103,7 @@ test "RenderFrame::dirty_submit_plan snapshots dirty bounds and present plan" {
   ignore(frame.get_layer_tree().add_layer(right))
 
   let submit_plan = frame.dirty_submit_plan(MemorySurface::new(8, 1))
+  assert_true(submit_plan.get_state() == DirtySubmitState::Present)
   assert_true(submit_plan.has_dirty())
   assert_true(submit_plan.needs_present())
   assert_true(submit_plan.uses_bounds_fallback())
@@ -124,6 +125,7 @@ test "RenderFrame::dirty_submit_plan keeps clipped-away dirty visible to schedul
   frame.mark_dirty_rect(PixelRect::new(x=3, y=0, width=1, height=1))
 
   let submit_plan = frame.dirty_submit_plan(MemorySurface::new(2, 1))
+  assert_true(submit_plan.get_state() == DirtySubmitState::DirtyClippedAway)
   assert_true(submit_plan.has_dirty())
   assert_true(!submit_plan.needs_present())
   assert_eq(submit_plan.get_present_rect_count(), 0)

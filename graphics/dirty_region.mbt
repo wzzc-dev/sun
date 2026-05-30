@@ -16,6 +16,14 @@ pub(all) enum DirtyPresentPlanMode {
 } derive(Eq, Debug)
 
 ///|
+/// Scheduler-facing state for a dirty submit snapshot.
+pub(all) enum DirtySubmitState {
+  Clean
+  Present
+  DirtyClippedAway
+} derive(Eq, Debug)
+
+///|
 /// A concrete dirty-present plan after clipping to the target bounds and
 /// applying a rectangle-count limit.
 pub struct DirtyPresentPlan {
@@ -81,6 +89,17 @@ pub fn DirtySubmitPlan::has_dirty(self : DirtySubmitPlan) -> Bool {
 ///|
 pub fn DirtySubmitPlan::needs_present(self : DirtySubmitPlan) -> Bool {
   !self.present_plan.is_empty()
+}
+
+///|
+pub fn DirtySubmitPlan::get_state(self : DirtySubmitPlan) -> DirtySubmitState {
+  if self.needs_present() {
+    return DirtySubmitState::Present
+  }
+  if self.has_dirty() {
+    return DirtySubmitState::DirtyClippedAway
+  }
+  DirtySubmitState::Clean
 }
 
 ///|

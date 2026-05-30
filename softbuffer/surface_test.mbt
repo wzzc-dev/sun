@@ -124,6 +124,7 @@ test "NativeSurface exposes RenderFrame dirty submit plans" {
 
   let surface = NativeSurface::from_frame(42, frame)
   let submit_plan = surface.dirty_frame_submit_plan(frame)
+  assert_true(submit_plan.get_state() == @graphics.DirtySubmitState::Present)
   assert_true(submit_plan.has_dirty())
   assert_true(submit_plan.needs_present())
   assert_true(submit_plan.uses_bounds_fallback())
@@ -151,6 +152,9 @@ test "NativeSurface dirty submit plan preserves clipped-away dirty without prese
   })
 
   let submit_plan = surface.dirty_frame_submit_plan(frame)
+  assert_true(
+    submit_plan.get_state() == @graphics.DirtySubmitState::DirtyClippedAway,
+  )
   assert_true(submit_plan.has_dirty())
   assert_true(!submit_plan.needs_present())
   assert_eq(submit_plan.get_present_rect_count(), 0)

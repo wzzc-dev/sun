@@ -141,9 +141,16 @@ pub struct DirtySubmitPlan {
 pub fn DirtySubmitPlan::get_dirty_bounds(Self) -> PixelRect?
 pub fn DirtySubmitPlan::get_present_plan(Self) -> DirtyPresentPlan
 pub fn DirtySubmitPlan::get_present_rect_count(Self) -> Int
+pub fn DirtySubmitPlan::get_state(Self) -> DirtySubmitState
 pub fn DirtySubmitPlan::has_dirty(Self) -> Bool
 pub fn DirtySubmitPlan::needs_present(Self) -> Bool
 pub fn DirtySubmitPlan::uses_bounds_fallback(Self) -> Bool
+
+pub(all) enum DirtySubmitState {
+  Clean
+  Present
+  DirtyClippedAway
+} derive(Eq, @debug.Debug)
 
 pub(all) enum FillRule {
   NonZero

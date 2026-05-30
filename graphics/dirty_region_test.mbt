@@ -119,3 +119,25 @@ test "DirtyRegion::present_plan exposes dirty present strategy" {
     bounds_plan.get_rects()[0] == PixelRect::new(x=0, y=0, width=7, height=1),
   )
 }
+
+///|
+test "DirtySubmitPlan exposes scheduler state" {
+  let clean = RenderFrame::new(1, 1).dirty_submit_plan(MemorySurface::new(1, 1))
+  assert_true(clean.get_state() == DirtySubmitState::Clean)
+  assert_true(!clean.has_dirty())
+  assert_true(!clean.needs_present())
+
+  let clipped_frame = RenderFrame::new(4, 1)
+  clipped_frame.mark_dirty_rect(PixelRect::new(x=3, y=0, width=1, height=1))
+  let clipped = clipped_frame.dirty_submit_plan(MemorySurface::new(2, 1))
+  assert_true(clipped.get_state() == DirtySubmitState::DirtyClippedAway)
+  assert_true(clipped.has_dirty())
+  assert_true(!clipped.needs_present())
+
+  let present_frame = RenderFrame::new(2, 1)
+  present_frame.mark_dirty_rect(PixelRect::new(x=0, y=0, width=1, height=1))
+  let present = present_frame.dirty_submit_plan(MemorySurface::new(2, 1))
+  assert_true(present.get_state() == DirtySubmitState::Present)
+  assert_true(present.has_dirty())
+  assert_true(present.needs_present())
+}
