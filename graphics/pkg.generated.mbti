@@ -182,6 +182,7 @@ pub fn LayerTree::clear_dirty_regions(Self) -> Unit
 pub fn LayerTree::composite_dirty_to(Self, Canvas, Int) -> Int
 pub fn LayerTree::composite_to(Self, Canvas) -> Int
 pub fn LayerTree::dirty_bounds(Self) -> PixelRect?
+pub fn[S : Surface] LayerTree::dirty_present_plan(Self, Canvas, S, Int) -> DirtyPresentPlan
 pub fn LayerTree::dirty_rects(Self, Int) -> Array[PixelRect]
 pub fn LayerTree::get_layer(Self, Int) -> Layer?
 pub fn LayerTree::get_layer_count(Self) -> Int
@@ -373,6 +374,7 @@ pub struct RenderFrame {
 } derive(@debug.Debug)
 pub fn RenderFrame::clear_dirty_regions(Self) -> Unit
 pub fn RenderFrame::dirty_bounds(Self) -> PixelRect?
+pub fn[S : Surface] RenderFrame::dirty_present_plan(Self, S) -> DirtyPresentPlan
 pub fn RenderFrame::get_canvas(Self) -> Canvas
 pub fn RenderFrame::get_dirty_rect_limit(Self) -> Int
 pub fn RenderFrame::get_height(Self) -> Int

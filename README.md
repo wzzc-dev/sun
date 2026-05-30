@@ -87,7 +87,7 @@ wzzc-dev/
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition
 - `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present plans, and `Canvas` bounded dirty-present helpers
 - `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`
-- `LayerTree` z-order composition with dirty rectangle propagation, layer resize/remove/replace/reorder lifecycle, property-change invalidation, and partial present submission
+- `LayerTree` z-order composition with dirty rectangle propagation, layer resize/remove/replace/reorder lifecycle, property-change invalidation, dirty-present planning, and partial present submission
 - `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, dirty queries/marking, and dirty/full present helpers for future event-loop integration
 
 ### text

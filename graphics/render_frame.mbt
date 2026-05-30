@@ -119,6 +119,18 @@ pub fn RenderFrame::clear_dirty_regions(self : RenderFrame) -> Unit {
 }
 
 ///|
+pub fn[S : Surface] RenderFrame::dirty_present_plan(
+  self : RenderFrame,
+  surface : S,
+) -> DirtyPresentPlan {
+  self.layer_tree.dirty_present_plan(
+    self.canvas,
+    surface,
+    self.dirty_rect_limit,
+  )
+}
+
+///|
 pub fn[S : Surface] RenderFrame::present_dirty_to(
   self : RenderFrame,
   surface : S,

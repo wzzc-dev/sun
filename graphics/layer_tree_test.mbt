@@ -411,6 +411,63 @@ test "LayerTree::present_dirty_to_with_limit falls back to dirty bounds" {
 }
 
 ///|
+test "LayerTree::dirty_present_plan merges canvas and layer dirty regions" {
+  let target = Canvas::new(8, 1)
+  target.draw_pixel(0, 0, Color::white())
+
+  let layer = Layer::new(1, 1).set_position(6, 0)
+  layer.get_canvas().draw_pixel(0, 0, Color::blue())
+  let tree = LayerTree::new()
+  ignore(tree.add_layer(layer))
+
+  let surface = MemorySurface::new(8, 1)
+  let rect_plan = tree.dirty_present_plan(target, surface, 4)
+  assert_true(rect_plan.get_mode() == DirtyPresentPlanMode::Rects)
+  assert_eq(rect_plan.get_rect_count(), 2)
+  assert_true(
+    rect_plan.get_rects()[0] == PixelRect::new(x=0, y=0, width=1, height=1),
+  )
+  assert_true(
+    rect_plan.get_rects()[1] == PixelRect::new(x=6, y=0, width=1, height=1),
+  )
+
+  let bounds_plan = tree.dirty_present_plan(target, surface, 1)
+  assert_true(bounds_plan.get_mode() == DirtyPresentPlanMode::Bounds)
+  assert_eq(bounds_plan.get_rect_count(), 1)
+  assert_true(
+    bounds_plan.get_rects()[0] == PixelRect::new(x=0, y=0, width=7, height=1),
+  )
+  assert_true(!target.get_dirty_region().is_empty())
+  assert_true(
+    tree.dirty_bounds() == Some(PixelRect::new(x=6, y=0, width=1, height=1)),
+  )
+}
+
+///|
+test "LayerTree::present_dirty_to_with_limit consumes exposed dirty present plan" {
+  let target = Canvas::new(8, 1)
+  target.draw_pixel(0, 0, Color::white())
+
+  let layer = Layer::new(1, 1).set_position(6, 0)
+  layer.get_canvas().draw_pixel(0, 0, Color::blue())
+  let tree = LayerTree::new()
+  ignore(tree.add_layer(layer))
+
+  let surface = RecordingSurface::new(8, 1)
+  let plan = tree.dirty_present_plan(target, surface, 1)
+  assert_true(plan.get_mode() == DirtyPresentPlanMode::Bounds)
+  assert_true(
+    plan.get_rects()[0] == PixelRect::new(x=0, y=0, width=7, height=1),
+  )
+
+  assert_true(tree.present_dirty_to_with_limit(target, surface, 1) == Ok(1))
+  assert_eq(surface.get_rect_count(), 1)
+  assert_true(surface.get_rect(0) == plan.get_rects()[0])
+  assert_true(target.get_dirty_region().is_empty())
+  assert_true(tree.dirty_bounds() == None)
+}
+
+///|
 test "LayerTree::present_dirty_to preserves dirty state on surface error" {
   let target = Canvas::new(2, 1)
   let surface = FailingSurface::new(2, 1)
@@ -462,6 +519,97 @@ test "LayerTree::present_dirty_to restores blended pixels before retry" {
   assert_eq(surface.get_pixel(0, 0), Color::new(r=127, g=127, b=255, a=255))
   assert_true(tree.dirty_bounds() == None)
   assert_true(target.get_dirty_region().is_empty())
+}
+
+///|
+struct RecordingSurface {
+  width : Int
+  height : Int
+  rects : Array[PixelRect]
+} derive(Debug)
+
+///|
+fn RecordingSurface::new(width : Int, height : Int) -> RecordingSurface {
+  { width, height, rects: [] }
+}
+
+///|
+fn RecordingSurface::get_rect_count(self : RecordingSurface) -> Int {
+  self.rects.length()
+}
+
+///|
+fn RecordingSurface::get_rect(
+  self : RecordingSurface,
+  index : Int,
+) -> PixelRect {
+  self.rects[index]
+}
+
+///|
+impl Surface for RecordingSurface with fn get_width(self) {
+  self.width
+}
+
+///|
+impl Surface for RecordingSurface with fn get_height(self) {
+  self.height
+}
+
+///|
+impl Surface for RecordingSurface with fn present_pixels(
+  self,
+  width,
+  height,
+  row_bytes,
+  pixels,
+) {
+  match
+    validate_present_rect(
+      self.width,
+      self.height,
+      0,
+      0,
+      width,
+      height,
+      row_bytes,
+      pixels,
+    ) {
+    Err(error) => Err(error)
+    Ok(_) => {
+      self.rects.push(PixelRect::new(x=0, y=0, width~, height~))
+      Ok(())
+    }
+  }
+}
+
+///|
+impl Surface for RecordingSurface with fn present_pixels_rect(
+  self,
+  x,
+  y,
+  width,
+  height,
+  row_bytes,
+  pixels,
+) {
+  match
+    validate_present_rect(
+      self.width,
+      self.height,
+      x,
+      y,
+      width,
+      height,
+      row_bytes,
+      pixels,
+    ) {
+    Err(error) => Err(error)
+    Ok(_) => {
+      self.rects.push(PixelRect::new(x~, y~, width~, height~))
+      Ok(())
+    }
+  }
 }
 
 ///|

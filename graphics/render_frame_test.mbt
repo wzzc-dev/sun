@@ -68,6 +68,29 @@ test "RenderFrame dirty rect limit controls partial present fallback" {
 }
 
 ///|
+test "RenderFrame::dirty_present_plan uses frame dirty rect limit" {
+  let frame = RenderFrame::new(8, 1).set_dirty_rect_limit(2)
+  frame.get_canvas().draw_pixel(0, 0, Color::red())
+
+  let middle = Layer::new(1, 1).set_position(3, 0)
+  middle.get_canvas().draw_pixel(0, 0, Color::green())
+  let right = Layer::new(1, 1).set_position(6, 0)
+  right.get_canvas().draw_pixel(0, 0, Color::blue())
+
+  let tree = frame.get_layer_tree()
+  ignore(tree.add_layer(middle))
+  ignore(tree.add_layer(right))
+
+  let plan = frame.dirty_present_plan(MemorySurface::new(8, 1))
+  assert_true(plan.get_mode() == DirtyPresentPlanMode::Bounds)
+  assert_eq(plan.get_rect_count(), 1)
+  assert_true(
+    plan.get_rects()[0] == PixelRect::new(x=0, y=0, width=7, height=1),
+  )
+  assert_true(frame.has_dirty())
+}
+
+///|
 test "RenderFrame dirty helpers cover canvas and layer tree dirtiness" {
   let frame = RenderFrame::new(4, 2)
   assert_true(!frame.has_dirty())

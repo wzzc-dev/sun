@@ -361,6 +361,22 @@ pub fn[S : Surface] Canvas::present_dirty_to_with_limit(
     self.clear_dirty_region()
     return Ok(0)
   }
+  match self.present_dirty_plan_to(surface, plan) {
+    Ok(presented) => {
+      self.clear_dirty_region()
+      Ok(presented)
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+fn[S : Surface] Canvas::present_dirty_plan_to(
+  self : Canvas,
+  surface : S,
+  plan : DirtyPresentPlan,
+) -> Result[Int, PresentError] {
+  guard !plan.is_empty() else { return Ok(0) }
   let mut presented = 0
   for rect in plan.get_rects() {
     match self.get_pixmap().present_rect_to(surface, rect) {
@@ -368,7 +384,6 @@ pub fn[S : Surface] Canvas::present_dirty_to_with_limit(
       Err(error) => return Err(error)
     }
   }
-  self.clear_dirty_region()
   Ok(presented)
 }
 

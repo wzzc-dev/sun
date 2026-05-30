@@ -207,6 +207,32 @@ pub fn LayerTree::dirty_rects(
 }
 
 ///|
+pub fn[S : Surface] LayerTree::dirty_present_plan(
+  self : LayerTree,
+  target : Canvas,
+  surface : S,
+  max_rects : Int,
+) -> DirtyPresentPlan {
+  let region = self.combined_dirty_region(target)
+  let target_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=target.get_pixmap().get_width(),
+    height=target.get_pixmap().get_height(),
+  )
+  let surface_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=surface.get_width(),
+    height=surface.get_height(),
+  )
+  match target_bounds.intersection(surface_bounds) {
+    Some(bounds) => region.present_plan(bounds, max_rects)
+    None => { mode: DirtyPresentPlanMode::Empty, rects: [] }
+  }
+}
+
+///|
 pub fn LayerTree::composite_to(self : LayerTree, target : Canvas) -> Int {
   let mut count = 0
   for layer in self.layers {
@@ -273,11 +299,18 @@ pub fn[S : Surface] LayerTree::present_dirty_to_with_limit(
   guard rects.length() > 0 else {
     return target.present_dirty_to_with_limit(surface, max_rects)
   }
+  let plan = self.dirty_present_plan(target, surface, max_rects)
   let dirty_snapshot = snapshot_canvas_dirty_region(target)
   let pixel_snapshot = snapshot_canvas_pixels(target, rects)
   ignore(self.composite_rects_to(target, rects))
-  match target.present_dirty_to_with_limit(surface, max_rects) {
+  guard !plan.is_empty() else {
+    target.clear_dirty_region()
+    self.clear_composited_dirty_regions()
+    return Ok(0)
+  }
+  match target.present_dirty_plan_to(surface, plan) {
     Ok(presented) => {
+      target.clear_dirty_region()
       self.clear_composited_dirty_regions()
       Ok(presented)
     }
@@ -287,6 +320,21 @@ pub fn[S : Surface] LayerTree::present_dirty_to_with_limit(
       Err(error)
     }
   }
+}
+
+///|
+fn LayerTree::combined_dirty_region(
+  self : LayerTree,
+  target : Canvas,
+) -> DirtyRegion {
+  let region = DirtyRegion::new()
+  for rect in target.get_dirty_region().get_rects() {
+    region.add_rect(rect)
+  }
+  for rect in self.collect_dirty_region().get_rects() {
+    region.add_rect(rect)
+  }
+  region
 }
 
 ///|
