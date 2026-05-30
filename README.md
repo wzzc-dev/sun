@@ -106,12 +106,12 @@ Text processing library (font parsing, shaping, layout).
 - `FontFaceCache` for keyed reuse of checked parsed faces in GUI/resource code,
   with optional hit/parse-miss telemetry
 - `GlyphMaskCache` for keyed reuse of individual glyph coverage masks, with
-  optional hit/rasterize-miss telemetry
+  optional hit/rasterize-miss telemetry and opt-in LRU entry limits
 - `GlyphMaskAtlas` for text-local row-packed placement of copied glyph masks,
   with capacity, occupancy, free-space, fit-query, rotate-on-full insert, and
   atlas hit/new-insert telemetry helpers for resource lifecycle decisions
 - `TextMaskCache` for keyed reuse of rendered coverage masks with copy-isolated
-  cache entries and optional hit/render-miss telemetry
+  cache entries, optional hit/render-miss telemetry, and opt-in LRU entry limits
 - Left, center, right, and basic non-final-line justify alignment through the `TextLayout` facade
 - Explicit newline and empty-line preservation in `TextLayout`, text masks, and renderer text drawing
 - Configurable letter spacing and word spacing through `LayoutConfig`

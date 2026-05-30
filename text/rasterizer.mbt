@@ -398,6 +398,9 @@ fn copy_mask_into_atlas(
 /// Small keyed cache for rendered glyph coverage masks.
 pub struct GlyphMaskCache {
   mut masks : Map[String, CoverageMask]
+  mut access_order : Array[String]
+  capacity : Int
+  is_bounded : Bool
 } derive(Debug)
 
 ///|
@@ -410,7 +413,13 @@ pub struct GlyphMaskCacheRasterizeResult {
 ///|
 /// Create an empty glyph mask cache.
 pub fn GlyphMaskCache::new() -> GlyphMaskCache {
-  { masks: {} }
+  { masks: {}, access_order: [], capacity: 0, is_bounded: false }
+}
+
+///|
+/// Create an empty glyph mask cache with least-recently-used eviction.
+pub fn GlyphMaskCache::with_capacity(capacity : Int) -> GlyphMaskCache {
+  { masks: {}, access_order: [], capacity: capacity.max(1), is_bounded: true }
 }
 
 ///|
@@ -442,13 +451,28 @@ pub fn GlyphMaskCache::is_empty(self : GlyphMaskCache) -> Bool {
 }
 
 ///|
+/// Return the maximum number of cached glyph masks, or 0 for an unbounded cache.
+pub fn GlyphMaskCache::capacity(self : GlyphMaskCache) -> Int {
+  self.capacity
+}
+
+///|
+/// Return whether the cache has a configured entry limit.
+pub fn GlyphMaskCache::is_capacity_bounded(self : GlyphMaskCache) -> Bool {
+  self.is_bounded
+}
+
+///|
 /// Look up a rendered glyph mask by caller-provided key.
 pub fn GlyphMaskCache::get(
   self : GlyphMaskCache,
   key : String,
 ) -> CoverageMask? {
   match self.masks.get(key) {
-    Some(mask) => Some(mask.copy())
+    Some(mask) => {
+      self.touch_key(key)
+      Some(mask.copy())
+    }
     None => None
   }
 }
@@ -462,6 +486,8 @@ pub fn GlyphMaskCache::insert(
 ) -> CoverageMask {
   let stored = mask.copy()
   self.masks[key] = stored
+  self.touch_key(key)
+  self.evict_over_capacity()
   stored.copy()
 }
 
@@ -510,18 +536,53 @@ pub fn GlyphMaskCache::get_or_rasterize_glyph_result(
 /// Remove a cached glyph mask by key.
 pub fn GlyphMaskCache::remove(self : GlyphMaskCache, key : String) -> Unit {
   self.masks.remove(key)
+  self.remove_access_key(key)
 }
 
 ///|
 /// Drop all cached glyph masks.
 pub fn GlyphMaskCache::clear(self : GlyphMaskCache) -> Unit {
   self.masks = {}
+  self.access_order = []
+}
+
+///|
+fn GlyphMaskCache::touch_key(self : GlyphMaskCache, key : String) -> Unit {
+  self.remove_access_key(key)
+  self.access_order.push(key)
+}
+
+///|
+fn GlyphMaskCache::remove_access_key(
+  self : GlyphMaskCache,
+  key : String,
+) -> Unit {
+  let mut index = 0
+  while index < self.access_order.length() {
+    if self.access_order[index] == key {
+      ignore(self.access_order.remove(index))
+    } else {
+      index += 1
+    }
+  }
+}
+
+///|
+fn GlyphMaskCache::evict_over_capacity(self : GlyphMaskCache) -> Unit {
+  guard self.is_bounded && self.capacity > 0 else { return }
+  while self.masks.length() > self.capacity && self.access_order.length() > 0 {
+    let key = self.access_order.remove(0)
+    self.masks.remove(key)
+  }
 }
 
 ///|
 /// Small keyed cache for rendered text coverage masks.
 pub struct TextMaskCache {
   mut masks : Map[String, CoverageMask]
+  mut access_order : Array[String]
+  capacity : Int
+  is_bounded : Bool
 } derive(Debug)
 
 ///|
@@ -534,7 +595,13 @@ pub struct TextMaskCacheRenderResult {
 ///|
 /// Create an empty text mask cache.
 pub fn TextMaskCache::new() -> TextMaskCache {
-  { masks: {} }
+  { masks: {}, access_order: [], capacity: 0, is_bounded: false }
+}
+
+///|
+/// Create an empty text mask cache with least-recently-used eviction.
+pub fn TextMaskCache::with_capacity(capacity : Int) -> TextMaskCache {
+  { masks: {}, access_order: [], capacity: capacity.max(1), is_bounded: true }
 }
 
 ///|
@@ -566,10 +633,25 @@ pub fn TextMaskCache::is_empty(self : TextMaskCache) -> Bool {
 }
 
 ///|
+/// Return the maximum number of cached text masks, or 0 for an unbounded cache.
+pub fn TextMaskCache::capacity(self : TextMaskCache) -> Int {
+  self.capacity
+}
+
+///|
+/// Return whether the cache has a configured entry limit.
+pub fn TextMaskCache::is_capacity_bounded(self : TextMaskCache) -> Bool {
+  self.is_bounded
+}
+
+///|
 /// Look up a rendered mask by caller-provided key.
 pub fn TextMaskCache::get(self : TextMaskCache, key : String) -> CoverageMask? {
   match self.masks.get(key) {
-    Some(mask) => Some(mask.copy())
+    Some(mask) => {
+      self.touch_key(key)
+      Some(mask.copy())
+    }
     None => None
   }
 }
@@ -583,6 +665,8 @@ pub fn TextMaskCache::insert(
 ) -> CoverageMask {
   let stored = mask.copy()
   self.masks[key] = stored
+  self.touch_key(key)
+  self.evict_over_capacity()
   stored.copy()
 }
 
@@ -633,12 +717,41 @@ pub fn TextMaskCache::get_or_render_face_result(
 /// Remove a cached mask by key.
 pub fn TextMaskCache::remove(self : TextMaskCache, key : String) -> Unit {
   self.masks.remove(key)
+  self.remove_access_key(key)
 }
 
 ///|
 /// Drop all cached masks.
 pub fn TextMaskCache::clear(self : TextMaskCache) -> Unit {
   self.masks = {}
+  self.access_order = []
+}
+
+///|
+fn TextMaskCache::touch_key(self : TextMaskCache, key : String) -> Unit {
+  self.remove_access_key(key)
+  self.access_order.push(key)
+}
+
+///|
+fn TextMaskCache::remove_access_key(self : TextMaskCache, key : String) -> Unit {
+  let mut index = 0
+  while index < self.access_order.length() {
+    if self.access_order[index] == key {
+      ignore(self.access_order.remove(index))
+    } else {
+      index += 1
+    }
+  }
+}
+
+///|
+fn TextMaskCache::evict_over_capacity(self : TextMaskCache) -> Unit {
+  guard self.is_bounded && self.capacity > 0 else { return }
+  while self.masks.length() > self.capacity && self.access_order.length() > 0 {
+    let key = self.access_order.remove(0)
+    self.masks.remove(key)
+  }
 }
 
 ///|

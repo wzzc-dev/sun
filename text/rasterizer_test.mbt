@@ -24,6 +24,8 @@ test "CoverageMask::copy duplicates pixel storage" {
 test "TextMaskCache stores copies and clears entries" {
   let cache = TextMaskCache::new()
   assert_true(cache.is_empty())
+  assert_true(!cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 0)
   let pixels : FixedArray[Byte] = FixedArray::make(4, 0)
   pixels[0] = 96
   let mask = CoverageMask::new(2, 2, pixels)
@@ -62,6 +64,8 @@ test "TextMaskCache stores copies and clears entries" {
 test "GlyphMaskCache stores copies and clears entries" {
   let cache = GlyphMaskCache::new()
   assert_true(cache.is_empty())
+  assert_true(!cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 0)
   let pixels : FixedArray[Byte] = FixedArray::make(4, 0)
   pixels[2] = 144
   let mask = CoverageMask::new(2, 2, pixels)
@@ -94,6 +98,74 @@ test "GlyphMaskCache stores copies and clears entries" {
   assert_eq(cache.len(), 1)
   cache.clear()
   assert_true(cache.is_empty())
+}
+
+///|
+test "TextMaskCache::with_capacity evicts least recently used masks" {
+  let cache = TextMaskCache::with_capacity(2)
+  assert_true(cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 2)
+  let first_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  first_pixels[0] = 10
+  let second_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  second_pixels[0] = 20
+  let third_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  third_pixels[0] = 30
+  ignore(cache.insert("first", CoverageMask::new(2, 2, first_pixels)))
+  ignore(cache.insert("second", CoverageMask::new(2, 2, second_pixels)))
+  match cache.get("first") {
+    Some(mask) => assert_eq(mask.get_pixels()[0], 10)
+    None => abort("expected first text mask")
+  }
+  ignore(cache.insert("third", CoverageMask::new(2, 2, third_pixels)))
+  assert_eq(cache.len(), 2)
+  assert_true(cache.get("second") is None)
+  assert_true(cache.get("first") is Some(_))
+  assert_true(cache.get("third") is Some(_))
+}
+
+///|
+test "GlyphMaskCache::with_capacity evicts least recently used masks" {
+  let cache = GlyphMaskCache::with_capacity(2)
+  assert_true(cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 2)
+  let first_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  first_pixels[1] = 10
+  let second_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  second_pixels[1] = 20
+  let third_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  third_pixels[1] = 30
+  ignore(cache.insert("first", CoverageMask::new(2, 2, first_pixels)))
+  ignore(cache.insert("second", CoverageMask::new(2, 2, second_pixels)))
+  match cache.get("first") {
+    Some(mask) => assert_eq(mask.get_pixels()[1], 10)
+    None => abort("expected first glyph mask")
+  }
+  ignore(cache.insert("third", CoverageMask::new(2, 2, third_pixels)))
+  assert_eq(cache.len(), 2)
+  assert_true(cache.get("second") is None)
+  assert_true(cache.get("first") is Some(_))
+  assert_true(cache.get("third") is Some(_))
+}
+
+///|
+test "Mask caches clamp invalid capacity" {
+  let text_cache = TextMaskCache::with_capacity(0)
+  let glyph_cache = GlyphMaskCache::with_capacity(0)
+  assert_eq(text_cache.capacity(), 1)
+  assert_eq(glyph_cache.capacity(), 1)
+  let first_pixels : FixedArray[Byte] = FixedArray::make(1, 1)
+  let second_pixels : FixedArray[Byte] = FixedArray::make(1, 2)
+  ignore(text_cache.insert("first", CoverageMask::new(1, 1, first_pixels)))
+  ignore(glyph_cache.insert("first", CoverageMask::new(1, 1, first_pixels)))
+  ignore(text_cache.insert("second", CoverageMask::new(1, 1, second_pixels)))
+  ignore(glyph_cache.insert("second", CoverageMask::new(1, 1, second_pixels)))
+  assert_eq(text_cache.len(), 1)
+  assert_eq(glyph_cache.len(), 1)
+  assert_true(text_cache.get("first") is None)
+  assert_true(glyph_cache.get("first") is None)
+  assert_true(text_cache.get("second") is Some(_))
+  assert_true(glyph_cache.get("second") is Some(_))
 }
 
 ///|
