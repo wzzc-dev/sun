@@ -70,6 +70,82 @@ pub fn Pixmap::get_pixels(self : Pixmap) -> FixedArray[Byte] {
 }
 
 ///|
+/// Copy this pixmap and its raw pixel storage.
+pub fn Pixmap::copy(self : Pixmap) -> Pixmap {
+  { width: self.width, height: self.height, pixels: copy_pixmap_pixels(self) }
+}
+
+///|
+/// Small keyed cache for reusable pixmap resources.
+pub struct PixmapCache {
+  mut pixmaps : Map[String, Pixmap]
+} derive(Debug)
+
+///|
+/// Create an empty pixmap cache.
+pub fn PixmapCache::new() -> PixmapCache {
+  { pixmaps: {} }
+}
+
+///|
+/// Return the number of cached pixmaps.
+pub fn PixmapCache::len(self : PixmapCache) -> Int {
+  self.pixmaps.length()
+}
+
+///|
+/// Return whether the cache currently has no pixmaps.
+pub fn PixmapCache::is_empty(self : PixmapCache) -> Bool {
+  self.len() is 0
+}
+
+///|
+/// Look up a pixmap by caller-provided key.
+pub fn PixmapCache::get(self : PixmapCache, key : String) -> Pixmap? {
+  match self.pixmaps.get(key) {
+    Some(pixmap) => Some(pixmap.copy())
+    None => None
+  }
+}
+
+///|
+/// Insert or replace a pixmap under a caller-provided key.
+pub fn PixmapCache::insert(
+  self : PixmapCache,
+  key : String,
+  pixmap : Pixmap,
+) -> Pixmap {
+  let stored = pixmap.copy()
+  self.pixmaps[key] = stored
+  stored.copy()
+}
+
+///|
+/// Return a cached pixmap or insert this fallback pixmap on a miss.
+pub fn PixmapCache::get_or_insert(
+  self : PixmapCache,
+  key : String,
+  pixmap : Pixmap,
+) -> Pixmap {
+  match self.get(key) {
+    Some(cached) => cached
+    None => self.insert(key, pixmap)
+  }
+}
+
+///|
+/// Remove a cached pixmap by key.
+pub fn PixmapCache::remove(self : PixmapCache, key : String) -> Unit {
+  self.pixmaps.remove(key)
+}
+
+///|
+/// Drop all cached pixmaps.
+pub fn PixmapCache::clear(self : PixmapCache) -> Unit {
+  self.pixmaps = {}
+}
+
+///|
 /// Set a pixel at the given coordinates
 pub fn Pixmap::set_pixel(
   self : Pixmap,
@@ -83,6 +159,16 @@ pub fn Pixmap::set_pixel(
   self.pixels[idx + 1] = color.g
   self.pixels[idx + 2] = color.b
   self.pixels[idx + 3] = color.a
+}
+
+///|
+fn copy_pixmap_pixels(pixmap : Pixmap) -> FixedArray[Byte] {
+  let src = pixmap.get_pixels()
+  let dst : FixedArray[Byte] = FixedArray::make(src.length(), 0)
+  for i in 0..<src.length() {
+    dst[i] = src[i]
+  }
+  dst
 }
 
 ///|

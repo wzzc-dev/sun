@@ -15,6 +15,87 @@ test "Pixmap::set_pixel and get_pixel" {
 }
 
 ///|
+test "Pixmap::copy duplicates raw pixel storage" {
+  let pixmap = Pixmap::new(2, 1)
+  pixmap.set_pixel(0, 0, Color::red())
+  let copy = pixmap.copy()
+  assert_eq(copy.get_width(), 2)
+  assert_eq(copy.get_height(), 1)
+  assert_eq(copy.get_pixel(0, 0), Color::red())
+  let copy_pixels = copy.get_pixels()
+  copy_pixels[0] = 0
+  assert_eq(pixmap.get_pixel(0, 0), Color::red())
+  assert_eq(copy.get_pixel(0, 0), Color::new(r=0, g=0, b=0, a=255))
+}
+
+///|
+test "PixmapCache stores copies and manages entries" {
+  let cache = PixmapCache::new()
+  assert_true(cache.is_empty())
+  let pixmap = Pixmap::new(2, 1)
+  pixmap.set_pixel(0, 0, Color::red())
+  let inserted = cache.insert("icon", pixmap)
+  assert_eq(cache.len(), 1)
+  assert_eq(inserted.get_pixel(0, 0), Color::red())
+
+  pixmap.set_pixel(0, 0, Color::blue())
+  match cache.get("icon") {
+    Some(cached) => {
+      assert_eq(cached.get_width(), 2)
+      assert_eq(cached.get_height(), 1)
+      assert_eq(cached.get_pixel(0, 0), Color::red())
+      cached.set_pixel(0, 0, Color::green())
+    }
+    None => abort("expected cached pixmap")
+  }
+
+  match cache.get("icon") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), Color::red())
+    None => abort("expected cached pixmap")
+  }
+
+  let replacement = Pixmap::new(1, 1)
+  replacement.set_pixel(0, 0, Color::black())
+  ignore(cache.insert("icon", replacement))
+  assert_eq(cache.len(), 1)
+  match cache.get("icon") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), Color::black())
+    None => abort("expected replacement pixmap")
+  }
+
+  cache.remove("icon")
+  assert_true(cache.is_empty())
+  assert_true(cache.get("icon") is None)
+
+  ignore(cache.insert("icon", pixmap))
+  assert_eq(cache.len(), 1)
+  cache.clear()
+  assert_true(cache.is_empty())
+}
+
+///|
+test "PixmapCache::get_or_insert reuses cached pixmaps" {
+  let cache = PixmapCache::new()
+  let red = Pixmap::new(1, 1)
+  red.set_pixel(0, 0, Color::red())
+  let first = cache.get_or_insert("status", red)
+  assert_eq(first.get_pixel(0, 0), Color::red())
+  assert_eq(cache.len(), 1)
+
+  first.set_pixel(0, 0, Color::green())
+  match cache.get("status") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), Color::red())
+    None => abort("expected cached pixmap")
+  }
+
+  let blue = Pixmap::new(1, 1)
+  blue.set_pixel(0, 0, Color::blue())
+  let second = cache.get_or_insert("status", blue)
+  assert_eq(second.get_pixel(0, 0), Color::red())
+  assert_eq(cache.len(), 1)
+}
+
+///|
 test "Pixmap::clear fills all pixels" {
   let pixmap = Pixmap::new(10, 10)
   let color = Color::new(r=0, g=255, b=0)

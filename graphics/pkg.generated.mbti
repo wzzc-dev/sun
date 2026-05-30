@@ -393,6 +393,7 @@ pub fn Pixmap::blend_scaled_pixmap_rect(Self, Int, Int, Int, Int, Self, PixelRec
 pub fn Pixmap::blend_scaled_pixmap_rect_bilinear(Self, Int, Int, Int, Int, Self, PixelRect, Double) -> Unit
 pub fn Pixmap::blend_tiled_pixmap_rect(Self, Int, Int, Int, Int, Self, PixelRect, Double) -> Unit
 pub fn Pixmap::clear(Self, Color) -> Unit
+pub fn Pixmap::copy(Self) -> Self
 pub fn Pixmap::fill_rect(Self, Int, Int, Int, Int, Color) -> Unit
 pub fn Pixmap::get_height(Self) -> Int
 pub fn Pixmap::get_pixel(Self, Int, Int) -> Color
@@ -404,6 +405,18 @@ pub fn Pixmap::present_rect_payload(Self, PixelRect) -> Result[PresentRectPayloa
 pub fn[S : Surface] Pixmap::present_rect_to(Self, S, PixelRect) -> Result[Unit, PresentError]
 pub fn[S : Surface] Pixmap::present_to(Self, S) -> Result[Unit, PresentError]
 pub fn Pixmap::set_pixel(Self, Int, Int, Color) -> Unit
+
+pub struct PixmapCache {
+  mut pixmaps : Map[String, Pixmap]
+} derive(@debug.Debug)
+pub fn PixmapCache::clear(Self) -> Unit
+pub fn PixmapCache::get(Self, String) -> Pixmap?
+pub fn PixmapCache::get_or_insert(Self, String, Pixmap) -> Pixmap
+pub fn PixmapCache::insert(Self, String, Pixmap) -> Pixmap
+pub fn PixmapCache::is_empty(Self) -> Bool
+pub fn PixmapCache::len(Self) -> Int
+pub fn PixmapCache::new() -> Self
+pub fn PixmapCache::remove(Self, String) -> Unit
 
 pub struct Point {
   x : Double
