@@ -166,6 +166,7 @@ Application / GUI
 - `GlyphMaskCache` 支持按 key 复用单 glyph rendered `CoverageMask`，作为后续 glyph atlas 与 renderer glyph 复用的基础
 - `GlyphMaskAtlas` 支持把单 glyph `CoverageMask` 按行打包到 text-local atlas，并复制 mask 像素隔离调用方 mutation，同时暴露 capacity、used/free pixels、occupancy ratio、can-fit 查询和满载清空重插 helper 供资源生命周期决策使用
 - Renderer 可从 `GlyphMaskAtlas` coverage snapshot 按 entry source rect 合成单个 glyph placement，避免为 atlas 子区域额外复制 mask
+- Renderer 提供 `draw_text_face_atlas`，让调用方传入 glyph mask cache 与 glyph atlas，按 `TextLayout` 逐 glyph 缓存、打包、合成，并返回 drawn/skipped/atlas-clear telemetry
 - `TextMaskCache` 支持按 key 复用 rendered `CoverageMask`，并通过像素拷贝隔离缓存内容，作为 GUI label/text run 缓存基础
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
 - Canvas 路径描边（Butt/Round/Square cap，Miter/Round/Bevel join，dash/dotted）
@@ -222,7 +223,7 @@ Application / GUI
 - [x] 让 `TextLayout`/`render_text_mask_face`/`Renderer::draw_text_face` 保留显式换行与空行，并确保硬换行行不被 Justify 拉伸
 - [x] 支持灰度 mask 与 RGBA Pixmap 的 alpha 合成
 - [x] 暴露 `Canvas::draw_mask`，作为 `text.Rasterizer` 接入 `graphics` 的低耦合桥接点
-- [x] 暴露 `Canvas::draw_mask_rect` 与 `Renderer::draw_glyph_atlas_entry`，让 glyph atlas entry 可按 source rect 直接合成到 Pixmap
+- [x] 暴露 `Canvas::draw_mask_rect`、`Renderer::draw_glyph_atlas_entry` 与 `Renderer::draw_text_face_atlas`，让 glyph atlas entry 和基础 atlas-backed text path 可直接合成到 Pixmap
 - [x] 在 `text` 侧产出稳定的 glyph/text mask，并在 `font_demo` 接入 `Canvas::draw_mask`
 - [x] 将 `font_demo` 改为调用 Renderer Core 文本绘制入口
 - [x] 将旧 `Canvas::draw_text` 的公开 API 迁移到真实字体渲染管线或标记废弃
@@ -477,7 +478,7 @@ Application / GUI
 ### P0（立即修复）
 1. 保持 `scripts/check_ci.sh` 作为提交前验证入口
 2. 将测试字体矩阵继续扩展到更多真实字体 fixture（printable ASCII fixture 已覆盖映射、布局与渲染，仍需更多真实轮廓）
-3. 扩展 `FontFace`/`TextLayout`/`FontFaceCache`/`TextMaskCache`/`GlyphMaskAtlas` facade 使用面：更多示例和未来 GUI 代码优先走 checked face API、cached mask API 与 atlas placement API；renderer 已有 atlas entry 合成 helper，后续补完整 draw-text atlas pipeline
+3. 扩展 `FontFace`/`TextLayout`/`FontFaceCache`/`TextMaskCache`/`GlyphMaskAtlas` facade 使用面：更多示例和未来 GUI 代码优先走 checked face API、cached mask API 与 atlas placement API；renderer 已有基础 atlas-backed text path，后续补 eviction 策略和更完整的多字体/fallback pipeline
 4. 继续推进 parser 错误处理迁移：`parse_font_result` 主链路已覆盖核心表、cmap、glyf、kern 的逐字段 Result 读取；下一步是继续减少上层 legacy `parse_font` 使用，并审查 `InvalidTable` 是否保留为迁移期兜底
 5. 改进反锯齿质量，并保留确定性像素回归
 

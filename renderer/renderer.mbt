@@ -5,6 +5,25 @@ pub struct Renderer {
 } derive(Debug)
 
 ///|
+/// Result of drawing text through glyph-mask cache and atlas resources.
+pub struct TextAtlasDrawResult {
+  glyph_count : Int
+  drawn_glyph_count : Int
+  skipped_glyph_count : Int
+  did_clear_atlas : Bool
+} derive(Debug)
+
+///|
+priv struct GlyphAtlasMaskPlacement {
+  width : Int
+  height : Int
+  origin_x : Double
+  origin_y : Double
+  draw_offset_x : Int
+  draw_offset_y : Int
+}
+
+///|
 /// Create a renderer around an existing canvas.
 pub fn Renderer::new(canvas : @graphics.Canvas) -> Renderer {
   { canvas, }
@@ -14,6 +33,34 @@ pub fn Renderer::new(canvas : @graphics.Canvas) -> Renderer {
 /// Get the renderer canvas.
 pub fn Renderer::get_canvas(self : Renderer) -> @graphics.Canvas {
   self.canvas
+}
+
+///|
+/// Return the number of layout glyphs visited by an atlas text draw.
+pub fn TextAtlasDrawResult::get_glyph_count(self : TextAtlasDrawResult) -> Int {
+  self.glyph_count
+}
+
+///|
+/// Return the number of glyphs composited from the atlas.
+pub fn TextAtlasDrawResult::get_drawn_glyph_count(
+  self : TextAtlasDrawResult,
+) -> Int {
+  self.drawn_glyph_count
+}
+
+///|
+/// Return the number of layout glyphs that could not be drawn through the atlas.
+pub fn TextAtlasDrawResult::get_skipped_glyph_count(
+  self : TextAtlasDrawResult,
+) -> Int {
+  self.skipped_glyph_count
+}
+
+///|
+/// Return whether the atlas was cleared while drawing this text.
+pub fn TextAtlasDrawResult::did_clear_atlas(self : TextAtlasDrawResult) -> Bool {
+  self.did_clear_atlas
 }
 
 ///|
@@ -62,6 +109,34 @@ pub fn Renderer::draw_text_face(
     pixmap.get_width(),
     pixmap.get_height(),
     config,
+    paint,
+  )
+}
+
+///|
+/// Draw text through caller-owned glyph mask cache and glyph atlas resources.
+pub fn Renderer::draw_text_face_atlas(
+  self : Renderer,
+  face : @text.FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  glyph_cache : @text.GlyphMaskCache,
+  atlas : @text.GlyphMaskAtlas,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextAtlasDrawResult {
+  draw_text_face_atlas(
+    self.canvas,
+    face,
+    text,
+    x,
+    y,
+    config,
+    glyph_cache,
+    atlas,
+    glyph_key_prefix,
     paint,
   )
 }
@@ -126,6 +201,78 @@ pub fn draw_text_face(
 }
 
 ///|
+/// Draw text through caller-owned glyph mask cache and glyph atlas resources.
+pub fn draw_text_face_atlas(
+  canvas : @graphics.Canvas,
+  face : @text.FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  glyph_cache : @text.GlyphMaskCache,
+  atlas : @text.GlyphMaskAtlas,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextAtlasDrawResult {
+  let layout = @text.TextLayout::layout(face, text, config)
+  let scale = config.font_size / face.get_units_per_em().to_double()
+  let mut glyph_count = 0
+  let mut drawn_glyph_count = 0
+  let mut skipped_glyph_count = 0
+  let mut did_clear_atlas = false
+
+  for run in layout.get_runs() {
+    for glyph in run.get_glyphs() {
+      glyph_count += 1
+      match face.get_glyph(glyph.glyph_id) {
+        @text.GlyphData::Simple(simple_glyph) =>
+          match make_glyph_atlas_mask_placement(simple_glyph, scale) {
+            Some(placement) => {
+              let key = glyph_atlas_cache_key(
+                glyph_key_prefix,
+                glyph.glyph_id,
+                config.font_size,
+              )
+              let mask = glyph_cache.get_or_rasterize_glyph(
+                key,
+                simple_glyph,
+                placement.width,
+                placement.height,
+                placement.origin_x,
+                placement.origin_y,
+                scale,
+              )
+              match atlas.insert_or_clear(key, mask) {
+                Some(result) => {
+                  if result.did_clear() {
+                    did_clear_atlas = true
+                  }
+                  let entry = result.get_entry()
+                  draw_glyph_atlas_entry(
+                    canvas,
+                    atlas.to_mask(),
+                    entry,
+                    floor_to_int(x + glyph.x) + placement.draw_offset_x,
+                    floor_to_int(y + run.get_baseline_y()) +
+                    placement.draw_offset_y,
+                    paint,
+                  )
+                  drawn_glyph_count += 1
+                }
+                None => skipped_glyph_count += 1
+              }
+            }
+            None => skipped_glyph_count += 1
+          }
+        _ => skipped_glyph_count += 1
+      }
+    }
+  }
+
+  { glyph_count, drawn_glyph_count, skipped_glyph_count, did_clear_atlas }
+}
+
+///|
 /// Composite a text coverage mask on a canvas.
 pub fn draw_coverage_mask(
   canvas : @graphics.Canvas,
@@ -166,4 +313,54 @@ pub fn draw_glyph_atlas_entry(
     ),
     paint,
   )
+}
+
+///|
+fn make_glyph_atlas_mask_placement(
+  glyph : @text.SimpleGlyph,
+  scale : Double,
+) -> GlyphAtlasMaskPlacement? {
+  guard scale > 0.0 && glyph.contours.length() > 0 else { return None }
+  let left = floor_to_int(glyph.xmin.to_double() * scale)
+  let right = ceil_to_int(glyph.xmax.to_double() * scale)
+  let top = floor_to_int(0.0 - glyph.ymax.to_double() * scale)
+  let bottom = ceil_to_int(0.0 - glyph.ymin.to_double() * scale)
+  guard right > left && bottom > top else { return None }
+  Some({
+    width: right - left,
+    height: bottom - top,
+    origin_x: (0 - left).to_double(),
+    origin_y: (0 - top).to_double(),
+    draw_offset_x: left,
+    draw_offset_y: top,
+  })
+}
+
+///|
+fn glyph_atlas_cache_key(
+  prefix : String,
+  glyph_id : Int,
+  font_size : Double,
+) -> String {
+  prefix + ":glyph:" + glyph_id.to_string() + ":size:" + font_size.to_string()
+}
+
+///|
+fn floor_to_int(value : Double) -> Int {
+  let truncated = value.to_int()
+  if truncated.to_double() > value {
+    truncated - 1
+  } else {
+    truncated
+  }
+}
+
+///|
+fn ceil_to_int(value : Double) -> Int {
+  let truncated = value.to_int()
+  if truncated.to_double() < value {
+    truncated + 1
+  } else {
+    truncated
+  }
 }

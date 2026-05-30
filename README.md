@@ -123,6 +123,8 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
 **Features:**
 - `Renderer::draw_text` for `Font -> layout -> glyph raster -> Canvas` drawing
 - `Renderer::draw_text_face` for checked `FontFace -> TextLayout -> Canvas` drawing
+- `Renderer::draw_text_face_atlas` for caller-owned glyph mask cache and
+  `GlyphMaskAtlas` backed text drawing with per-call draw/skip/clear telemetry
 - `Renderer::draw_coverage_mask` for testing and low-level mask composition
 - `Renderer::draw_glyph_atlas_entry` for compositing one glyph placement from a
   `GlyphMaskAtlas` coverage snapshot
