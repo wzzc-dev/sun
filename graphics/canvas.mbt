@@ -88,10 +88,28 @@ pub fn Canvas::get_save_count(self : Canvas) -> Int {
 ///|
 /// Set the current clip rectangle in device coordinates.
 pub fn Canvas::set_clip_rect(self : Canvas, rect : Rect) -> Unit {
-  if rect.width > 0.0 && rect.height > 0.0 {
+  if !rect.is_empty() {
     self.clip_rect = Some(rect)
   } else {
     self.clip_rect = Some(Rect::new(x=0.0, y=0.0, width=0.0, height=0.0))
+  }
+}
+
+///|
+/// Intersect the current clip rectangle with a new device-space rectangle.
+pub fn Canvas::intersect_clip_rect(self : Canvas, rect : Rect) -> Unit {
+  guard !rect.is_empty() else {
+    self.clip_rect = Some(Rect::new(x=0.0, y=0.0, width=0.0, height=0.0))
+    return
+  }
+  match self.clip_rect {
+    Some(current) =>
+      match current.intersection(rect) {
+        Some(intersection) => self.clip_rect = Some(intersection)
+        None =>
+          self.clip_rect = Some(Rect::new(x=0.0, y=0.0, width=0.0, height=0.0))
+      }
+    None => self.set_clip_rect(rect)
   }
 }
 

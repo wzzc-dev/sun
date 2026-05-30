@@ -45,6 +45,7 @@ pub fn Canvas::get_dirty_region(Self) -> DirtyRegion
 pub fn Canvas::get_pixmap(Self) -> Pixmap
 pub fn Canvas::get_save_count(Self) -> Int
 pub fn Canvas::get_transform(Self) -> Transform
+pub fn Canvas::intersect_clip_rect(Self, Rect) -> Unit
 pub fn Canvas::new(Int, Int) -> Self
 pub fn[S : Surface] Canvas::present_dirty_to(Self, S) -> Result[Int, PresentError]
 pub fn[S : Surface] Canvas::present_dirty_to_with_limit(Self, S, Int) -> Result[Int, PresentError]
@@ -306,6 +307,8 @@ pub struct Rect {
 } derive(Eq, @debug.Debug)
 pub fn Rect::bottom(Self) -> Double
 pub fn Rect::contains(Self, Double, Double) -> Bool
+pub fn Rect::intersection(Self, Self) -> Self?
+pub fn Rect::is_empty(Self) -> Bool
 pub fn Rect::new(x~ : Double, y~ : Double, width~ : Double, height~ : Double) -> Self
 pub fn Rect::right(Self) -> Double
 

@@ -129,6 +129,62 @@ test "Canvas::restore affects subsequent path drawing" {
 }
 
 ///|
+test "Canvas::intersect_clip_rect narrows current clip" {
+  let canvas = Canvas::new(5, 1)
+  canvas.intersect_clip_rect(Rect::new(x=0.0, y=0.0, width=4.0, height=1.0))
+  assert_true(
+    canvas.get_clip_rect() ==
+    Some(Rect::new(x=0.0, y=0.0, width=4.0, height=1.0)),
+  )
+  canvas.intersect_clip_rect(Rect::new(x=1.0, y=0.0, width=2.0, height=1.0))
+  assert_true(
+    canvas.get_clip_rect() ==
+    Some(Rect::new(x=1.0, y=0.0, width=2.0, height=1.0)),
+  )
+
+  canvas.clear(Color::white())
+  canvas.clear_dirty_region()
+  canvas.fill_rect(0.0, 0.0, 5.0, 1.0, Paint::new().set_color(Color::black()))
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::white())
+  assert_eq(pixmap.get_pixel(1, 0), Color::black())
+  assert_eq(pixmap.get_pixel(2, 0), Color::black())
+  assert_eq(pixmap.get_pixel(3, 0), Color::white())
+  assert_true(
+    canvas.get_dirty_region().bounds() ==
+    Some(PixelRect::new(x=1, y=0, width=2, height=1)),
+  )
+}
+
+///|
+test "Canvas::intersect_clip_rect supports save restore and empty clips" {
+  let canvas = Canvas::new(4, 1)
+  canvas.set_clip_rect(Rect::new(x=0.0, y=0.0, width=3.0, height=1.0))
+  canvas.save()
+  canvas.intersect_clip_rect(Rect::new(x=2.0, y=0.0, width=2.0, height=1.0))
+  assert_true(
+    canvas.get_clip_rect() ==
+    Some(Rect::new(x=2.0, y=0.0, width=1.0, height=1.0)),
+  )
+  canvas.intersect_clip_rect(Rect::new(x=4.0, y=0.0, width=1.0, height=1.0))
+  assert_true(
+    canvas.get_clip_rect() ==
+    Some(Rect::new(x=0.0, y=0.0, width=0.0, height=0.0)),
+  )
+  assert_true(canvas.restore())
+  assert_true(
+    canvas.get_clip_rect() ==
+    Some(Rect::new(x=0.0, y=0.0, width=3.0, height=1.0)),
+  )
+
+  canvas.intersect_clip_rect(Rect::new(x=0.0, y=0.0, width=0.0, height=1.0))
+  assert_true(
+    canvas.get_clip_rect() ==
+    Some(Rect::new(x=0.0, y=0.0, width=0.0, height=0.0)),
+  )
+}
+
+///|
 test "Canvas::draw_mask ignores stroke paint" {
   let canvas = Canvas::new(1, 1)
   canvas.clear(Color::white())

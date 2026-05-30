@@ -90,7 +90,7 @@ Application / GUI
 | 能力域 | v0.2 可用基线 | v0.5 稳定目标 | v1.0-alpha 目标 |
 |--------|---------------|---------------|-----------------|
 | Text | TTF -> layout -> glyph mask -> Canvas，Latin/ASCII 回归，`TextLayout` 基础对齐、显式换行、尾随空格和 spacing | 明确 `FontFace`/`GlyphRun`/`TextLayout` API，基础 CJK、kerning、fallback 轮廓 | Unicode 分段、BiDi 初版、字体缓存、更多 OpenType 表 |
-| Vector | rect/path fill、stroke、cap/join/dash、clip、transform、Canvas save/restore state stack、4x4 coverage | 更稳定的 fill rule、miter/dash 行为、路径简化和基础 boolean 可评估 | 文档化 Canvas API、复杂路径回归、性能基准 |
+| Vector | rect/path fill、stroke、cap/join/dash、clip/intersect clip、transform、Canvas save/restore state stack、4x4 coverage | 更稳定的 fill rule、miter/dash 行为、路径简化和基础 boolean 可评估 | 文档化 Canvas API、复杂路径回归、性能基准 |
 | Image/Layer | Pixmap blit、source-rect atlas drawing、tiled Pixmap fills、nearest/bilinear sampling modes、nine-patch GUI image scaling、dirty region 合并、mask/alpha composition、Layer cache、LayerTree、属性变化 invalidation、LayerTree partial present、RenderFrame resize、rect present API | 更高质量采样、GUI event-loop 调度与 layer lifecycle 策略 | PNG 基础解码、GUI 集成 |
 | Surface | `MemorySurface`、`NativeSurface`、`Canvas/Pixmap::present_to`、`RenderFrame -> NativeSurface` helpers、`present_pixels_rect` | dirty rect 调度、row stride、错误传播和 pre-present hook 标准化 | Win32/macOS/Linux/WASM 后端都有 build 或运行验证 |
 | Tooling | `scripts/check_ci.sh`、`.mbti`、核心单测 | warning baseline 可审查、覆盖率/benchmark 初版 | release checklist、示例矩阵、性能趋势 |
@@ -129,7 +129,7 @@ Application / GUI
 - Renderer Core 组合层：`Font -> render_text_mask -> Canvas.draw_mask`
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
 - Canvas 路径描边（Butt/Round/Square cap，Miter/Round/Bevel join，dash/dotted）
-- 基础 clip rect，覆盖 rect/path/stroke/mask/pixel/pixmap 绘制入口
+- 基础 clip rect 与 intersect clip，覆盖 rect/path/stroke/mask/pixel/pixmap 绘制入口
 - Canvas save/restore 状态栈，支持嵌套组件绘制时恢复 transform 与 clip
 - Win32 窗口管理
 
@@ -257,6 +257,7 @@ Application / GUI
 - [x] Stroke dash/dotted 样式，并建立 dash offset 与点线像素回归
 - [x] Canvas 支持基础 clip rect，并覆盖 rect/path/stroke/mask/pixel 绘制入口
 - [x] Canvas 支持 save/restore 状态栈，用于嵌套 transform/clip 绘制作用域，并覆盖空栈、嵌套恢复与后续 path 绘制回归
+- [x] Canvas 支持 intersect clip，用于 GUI 子树 bounds 逐层收窄，并覆盖空 clip、save/restore 与 dirty region 回归
 - [ ] 路径布尔运算（并集、交集、差集）
 - [ ] 路径简化与优化
 
