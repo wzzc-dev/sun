@@ -255,6 +255,60 @@ test "FontFace and TextLayout expose stable text API" {
 }
 
 ///|
+test "font fallback plan segments text by first covering face" {
+  let space_face = FontFace::from_font(make_space_only_font())
+  let box_face = FontFace::from_font(make_box_font())
+  let faces = [space_face, box_face]
+  assert_eq(select_font_face_index_for_char(faces, ' '.to_int()), 0)
+  assert_eq(select_font_face_index_for_char(faces, 'A'.to_int()), 1)
+  assert_eq(select_font_face_index_for_char(faces, 0x4E00), 1)
+  assert_eq(select_font_face_index_for_char(faces, 'Z'.to_int()), -1)
+
+  let plan = plan_font_fallback(
+    faces,
+    string_from_codepoints([' '.to_int(), 'A'.to_int(), 0x4E00, 'Z'.to_int()]),
+  )
+  assert_eq(plan.get_char_count(), 4)
+  assert_eq(plan.get_missing_char_count(), 1)
+  assert_true(plan.has_missing_glyphs())
+  assert_true(!plan.is_empty())
+  assert_eq(plan.span_count(), 3)
+  let spans = plan.get_spans()
+  assert_eq(spans[0].get_face_index(), 0)
+  assert_eq(spans[0].get_text(), " ")
+  assert_eq(spans[0].get_char_count(), 1)
+  assert_true(!spans[0].is_missing())
+  assert_eq(spans[1].get_face_index(), 1)
+  assert_eq(spans[1].get_text(), string_from_codepoints(['A'.to_int(), 0x4E00]))
+  assert_eq(spans[1].get_char_count(), 2)
+  assert_eq(spans[2].get_face_index(), -1)
+  assert_eq(spans[2].get_text(), "Z")
+  assert_eq(spans[2].get_char_count(), 1)
+  assert_true(spans[2].is_missing())
+}
+
+///|
+test "font fallback plan handles empty and uncovered text" {
+  let empty = plan_font_fallback([], "")
+  assert_true(empty.is_empty())
+  assert_eq(empty.span_count(), 0)
+  assert_eq(empty.get_char_count(), 0)
+  assert_eq(empty.get_missing_char_count(), 0)
+  assert_true(!empty.has_missing_glyphs())
+
+  let uncovered = plan_font_fallback([], "AB")
+  assert_eq(uncovered.span_count(), 1)
+  assert_eq(uncovered.get_char_count(), 2)
+  assert_eq(uncovered.get_missing_char_count(), 2)
+  assert_true(uncovered.has_missing_glyphs())
+  let spans = uncovered.get_spans()
+  assert_true(spans[0].is_missing())
+  assert_eq(spans[0].get_face_index(), -1)
+  assert_eq(spans[0].get_text(), "AB")
+  assert_eq(spans[0].get_char_count(), 2)
+}
+
+///|
 test "FontFaceCache stores and replaces checked faces" {
   let cache = FontFaceCache::new()
   assert_true(cache.is_empty())

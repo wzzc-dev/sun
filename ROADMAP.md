@@ -177,6 +177,7 @@ Application / GUI
 - Renderer 提供 `RendererTextResources`，让 GUI/resource 代码以单个对象复用 bounded text mask cache、glyph mask cache 与 glyph atlas 状态
 - `examples/render_bench` 提供确定性的 CPU render microbenchmark smoke，覆盖 fill_rect、path fill、stroke、glyph raster/mask composition、Pixmap blit 与 present copy telemetry
 - `Font`/`FontFace` 暴露 glyph coverage 查询，供后续 fallback/resource 调度在绘制前判断 missing glyph
+- `FontFallbackPlan` 基于有序 `FontFace` 栈把文本切成覆盖 span，并统计 missing glyph，作为后续 fallback shaping 与资源预调度基础
 - `TextLayout` 支持基于现有 Unicode line-break class 的无空格 CJK/Hangul 软换行，作为基础 CJK GUI 文本块换行能力
 - `FontFace`/`TextLayout` 覆盖 TTF format-12 cmap 的 supplementary-plane codepoint 映射，保证 U+FFFF 以上字符能进入 glyph run
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
@@ -235,6 +236,7 @@ Application / GUI
 - [x] 支持灰度 mask 与 RGBA Pixmap 的 alpha 合成
 - [x] 暴露 `Canvas::draw_mask`，作为 `text.Rasterizer` 接入 `graphics` 的低耦合桥接点
 - [x] 暴露 `Canvas::draw_mask_rect`、`Renderer::draw_glyph_atlas_entry`、`Renderer::draw_text_face_cached` 与 `Renderer::draw_text_face_atlas`，让 text mask cache、glyph atlas entry 和带 cache/atlas telemetry 的基础 atlas-backed text path 可直接合成到 Pixmap
+- [x] 暴露 `FontFallbackPlan` 与 `plan_font_fallback`，让 GUI/resource 层可在 shaping 与绘制前做有序字体覆盖分段和 missing glyph 统计
 - [x] 在 `text` 侧产出稳定的 glyph/text mask，并在 `font_demo` 接入 `Canvas::draw_mask`
 - [x] 将 `font_demo` 改为调用 Renderer Core 文本绘制入口
 - [x] 将旧 `Canvas::draw_text` 的公开 API 迁移到真实字体渲染管线或标记废弃

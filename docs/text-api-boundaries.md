@@ -14,6 +14,10 @@ the facade types below.
 - `FontFace::has_glyph_for_char` reports whether a Unicode codepoint maps to a
   non-`.notdef` glyph. Use it before fallback selection or resource scheduling
   when missing glyphs should be handled outside the primary face.
+- `plan_font_fallback` segments text by the first `FontFace` that covers each
+  Unicode scalar and records missing-glyph spans with face index `-1`. GUI and
+  resource code can use `FontFallbackPlan` before shaping or cache scheduling to
+  decide which font resources are needed for a text run.
 - `FontFaceCache` is a small keyed cache for checked parsed faces. GUI and
   resource-loading code can use `get_or_parse` to avoid reparsing the same font
   bytes while preserving checked `FontParseError` results for cache misses, or
@@ -78,6 +82,9 @@ construct these types by hand.
 
 - Prefer `FontFace::from_bytes(data)` over `parse_font(data)` for untrusted or
   user-provided fonts.
+- Prefer `plan_font_fallback(faces, text)` when a GUI or renderer owns an
+  ordered font stack and needs stable per-face spans or missing-glyph telemetry
+  before choosing layout, cache, or fallback rendering work.
 - Prefer `FontFaceCache::get_or_parse(key, data)` when a GUI or renderer owns a
   stable font-resource key and may request the same face repeatedly.
   Prefer `get_or_parse_result` when the caller also needs cache hit/parse
