@@ -996,6 +996,61 @@ test "Canvas::stroke_path respects clip rect" {
 }
 
 ///|
+test "Canvas::stroke_rect matches rectangular path stroke" {
+  let paint = Paint::new()
+    .set_color(Color::black())
+    .set_style(PaintStyle::Stroke)
+    .set_stroke_width(1.0)
+
+  let helper_canvas = Canvas::new(6, 6)
+  helper_canvas.clear(Color::white())
+  helper_canvas.clear_dirty_region()
+  helper_canvas.stroke_rect(1.0, 1.0, 4.0, 4.0, paint)
+
+  let path_canvas = Canvas::new(6, 6)
+  path_canvas.clear(Color::white())
+  path_canvas.clear_dirty_region()
+  path_canvas.stroke_path(Path::new().add_rect(1.0, 1.0, 4.0, 4.0), paint)
+
+  assert_same_pixmap(helper_canvas.get_pixmap(), path_canvas.get_pixmap())
+  assert_true(
+    helper_canvas.get_dirty_region().bounds() ==
+    path_canvas.get_dirty_region().bounds(),
+  )
+  assert_not_white(helper_canvas.get_pixmap().get_pixel(3, 1))
+  assert_eq(helper_canvas.get_pixmap().get_pixel(3, 3), Color::white())
+}
+
+///|
+test "Canvas::stroke_rect applies transform and clip" {
+  let canvas = Canvas::new(7, 5)
+  canvas.clear(Color::white())
+  canvas.clear_dirty_region()
+  canvas.set_clip_rect(Rect::new(x=2.0, y=0.0, width=3.0, height=5.0))
+  canvas.translate(tx=1.0, ty=0.0)
+  canvas.stroke_rect(
+    0.0,
+    0.0,
+    4.0,
+    4.0,
+    Paint::new()
+    .set_color(Color::black())
+    .set_style(PaintStyle::Stroke)
+    .set_stroke_width(1.0),
+  )
+
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(1, 0), Color::white())
+  assert_not_white(pixmap.get_pixel(2, 0))
+  assert_not_white(pixmap.get_pixel(4, 0))
+  assert_eq(pixmap.get_pixel(5, 0), Color::white())
+  assert_true(
+    canvas.get_dirty_region().bounds() ==
+    Some(PixelRect::new(x=2, y=0, width=3, height=5)),
+  )
+}
+
+///|
 test "Canvas::stroke_rounded_rect matches rounded path stroke" {
   let paint = Paint::new()
     .set_color(Color::black())

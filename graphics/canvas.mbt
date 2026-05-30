@@ -212,6 +212,20 @@ pub fn Canvas::fill_rounded_rect(
 }
 
 ///|
+/// Draw a stroked rectangle.
+pub fn Canvas::stroke_rect(
+  self : Canvas,
+  x : Double,
+  y : Double,
+  w : Double,
+  h : Double,
+  paint : Paint,
+) -> Unit {
+  guard w > 0.0 && h > 0.0 else { return }
+  self.stroke_path(Path::new().add_rect(x, y, w, h), paint)
+}
+
+///|
 /// Fill a path with the given paint
 pub fn Canvas::fill_path(self : Canvas, path : Path, paint : Paint) -> Unit {
   guard paint.style is PaintStyle::Fill && !path.is_empty() else { return }
