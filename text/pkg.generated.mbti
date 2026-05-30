@@ -233,8 +233,10 @@ pub fn GlyphMaskAtlas::to_mask(Self) -> CoverageMask
 pub struct GlyphMaskAtlasInsertResult {
   entry : GlyphAtlasEntry
   did_clear : Bool
+  did_reuse : Bool
 } derive(@debug.Debug)
 pub fn GlyphMaskAtlasInsertResult::did_clear(Self) -> Bool
+pub fn GlyphMaskAtlasInsertResult::did_reuse(Self) -> Bool
 pub fn GlyphMaskAtlasInsertResult::get_entry(Self) -> GlyphAtlasEntry
 
 pub struct GlyphMaskCache {

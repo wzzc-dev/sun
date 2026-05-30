@@ -221,6 +221,7 @@ test "GlyphMaskAtlas insert_or_clear reports atlas rotation" {
   match atlas.insert_or_clear("first", first) {
     Some(result) => {
       assert_true(!result.did_clear())
+      assert_true(!result.did_reuse())
       let entry = result.get_entry()
       assert_eq(entry.get_key(), "first")
       assert_eq(entry.get_x(), 0)
@@ -235,6 +236,7 @@ test "GlyphMaskAtlas insert_or_clear reports atlas rotation" {
   match atlas.insert_or_clear("first", existing) {
     Some(result) => {
       assert_true(!result.did_clear())
+      assert_true(result.did_reuse())
       let entry = result.get_entry()
       assert_eq(entry.get_x(), 0)
       assert_eq(entry.get_y(), 0)
@@ -256,6 +258,7 @@ test "GlyphMaskAtlas insert_or_clear reports atlas rotation" {
   match atlas.insert_or_clear("rotated", rotated) {
     Some(result) => {
       assert_true(result.did_clear())
+      assert_true(!result.did_reuse())
       let entry = result.get_entry()
       assert_eq(entry.get_key(), "rotated")
       assert_eq(entry.get_x(), 0)

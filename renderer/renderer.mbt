@@ -12,6 +12,8 @@ pub struct TextAtlasDrawResult {
   skipped_glyph_count : Int
   cache_hit_count : Int
   rasterized_glyph_count : Int
+  atlas_hit_count : Int
+  atlas_inserted_count : Int
   did_clear_atlas : Bool
 } derive(Debug)
 
@@ -73,6 +75,22 @@ pub fn TextAtlasDrawResult::get_rasterized_glyph_count(
   self : TextAtlasDrawResult,
 ) -> Int {
   self.rasterized_glyph_count
+}
+
+///|
+/// Return the number of glyph placements reused from the atlas.
+pub fn TextAtlasDrawResult::get_atlas_hit_count(
+  self : TextAtlasDrawResult,
+) -> Int {
+  self.atlas_hit_count
+}
+
+///|
+/// Return the number of glyph placements newly inserted into the atlas.
+pub fn TextAtlasDrawResult::get_atlas_inserted_count(
+  self : TextAtlasDrawResult,
+) -> Int {
+  self.atlas_inserted_count
 }
 
 ///|
@@ -239,6 +257,8 @@ pub fn draw_text_face_atlas(
   let mut skipped_glyph_count = 0
   let mut cache_hit_count = 0
   let mut rasterized_glyph_count = 0
+  let mut atlas_hit_count = 0
+  let mut atlas_inserted_count = 0
   let mut did_clear_atlas = false
 
   for run in layout.get_runs() {
@@ -273,6 +293,11 @@ pub fn draw_text_face_atlas(
                   if result.did_clear() {
                     did_clear_atlas = true
                   }
+                  if result.did_reuse() {
+                    atlas_hit_count += 1
+                  } else {
+                    atlas_inserted_count += 1
+                  }
                   let entry = result.get_entry()
                   draw_glyph_atlas_entry(
                     canvas,
@@ -301,6 +326,8 @@ pub fn draw_text_face_atlas(
     skipped_glyph_count,
     cache_hit_count,
     rasterized_glyph_count,
+    atlas_hit_count,
+    atlas_inserted_count,
     did_clear_atlas,
   }
 }

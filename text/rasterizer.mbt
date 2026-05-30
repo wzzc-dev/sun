@@ -81,6 +81,7 @@ pub struct GlyphAtlasEntry {
 pub struct GlyphMaskAtlasInsertResult {
   entry : GlyphAtlasEntry
   did_clear : Bool
+  did_reuse : Bool
 } derive(Debug)
 
 ///|
@@ -146,6 +147,14 @@ pub fn GlyphMaskAtlasInsertResult::did_clear(
   self : GlyphMaskAtlasInsertResult,
 ) -> Bool {
   self.did_clear
+}
+
+///|
+/// Return whether this result reused an existing atlas entry.
+pub fn GlyphMaskAtlasInsertResult::did_reuse(
+  self : GlyphMaskAtlasInsertResult,
+) -> Bool {
+  self.did_reuse
 }
 
 ///|
@@ -278,15 +287,15 @@ pub fn GlyphMaskAtlas::insert_or_clear(
   mask : CoverageMask,
 ) -> GlyphMaskAtlasInsertResult? {
   match self.get(key) {
-    Some(entry) => Some({ entry, did_clear: false })
+    Some(entry) => Some({ entry, did_clear: false, did_reuse: true })
     None =>
       match self.place(key, mask) {
-        Some(entry) => Some({ entry, did_clear: false })
+        Some(entry) => Some({ entry, did_clear: false, did_reuse: false })
         None => {
           guard self.can_fit_empty(mask) else { return None }
           self.clear()
           match self.place(key, mask) {
-            Some(entry) => Some({ entry, did_clear: true })
+            Some(entry) => Some({ entry, did_clear: true, did_reuse: false })
             None => None
           }
         }

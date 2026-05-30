@@ -38,9 +38,13 @@ pub struct TextAtlasDrawResult {
   skipped_glyph_count : Int
   cache_hit_count : Int
   rasterized_glyph_count : Int
+  atlas_hit_count : Int
+  atlas_inserted_count : Int
   did_clear_atlas : Bool
 } derive(@debug.Debug)
 pub fn TextAtlasDrawResult::did_clear_atlas(Self) -> Bool
+pub fn TextAtlasDrawResult::get_atlas_hit_count(Self) -> Int
+pub fn TextAtlasDrawResult::get_atlas_inserted_count(Self) -> Int
 pub fn TextAtlasDrawResult::get_cache_hit_count(Self) -> Int
 pub fn TextAtlasDrawResult::get_drawn_glyph_count(Self) -> Int
 pub fn TextAtlasDrawResult::get_glyph_count(Self) -> Int

@@ -105,8 +105,8 @@ Text processing library (font parsing, shaping, layout).
 - `GlyphMaskCache` for keyed reuse of individual glyph coverage masks, with
   optional hit/rasterize-miss telemetry
 - `GlyphMaskAtlas` for text-local row-packed placement of copied glyph masks,
-  with capacity, occupancy, free-space, fit-query, and rotate-on-full insert
-  helpers for resource lifecycle decisions
+  with capacity, occupancy, free-space, fit-query, rotate-on-full insert, and
+  atlas hit/new-insert telemetry helpers for resource lifecycle decisions
 - `TextMaskCache` for keyed reuse of rendered coverage masks with copy-isolated
   cache entries
 - Left, center, right, and basic non-final-line justify alignment through the `TextLayout` facade
@@ -125,7 +125,7 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
 - `Renderer::draw_text` for `Font -> layout -> glyph raster -> Canvas` drawing
 - `Renderer::draw_text_face` for checked `FontFace -> TextLayout -> Canvas` drawing
 - `Renderer::draw_text_face_atlas` for caller-owned glyph mask cache and
-  `GlyphMaskAtlas` backed text drawing with per-call draw/skip/cache/clear
+  `GlyphMaskAtlas` backed text drawing with per-call draw/skip/cache/atlas/clear
   telemetry
 - `Renderer::draw_coverage_mask` for testing and low-level mask composition
 - `Renderer::draw_glyph_atlas_entry` for compositing one glyph placement from a

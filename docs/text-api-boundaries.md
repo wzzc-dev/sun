@@ -25,8 +25,9 @@ the facade types below.
   top of text coverage masks. Resource code can inspect capacity, used pixels,
   free pixels, occupancy ratio, and `can_fit` before deciding whether to reuse
   or evict atlas contents. `insert_or_clear` provides a deterministic
-  rotate-on-full policy and returns `did_clear` so callers can invalidate stale
-  placements after an atlas clear.
+  rotate-on-full policy and returns `did_clear`/`did_reuse` so callers can
+  invalidate stale placements after an atlas clear and report atlas hit/insert
+  telemetry.
 - `TextMaskCache` is a small keyed cache for rendered `CoverageMask` values.
   GUI and renderer code can use `get_or_render_face` for repeated labels or
   text runs, while `get` and `insert` copy mask pixels to keep cached entries
@@ -76,8 +77,8 @@ construct these types by hand.
 - Prefer `GlyphMaskAtlas::can_fit(mask)` and `GlyphMaskAtlas::insert(key, mask)`
   when a renderer or GUI resource layer owns eviction policy. Prefer
   `GlyphMaskAtlas::insert_or_clear(key, mask)` when a deterministic clear and
-  retry policy is enough; handle `did_clear` by dropping stale placement, upload,
-  or dirty atlas state.
+  retry policy is enough; handle `did_clear` by dropping stale placement,
+  upload, or dirty atlas state, and use `did_reuse` for atlas hit telemetry.
 - Prefer `TextMaskCache::get_or_render_face(key, face, text, ...)` when a GUI
   owns a stable text-resource key and may draw the same mask repeatedly.
 - Prefer `TextLayout::layout(face, text, config)` or `layout_text_face` over
