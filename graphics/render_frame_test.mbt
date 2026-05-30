@@ -110,6 +110,8 @@ test "RenderFrame::dirty_submit_plan snapshots dirty bounds and present plan" {
   assert_eq(submit_plan.get_present_rect_count(), 1)
   assert_eq(submit_plan.get_present_pixel_count(), 7)
   assert_eq(submit_plan.get_present_byte_count(), 28)
+  assert_true(submit_plan.saves_full_present_pixels(8, 1))
+  assert_true(!submit_plan.saves_full_present_pixels(7, 1))
   assert_true(
     submit_plan.get_dirty_bounds() ==
     Some(PixelRect::new(x=0, y=0, width=7, height=1)),
@@ -133,6 +135,7 @@ test "RenderFrame::dirty_submit_plan keeps clipped-away dirty visible to schedul
   assert_eq(submit_plan.get_present_rect_count(), 0)
   assert_eq(submit_plan.get_present_pixel_count(), 0)
   assert_eq(submit_plan.get_present_byte_count(), 0)
+  assert_true(!submit_plan.saves_full_present_pixels(2, 1))
   assert_true(
     submit_plan.get_dirty_bounds() ==
     Some(PixelRect::new(x=3, y=0, width=1, height=1)),
@@ -160,6 +163,7 @@ test "RenderFrame::submit_dirty_to reports scheduler result" {
       assert_true(submit_result.did_present())
       assert_eq(submit_result.get_present_pixel_count(), 1)
       assert_eq(submit_result.get_present_byte_count(), 4)
+      assert_true(submit_result.saves_full_present_pixels(2, 1))
       assert_true(!submit_result.was_clipped_away())
       assert_true(!submit_result.uses_bounds_fallback())
       assert_true(
@@ -182,6 +186,7 @@ test "RenderFrame::submit_dirty_to reports scheduler result" {
       assert_true(!submit_result.was_clipped_away())
       assert_eq(submit_result.get_present_pixel_count(), 0)
       assert_eq(submit_result.get_present_byte_count(), 0)
+      assert_true(!submit_result.saves_full_present_pixels(2, 1))
       assert_true(submit_result.get_dirty_bounds() == None)
     }
     Err(_) => abort("expected clean submit result")
@@ -207,6 +212,7 @@ test "RenderFrame::submit_dirty_to consumes surface-clipped dirty" {
       assert_true(!submit_result.did_present())
       assert_eq(submit_result.get_present_pixel_count(), 0)
       assert_eq(submit_result.get_present_byte_count(), 0)
+      assert_true(!submit_result.saves_full_present_pixels(2, 1))
       assert_true(submit_result.was_clipped_away())
       assert_true(
         submit_result.get_dirty_bounds() ==

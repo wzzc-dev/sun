@@ -113,6 +113,7 @@ pub fn DirtyPresentPlan::get_present_pixel_count(Self) -> Int
 pub fn DirtyPresentPlan::get_rect_count(Self) -> Int
 pub fn DirtyPresentPlan::get_rects(Self) -> Array[PixelRect]
 pub fn DirtyPresentPlan::is_empty(Self) -> Bool
+pub fn DirtyPresentPlan::saves_full_present_pixels(Self, Int, Int) -> Bool
 pub fn DirtyPresentPlan::uses_bounds_fallback(Self) -> Bool
 
 pub(all) enum DirtyPresentPlanMode {
@@ -148,6 +149,7 @@ pub fn DirtySubmitPlan::get_present_rect_count(Self) -> Int
 pub fn DirtySubmitPlan::get_state(Self) -> DirtySubmitState
 pub fn DirtySubmitPlan::has_dirty(Self) -> Bool
 pub fn DirtySubmitPlan::needs_present(Self) -> Bool
+pub fn DirtySubmitPlan::saves_full_present_pixels(Self, Int, Int) -> Bool
 pub fn DirtySubmitPlan::uses_bounds_fallback(Self) -> Bool
 
 pub struct DirtySubmitResult {
@@ -163,6 +165,7 @@ pub fn DirtySubmitResult::get_state(Self) -> DirtySubmitState
 pub fn DirtySubmitResult::get_submit_plan(Self) -> DirtySubmitPlan
 pub fn DirtySubmitResult::has_dirty(Self) -> Bool
 pub fn DirtySubmitResult::needs_present(Self) -> Bool
+pub fn DirtySubmitResult::saves_full_present_pixels(Self, Int, Int) -> Bool
 pub fn DirtySubmitResult::uses_bounds_fallback(Self) -> Bool
 pub fn DirtySubmitResult::was_clipped_away(Self) -> Bool
 

@@ -90,6 +90,12 @@ fn present_headless(frame : @graphics.RenderFrame) -> @graphics.MemorySurface {
         result.get_present_pixel_count() * 4 else {
         abort("expected RGBA present byte budget")
       }
+      guard !result.saves_full_present_pixels(
+        frame.get_width(),
+        frame.get_height(),
+      ) else {
+        abort("initial frame should not claim partial present savings")
+      }
       surface
     }
     Err(_) => abort("headless present failed")

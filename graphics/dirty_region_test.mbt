@@ -99,6 +99,7 @@ test "DirtyRegion::present_plan exposes dirty present strategy" {
   assert_eq(empty.get_rect_count(), 0)
   assert_eq(empty.get_present_pixel_count(), 0)
   assert_eq(empty.get_present_byte_count(), 0)
+  assert_true(!empty.saves_full_present_pixels(7, 2))
 
   let rect_plan = region.present_plan(
     PixelRect::new(x=0, y=0, width=7, height=2),
@@ -110,6 +111,8 @@ test "DirtyRegion::present_plan exposes dirty present strategy" {
   assert_eq(rect_plan.get_rect_count(), 3)
   assert_eq(rect_plan.get_present_pixel_count(), 3)
   assert_eq(rect_plan.get_present_byte_count(), 12)
+  assert_true(rect_plan.saves_full_present_pixels(7, 2))
+  assert_true(!rect_plan.saves_full_present_pixels(3, 1))
   assert_true(
     rect_plan.get_rects()[1] == PixelRect::new(x=3, y=0, width=1, height=1),
   )
@@ -123,6 +126,8 @@ test "DirtyRegion::present_plan exposes dirty present strategy" {
   assert_eq(bounds_plan.get_rect_count(), 1)
   assert_eq(bounds_plan.get_present_pixel_count(), 7)
   assert_eq(bounds_plan.get_present_byte_count(), 28)
+  assert_true(bounds_plan.saves_full_present_pixels(7, 2))
+  assert_true(!bounds_plan.saves_full_present_pixels(7, 1))
   assert_true(
     bounds_plan.get_rects()[0] == PixelRect::new(x=0, y=0, width=7, height=1),
   )
@@ -136,6 +141,7 @@ test "DirtySubmitPlan exposes scheduler state" {
   assert_true(!clean.needs_present())
   assert_eq(clean.get_present_pixel_count(), 0)
   assert_eq(clean.get_present_byte_count(), 0)
+  assert_true(!clean.saves_full_present_pixels(1, 1))
 
   let clipped_frame = RenderFrame::new(4, 1)
   clipped_frame.mark_dirty_rect(PixelRect::new(x=3, y=0, width=1, height=1))
@@ -145,6 +151,7 @@ test "DirtySubmitPlan exposes scheduler state" {
   assert_true(!clipped.needs_present())
   assert_eq(clipped.get_present_pixel_count(), 0)
   assert_eq(clipped.get_present_byte_count(), 0)
+  assert_true(!clipped.saves_full_present_pixels(2, 1))
 
   let present_frame = RenderFrame::new(2, 1)
   present_frame.mark_dirty_rect(PixelRect::new(x=0, y=0, width=1, height=1))
@@ -154,4 +161,6 @@ test "DirtySubmitPlan exposes scheduler state" {
   assert_true(present.needs_present())
   assert_eq(present.get_present_pixel_count(), 1)
   assert_eq(present.get_present_byte_count(), 4)
+  assert_true(present.saves_full_present_pixels(2, 1))
+  assert_true(!present.saves_full_present_pixels(1, 1))
 }
