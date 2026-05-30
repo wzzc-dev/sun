@@ -102,6 +102,47 @@ test "Canvas::save and restore preserve transform and clip state" {
 }
 
 ///|
+test "Canvas transform helpers concatenate and reset current transform" {
+  let canvas = Canvas::new(1, 1)
+  canvas.translate(tx=1.0, ty=2.0)
+  canvas.scale(sx=2.0, sy=3.0)
+  assert_true(
+    canvas.get_transform() ==
+    Transform::translate(tx=1.0, ty=2.0).multiply(
+      Transform::scale(sx=2.0, sy=3.0),
+    ),
+  )
+  let (x, y) = canvas.get_transform().apply(1.0, 1.0)
+  assert_eq(x, 3.0)
+  assert_eq(y, 5.0)
+
+  canvas.reset_transform()
+  assert_true(canvas.get_transform() == Transform::identity())
+  canvas.concat_transform(Transform::translate(tx=2.0, ty=0.0))
+  canvas.rotate(0.0)
+  assert_true(canvas.get_transform() == Transform::translate(tx=2.0, ty=0.0))
+}
+
+///|
+test "Canvas transform helpers affect path drawing and restore" {
+  let canvas = Canvas::new(4, 1)
+  canvas.clear(Color::white())
+  canvas.save()
+  canvas.translate(tx=1.0, ty=0.0)
+  canvas.scale(sx=2.0, sy=1.0)
+  let path = Path::new().add_rect(0.0, 0.0, 1.0, 1.0)
+  canvas.fill_path(path, Paint::new().set_color(Color::black()))
+  assert_true(canvas.restore())
+  canvas.fill_path(path, Paint::new().set_color(Color::blue()))
+
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::blue())
+  assert_eq(pixmap.get_pixel(1, 0), Color::black())
+  assert_eq(pixmap.get_pixel(2, 0), Color::black())
+  assert_eq(pixmap.get_pixel(3, 0), Color::white())
+}
+
+///|
 test "Canvas::restore affects subsequent path drawing" {
   let canvas = Canvas::new(3, 1)
   canvas.clear(Color::white())

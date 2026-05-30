@@ -58,6 +58,36 @@ pub fn Canvas::set_transform(self : Canvas, transform : Transform) -> Unit {
 }
 
 ///|
+/// Reset the current transform to identity.
+pub fn Canvas::reset_transform(self : Canvas) -> Unit {
+  self.transform = Transform::identity()
+}
+
+///|
+/// Concatenate a transform onto the current transform.
+pub fn Canvas::concat_transform(self : Canvas, transform : Transform) -> Unit {
+  self.transform = self.transform.multiply(transform)
+}
+
+///|
+/// Translate subsequent transformed drawing operations.
+pub fn Canvas::translate(self : Canvas, tx~ : Double, ty~ : Double) -> Unit {
+  self.concat_transform(Transform::translate(tx~, ty~))
+}
+
+///|
+/// Scale subsequent transformed drawing operations.
+pub fn Canvas::scale(self : Canvas, sx~ : Double, sy~ : Double) -> Unit {
+  self.concat_transform(Transform::scale(sx~, sy~))
+}
+
+///|
+/// Rotate subsequent transformed drawing operations by an angle in radians.
+pub fn Canvas::rotate(self : Canvas, angle : Double) -> Unit {
+  self.concat_transform(Transform::rotate(angle))
+}
+
+///|
 /// Get the current transform
 pub fn Canvas::get_transform(self : Canvas) -> Transform {
   self.transform

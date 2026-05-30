@@ -23,6 +23,7 @@ pub struct Canvas {
 pub fn Canvas::clear(Self, Color) -> Unit
 pub fn Canvas::clear_clip(Self) -> Unit
 pub fn Canvas::clear_dirty_region(Self) -> Unit
+pub fn Canvas::concat_transform(Self, Transform) -> Unit
 pub fn Canvas::draw_mask(Self, Int, Int, Int, Int, FixedArray[Byte], Paint) -> Unit
 pub fn Canvas::draw_nine_patch_pixmap(Self, Pixmap, Int, Int, Int, Int, NinePatchInsets, Paint, ImageSampling) -> Unit
 pub fn Canvas::draw_pixel(Self, Int, Int, Color) -> Unit
@@ -50,11 +51,15 @@ pub fn Canvas::new(Int, Int) -> Self
 pub fn[S : Surface] Canvas::present_dirty_to(Self, S) -> Result[Int, PresentError]
 pub fn[S : Surface] Canvas::present_dirty_to_with_limit(Self, S, Int) -> Result[Int, PresentError]
 pub fn[S : Surface] Canvas::present_to(Self, S) -> Result[Unit, PresentError]
+pub fn Canvas::reset_transform(Self) -> Unit
 pub fn Canvas::restore(Self) -> Bool
+pub fn Canvas::rotate(Self, Double) -> Unit
 pub fn Canvas::save(Self) -> Unit
+pub fn Canvas::scale(Self, sx~ : Double, sy~ : Double) -> Unit
 pub fn Canvas::set_clip_rect(Self, Rect) -> Unit
 pub fn Canvas::set_transform(Self, Transform) -> Unit
 pub fn Canvas::stroke_path(Self, Path, Paint) -> Unit
+pub fn Canvas::translate(Self, tx~ : Double, ty~ : Double) -> Unit
 
 type CanvasEdge derive(@debug.Debug)
 
