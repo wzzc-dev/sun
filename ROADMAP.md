@@ -178,8 +178,8 @@ Application / GUI
 - Renderer 提供 `draw_text_fallback_line_cached`，让 repeated fallback label 可复用 `TextMaskCache` 中的 per-span rendered mask，并报告 span 级 render/cache-hit telemetry
 - Renderer 提供 `draw_text_fallback_line_atlas`，让 fallback label 可复用 glyph mask cache 与 `GlyphMaskAtlas` placement，并聚合 missing span 与 glyph/atlas telemetry
 - Renderer 提供 `RendererTextResources`，让 GUI/resource 代码以单个对象复用 bounded text mask cache、glyph mask cache 与 glyph atlas 状态
-- Renderer 提供 keyed font-byte fallback line draw path，通过 `RendererResources` 复用 checked font-face cache 和 per-span text-mask cache，并报告 font/text cache telemetry
-- Renderer 提供 keyed font-byte fallback atlas draw path，通过 `RendererResources` 复用 checked font-face cache、glyph mask cache 与 `GlyphMaskAtlas` placement，并报告 font/glyph/atlas telemetry
+- Renderer 提供 keyed font-byte fallback line draw path，通过 `RendererResources` 复用 checked font-face cache 和 per-span text-mask cache，并报告 font/span/text cache telemetry
+- Renderer 提供 keyed font-byte fallback atlas draw path，通过 `RendererResources` 复用 checked font-face cache、glyph mask cache 与 `GlyphMaskAtlas` placement，并报告 font/span/glyph/atlas telemetry
 - `examples/render_bench` 提供确定性的 CPU render microbenchmark smoke，覆盖 fill_rect、path fill、stroke、glyph raster/mask composition、Pixmap blit 与 present copy telemetry
 - `Font`/`FontFace` 暴露 glyph coverage 查询，供后续 fallback/resource 调度在绘制前判断 missing glyph
 - `FontFallbackPlan` 基于有序 `FontFace` 栈把文本切成覆盖 span，并统计 missing glyph，作为后续 fallback shaping 与资源预调度基础
@@ -278,8 +278,8 @@ Application / GUI
 - [x] 增加 `RendererTextResources`，让 renderer 调用方复用 bounded text/glyph mask cache 与 glyph atlas，并覆盖 cached-mask/atlas draw path 与 clear lifecycle
 - [x] 增加 `RendererResources`，让 GUI/resource 代码用单个对象复用 font cache、text cache、glyph cache、glyph atlas 与 image `PixmapCache`
 - [x] 将 `FontFaceCache` 接入 RendererResources draw path，提供 checked font-byte cached text/atlas drawing，覆盖 parse hit/miss、解析错误保留与 clear lifecycle
-- [x] 将 `FontFaceCache` 接入 RendererResources fallback line draw path，支持 keyed font-byte fallback stack 解析复用、text-mask span 复用与 parse error 保留
-- [x] 将 `FontFaceCache` 接入 RendererResources fallback atlas draw path，支持 keyed font-byte fallback stack 解析复用、glyph mask/atlas 复用与 parse error 保留
+- [x] 将 `FontFaceCache` 接入 RendererResources fallback line draw path，支持 keyed font-byte fallback stack 解析复用、text-mask span 复用、完整 span telemetry 与 parse error 保留
+- [x] 将 `FontFaceCache` 接入 RendererResources fallback atlas draw path，支持 keyed font-byte fallback stack 解析复用、glyph mask/atlas 复用、完整 span/atlas telemetry 与 parse error 保留
 
 #### 2.1 OpenType 支持
 - [ ] 解析 CFF/CFF2 表（PostScript 轮廓）

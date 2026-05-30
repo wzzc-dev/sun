@@ -762,6 +762,14 @@ pub fn CachedFontFallbackDrawResult::get_fallback_result(
 }
 
 ///|
+/// Return the number of fallback spans visited by this draw.
+pub fn CachedFontFallbackDrawResult::get_span_count(
+  self : CachedFontFallbackDrawResult,
+) -> Int {
+  self.fallback_result.get_span_count()
+}
+
+///|
 /// Return the number of fallback spans drawn with a covering face.
 pub fn CachedFontFallbackDrawResult::get_drawn_span_count(
   self : CachedFontFallbackDrawResult,
@@ -778,11 +786,35 @@ pub fn CachedFontFallbackDrawResult::get_skipped_span_count(
 }
 
 ///|
+/// Return the number of missing-glyph spans skipped by this draw.
+pub fn CachedFontFallbackDrawResult::get_missing_span_count(
+  self : CachedFontFallbackDrawResult,
+) -> Int {
+  self.fallback_result.get_missing_span_count()
+}
+
+///|
 /// Return the number of text scalars not covered by any fallback face.
 pub fn CachedFontFallbackDrawResult::get_missing_char_count(
   self : CachedFontFallbackDrawResult,
 ) -> Int {
   self.fallback_result.get_missing_char_count()
+}
+
+///|
+/// Return whether this draw skipped at least one missing glyph span.
+pub fn CachedFontFallbackDrawResult::has_missing_glyphs(
+  self : CachedFontFallbackDrawResult,
+) -> Bool {
+  self.fallback_result.has_missing_glyphs()
+}
+
+///|
+/// Return the horizontal advance consumed by the fallback line draw.
+pub fn CachedFontFallbackDrawResult::get_advance_width(
+  self : CachedFontFallbackDrawResult,
+) -> Double {
+  self.fallback_result.get_advance_width()
 }
 
 ///|
@@ -826,6 +858,14 @@ pub fn CachedFontFallbackAtlasDrawResult::get_fallback_result(
 }
 
 ///|
+/// Return the number of fallback spans visited by this atlas draw.
+pub fn CachedFontFallbackAtlasDrawResult::get_span_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_span_count()
+}
+
+///|
 /// Return the number of fallback spans drawn with a covering face.
 pub fn CachedFontFallbackAtlasDrawResult::get_drawn_span_count(
   self : CachedFontFallbackAtlasDrawResult,
@@ -842,11 +882,43 @@ pub fn CachedFontFallbackAtlasDrawResult::get_skipped_span_count(
 }
 
 ///|
+/// Return the number of missing-glyph spans skipped by this atlas draw.
+pub fn CachedFontFallbackAtlasDrawResult::get_missing_span_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_missing_span_count()
+}
+
+///|
 /// Return the number of text scalars not covered by any fallback face.
 pub fn CachedFontFallbackAtlasDrawResult::get_missing_char_count(
   self : CachedFontFallbackAtlasDrawResult,
 ) -> Int {
   self.fallback_result.get_missing_char_count()
+}
+
+///|
+/// Return whether this atlas draw skipped at least one missing glyph span.
+pub fn CachedFontFallbackAtlasDrawResult::has_missing_glyphs(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Bool {
+  self.fallback_result.has_missing_glyphs()
+}
+
+///|
+/// Return the horizontal advance consumed by the fallback atlas draw.
+pub fn CachedFontFallbackAtlasDrawResult::get_advance_width(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Double {
+  self.fallback_result.get_advance_width()
+}
+
+///|
+/// Return the underlying glyph-atlas draw result.
+pub fn CachedFontFallbackAtlasDrawResult::get_atlas_result(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> TextAtlasDrawResult {
+  self.fallback_result.get_atlas_result()
 }
 
 ///|

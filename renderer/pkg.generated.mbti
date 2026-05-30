@@ -51,8 +51,10 @@ pub struct CachedFontFallbackAtlasDrawResult {
   fallback_result : TextFallbackAtlasDrawResult
 } derive(@debug.Debug)
 pub fn CachedFontFallbackAtlasDrawResult::did_clear_atlas(Self) -> Bool
+pub fn CachedFontFallbackAtlasDrawResult::get_advance_width(Self) -> Double
 pub fn CachedFontFallbackAtlasDrawResult::get_atlas_hit_count(Self) -> Int
 pub fn CachedFontFallbackAtlasDrawResult::get_atlas_inserted_count(Self) -> Int
+pub fn CachedFontFallbackAtlasDrawResult::get_atlas_result(Self) -> TextAtlasDrawResult
 pub fn CachedFontFallbackAtlasDrawResult::get_cache_hit_count(Self) -> Int
 pub fn CachedFontFallbackAtlasDrawResult::get_drawn_glyph_count(Self) -> Int
 pub fn CachedFontFallbackAtlasDrawResult::get_drawn_span_count(Self) -> Int
@@ -60,24 +62,31 @@ pub fn CachedFontFallbackAtlasDrawResult::get_fallback_result(Self) -> TextFallb
 pub fn CachedFontFallbackAtlasDrawResult::get_font_cache_hit_count(Self) -> Int
 pub fn CachedFontFallbackAtlasDrawResult::get_glyph_count(Self) -> Int
 pub fn CachedFontFallbackAtlasDrawResult::get_missing_char_count(Self) -> Int
+pub fn CachedFontFallbackAtlasDrawResult::get_missing_span_count(Self) -> Int
 pub fn CachedFontFallbackAtlasDrawResult::get_parsed_font_count(Self) -> Int
 pub fn CachedFontFallbackAtlasDrawResult::get_rasterized_glyph_count(Self) -> Int
 pub fn CachedFontFallbackAtlasDrawResult::get_skipped_glyph_count(Self) -> Int
 pub fn CachedFontFallbackAtlasDrawResult::get_skipped_span_count(Self) -> Int
+pub fn CachedFontFallbackAtlasDrawResult::get_span_count(Self) -> Int
+pub fn CachedFontFallbackAtlasDrawResult::has_missing_glyphs(Self) -> Bool
 
 pub struct CachedFontFallbackDrawResult {
   parsed_font_count : Int
   font_cache_hit_count : Int
   fallback_result : TextFallbackDrawResult
 } derive(@debug.Debug)
+pub fn CachedFontFallbackDrawResult::get_advance_width(Self) -> Double
 pub fn CachedFontFallbackDrawResult::get_drawn_span_count(Self) -> Int
 pub fn CachedFontFallbackDrawResult::get_fallback_result(Self) -> TextFallbackDrawResult
 pub fn CachedFontFallbackDrawResult::get_font_cache_hit_count(Self) -> Int
 pub fn CachedFontFallbackDrawResult::get_missing_char_count(Self) -> Int
+pub fn CachedFontFallbackDrawResult::get_missing_span_count(Self) -> Int
 pub fn CachedFontFallbackDrawResult::get_parsed_font_count(Self) -> Int
 pub fn CachedFontFallbackDrawResult::get_rendered_mask_count(Self) -> Int
 pub fn CachedFontFallbackDrawResult::get_skipped_span_count(Self) -> Int
+pub fn CachedFontFallbackDrawResult::get_span_count(Self) -> Int
 pub fn CachedFontFallbackDrawResult::get_text_cache_hit_count(Self) -> Int
+pub fn CachedFontFallbackDrawResult::has_missing_glyphs(Self) -> Bool
 
 pub struct CachedFontTextDrawResult {
   did_parse_font : Bool
