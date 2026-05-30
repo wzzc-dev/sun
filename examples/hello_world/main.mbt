@@ -260,9 +260,18 @@ fn present_frame_dirty(
     window.window_handle(),
     frame,
   ).with_pre_present_hook(fn() { window.pre_present_notify() })
-  match surface.present_frame_dirty(frame) {
-    Ok(_) => ()
+  match surface.submit_frame_dirty(frame) {
+    Ok(result) => handle_dirty_submit_result(result)
     Err(_) => println("Present failed")
+  }
+}
+
+///|
+fn handle_dirty_submit_result(result : @graphics.DirtySubmitResult) -> Unit {
+  match result.get_state() {
+    @graphics.DirtySubmitState::Clean => ()
+    @graphics.DirtySubmitState::Present => ()
+    @graphics.DirtySubmitState::DirtyClippedAway => ()
   }
 }
 

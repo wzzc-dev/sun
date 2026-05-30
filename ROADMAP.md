@@ -123,7 +123,8 @@ Application / GUI
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty-submit plan 查询，让窗口后端调度能复用 graphics 的统一 dirty snapshot
 - softbuffer 的 `NativeSurface` 暴露 state-aware dirty submit helper，返回 Clean/Present/DirtyClippedAway 与实际提交数量
 - `NativeSurface` 支持可选 pre-present hook，让窗口生命周期通知进入统一 present helper，而不是散落在示例事件处理器里
-- `hello_world` 示例走 `RenderFrame + LayerTree + softbuffer frame-present helpers`，并在 resize/redraw 中复用 frame 与 layer lifecycle，作为事件循环 dirty submit 的最小真实用例
+- `headless_render` 示例通过 `RenderFrame::submit_dirty_to` 自校验 dirty submit 状态，让 CI 覆盖可执行的调度结果路径
+- `hello_world` 示例走 `RenderFrame + LayerTree + softbuffer state-aware frame-submit helpers`，并在 resize/redraw 中复用 frame 与 layer lifecycle，作为事件循环 dirty submit 的最小真实用例
 - TTF 字体解析（head, hhea, hmtx, cmap, glyf, kern 表）
 - 基础文本布局（自动换行、显式换行、空行、行高计算）
 - 字形光栅化（直线、二次贝塞尔曲线）与 `CoverageMask` 输出
@@ -320,6 +321,7 @@ Application / GUI
 - [x] `RenderFrame` 暴露 dirty bounds/has-dirty、mark-all/mark-rect 与 full present helpers，减少上层直接操作 Canvas dirty internals
 - [x] `hello_world` 示例接入 `RenderFrame`，覆盖窗口 resize/redraw 上的 frame submit 路径
 - [x] `hello_world` resize 复用 `RenderFrame + LayerTree`，通过背景 resize/clear 与文本层 replace/recenter 覆盖 GUI 级 layer lifecycle 基线
+- [x] `headless_render` 和 `hello_world` 示例消费 state-aware dirty submit 结果，让无窗口 CI 与窗口 demo 都走统一 submit 语义
 - [ ] 脏矩形渲染调度与窗口事件循环深度集成
 - [ ] GUI 级 layer lifecycle：更通用的背景清除策略和 present 调度 API
 - [ ] 添加微基准：fill_rect、path fill、stroke、glyph raster、pixmap blit、present copy
