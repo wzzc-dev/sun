@@ -15,6 +15,7 @@ moon test renderer
 moon test softbuffer
 moon test .local_repos/window/core
 moon test .local_repos/window/dpi
+moon run examples/headless_render
 moon build examples/triangle_window --target native
 moon build examples/hello_world --target native
 moon build examples/font_demo --target native

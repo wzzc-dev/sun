@@ -1,0 +1,7 @@
+import {
+  "wzzc-dev/graphics",
+}
+
+options(
+  "is-main": true,
+)

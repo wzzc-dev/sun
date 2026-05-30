@@ -6,5 +6,6 @@ members = [
   "./examples/triangle_window",
   "./examples/hello_world",
   "./examples/font_demo",
+  "./examples/headless_render",
   "./.local_repos/window",
 ]

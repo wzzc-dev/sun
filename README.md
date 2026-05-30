@@ -51,6 +51,10 @@ wzzc-dev/
 │   └── native_renderer.c      # Win32 GDI implementation
 │
 └── examples/
+    ├── headless_render/       # MemorySurface off-screen render smoke test
+    │   ├── moon.mod
+    │   ├── moon.pkg
+    │   └── main.mbt
     ├── hello_world/            # RenderFrame + LayerTree window demo
     │   ├── moon.mod
     │   ├── moon.pkg
@@ -128,6 +132,7 @@ Pixel display library.
 Small build-checked programs that exercise the public packages together.
 
 **Features:**
+- `headless_render` renders a GUI-style frame through `RenderFrame`, `LayerTree`, and `MemorySurface`, then self-checks presented pixels without creating a window
 - `hello_world` uses `graphics.RenderFrame`, `LayerTree`, and `softbuffer` frame-present helpers as a minimal window submit path with resize/redraw lifecycle reuse
 - `font_demo` renders real TTF text through the `renderer` package
 - `triangle_window` keeps a simple native pixel-output smoke test
@@ -188,6 +193,9 @@ moon test softbuffer
 
 # Build example
 moon build examples/font_demo --target native
+
+# Run headless rendering smoke test
+moon run examples/headless_render
 
 # Run RenderFrame window demo
 moon run examples/hello_world --target native
