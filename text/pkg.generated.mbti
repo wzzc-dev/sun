@@ -158,6 +158,20 @@ pub(all) enum FontParseError {
   InvalidTable(String, String)
 } derive(Eq, @debug.Debug)
 
+pub struct GlyphAtlasEntry {
+  key : String
+  x : Int
+  y : Int
+  width : Int
+  height : Int
+} derive(@debug.Debug)
+pub fn GlyphAtlasEntry::get_height(Self) -> Int
+pub fn GlyphAtlasEntry::get_key(Self) -> String
+pub fn GlyphAtlasEntry::get_width(Self) -> Int
+pub fn GlyphAtlasEntry::get_x(Self) -> Int
+pub fn GlyphAtlasEntry::get_y(Self) -> Int
+pub fn GlyphAtlasEntry::new(key~ : String, x~ : Int, y~ : Int, width~ : Int, height~ : Int) -> Self
+
 pub struct GlyphComponent {
   glyph_index : Int
   x_offset : Int
@@ -189,6 +203,25 @@ pub struct GlyphInfo {
   cluster : Int
 } derive(Eq, @debug.Debug)
 pub fn GlyphInfo::new(glyph_id~ : GlyphId, cluster~ : Int) -> Self
+
+pub struct GlyphMaskAtlas {
+  width : Int
+  height : Int
+  pixels : FixedArray[Byte]
+  mut entries : Map[String, GlyphAtlasEntry]
+  mut cursor_x : Int
+  mut cursor_y : Int
+  mut row_height : Int
+} derive(@debug.Debug)
+pub fn GlyphMaskAtlas::clear(Self) -> Unit
+pub fn GlyphMaskAtlas::get(Self, String) -> GlyphAtlasEntry?
+pub fn GlyphMaskAtlas::get_height(Self) -> Int
+pub fn GlyphMaskAtlas::get_width(Self) -> Int
+pub fn GlyphMaskAtlas::insert(Self, String, CoverageMask) -> GlyphAtlasEntry?
+pub fn GlyphMaskAtlas::is_empty(Self) -> Bool
+pub fn GlyphMaskAtlas::len(Self) -> Int
+pub fn GlyphMaskAtlas::new(Int, Int) -> Self
+pub fn GlyphMaskAtlas::to_mask(Self) -> CoverageMask
 
 pub struct GlyphMaskCache {
   mut masks : Map[String, CoverageMask]

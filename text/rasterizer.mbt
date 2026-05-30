@@ -67,6 +67,203 @@ pub fn CoverageMask::copy(self : CoverageMask) -> CoverageMask {
 }
 
 ///|
+/// Placement of one glyph mask inside a glyph mask atlas.
+pub struct GlyphAtlasEntry {
+  key : String
+  x : Int
+  y : Int
+  width : Int
+  height : Int
+} derive(Debug)
+
+///|
+/// Create a glyph atlas entry.
+pub fn GlyphAtlasEntry::new(
+  key~ : String,
+  x~ : Int,
+  y~ : Int,
+  width~ : Int,
+  height~ : Int,
+) -> GlyphAtlasEntry {
+  { key, x, y, width, height }
+}
+
+///|
+/// Get the caller-provided glyph key for this atlas entry.
+pub fn GlyphAtlasEntry::get_key(self : GlyphAtlasEntry) -> String {
+  self.key
+}
+
+///|
+/// Get the atlas x coordinate.
+pub fn GlyphAtlasEntry::get_x(self : GlyphAtlasEntry) -> Int {
+  self.x
+}
+
+///|
+/// Get the atlas y coordinate.
+pub fn GlyphAtlasEntry::get_y(self : GlyphAtlasEntry) -> Int {
+  self.y
+}
+
+///|
+/// Get the entry width.
+pub fn GlyphAtlasEntry::get_width(self : GlyphAtlasEntry) -> Int {
+  self.width
+}
+
+///|
+/// Get the entry height.
+pub fn GlyphAtlasEntry::get_height(self : GlyphAtlasEntry) -> Int {
+  self.height
+}
+
+///|
+/// Small row-packed atlas for rendered glyph coverage masks.
+pub struct GlyphMaskAtlas {
+  width : Int
+  height : Int
+  pixels : FixedArray[Byte]
+  mut entries : Map[String, GlyphAtlasEntry]
+  mut cursor_x : Int
+  mut cursor_y : Int
+  mut row_height : Int
+} derive(Debug)
+
+///|
+/// Create an empty glyph mask atlas.
+pub fn GlyphMaskAtlas::new(width : Int, height : Int) -> GlyphMaskAtlas {
+  {
+    width,
+    height,
+    pixels: FixedArray::make(width * height, b"\x00"[0]),
+    entries: {},
+    cursor_x: 0,
+    cursor_y: 0,
+    row_height: 0,
+  }
+}
+
+///|
+/// Get the atlas width.
+pub fn GlyphMaskAtlas::get_width(self : GlyphMaskAtlas) -> Int {
+  self.width
+}
+
+///|
+/// Get the atlas height.
+pub fn GlyphMaskAtlas::get_height(self : GlyphMaskAtlas) -> Int {
+  self.height
+}
+
+///|
+/// Return the number of placed glyph masks.
+pub fn GlyphMaskAtlas::len(self : GlyphMaskAtlas) -> Int {
+  self.entries.length()
+}
+
+///|
+/// Return whether the atlas has no placed glyph masks.
+pub fn GlyphMaskAtlas::is_empty(self : GlyphMaskAtlas) -> Bool {
+  self.len() is 0
+}
+
+///|
+/// Look up a placed glyph mask by key.
+pub fn GlyphMaskAtlas::get(
+  self : GlyphMaskAtlas,
+  key : String,
+) -> GlyphAtlasEntry? {
+  self.entries.get(key)
+}
+
+///|
+/// Snapshot the full atlas pixels as a coverage mask.
+pub fn GlyphMaskAtlas::to_mask(self : GlyphMaskAtlas) -> CoverageMask {
+  CoverageMask::new(self.width, self.height, copy_bytes(self.pixels))
+}
+
+///|
+/// Insert a rendered glyph mask if there is space, or return the existing entry.
+pub fn GlyphMaskAtlas::insert(
+  self : GlyphMaskAtlas,
+  key : String,
+  mask : CoverageMask,
+) -> GlyphAtlasEntry? {
+  match self.get(key) {
+    Some(entry) => Some(entry)
+    None => self.place(key, mask)
+  }
+}
+
+///|
+/// Remove all atlas entries and clear atlas pixels.
+pub fn GlyphMaskAtlas::clear(self : GlyphMaskAtlas) -> Unit {
+  self.entries = {}
+  self.cursor_x = 0
+  self.cursor_y = 0
+  self.row_height = 0
+  for i in 0..<self.pixels.length() {
+    self.pixels[i] = b"\x00"[0]
+  }
+}
+
+///|
+fn GlyphMaskAtlas::place(
+  self : GlyphMaskAtlas,
+  key : String,
+  mask : CoverageMask,
+) -> GlyphAtlasEntry? {
+  let mask_width = mask.get_width()
+  let mask_height = mask.get_height()
+  guard mask_width > 0 && mask_height > 0 else { return None }
+  guard mask.get_pixels().length() >= mask_width * mask_height else {
+    return None
+  }
+  guard mask_width <= self.width && mask_height <= self.height else {
+    return None
+  }
+
+  let should_wrap = self.cursor_x + mask_width > self.width
+  let (entry_x, entry_y, current_row_height) = if should_wrap {
+    (0, self.cursor_y + self.row_height, 0)
+  } else {
+    (self.cursor_x, self.cursor_y, self.row_height)
+  }
+  guard entry_y + mask_height <= self.height else { return None }
+
+  let entry = GlyphAtlasEntry::new(
+    key~,
+    x=entry_x,
+    y=entry_y,
+    width=mask_width,
+    height=mask_height,
+  )
+  copy_mask_into_atlas(self, entry, mask)
+  self.entries[key] = entry
+  self.cursor_x = entry_x + mask_width
+  self.cursor_y = entry_y
+  self.row_height = current_row_height.max(mask_height)
+  Some(entry)
+}
+
+///|
+fn copy_mask_into_atlas(
+  atlas : GlyphMaskAtlas,
+  entry : GlyphAtlasEntry,
+  mask : CoverageMask,
+) -> Unit {
+  let src = mask.get_pixels()
+  for y in 0..<entry.height {
+    for x in 0..<entry.width {
+      atlas.pixels[(entry.y + y) * atlas.width + entry.x + x] = src[y *
+        entry.width +
+        x]
+    }
+  }
+}
+
+///|
 /// Small keyed cache for rendered glyph coverage masks.
 pub struct GlyphMaskCache {
   mut masks : Map[String, CoverageMask]

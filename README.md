@@ -101,6 +101,7 @@ Text processing library (font parsing, shaping, layout).
 - `FontFace`, `GlyphRun`, and `TextLayout` facades for renderer and GUI-facing text APIs
 - `FontFaceCache` for keyed reuse of checked parsed faces in GUI/resource code
 - `GlyphMaskCache` for keyed reuse of individual glyph coverage masks
+- `GlyphMaskAtlas` for text-local row-packed placement of copied glyph masks
 - `TextMaskCache` for keyed reuse of rendered coverage masks with copy-isolated
   cache entries
 - Left, center, right, and basic non-final-line justify alignment through the `TextLayout` facade

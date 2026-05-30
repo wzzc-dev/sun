@@ -97,6 +97,122 @@ test "GlyphMaskCache stores copies and clears entries" {
 }
 
 ///|
+test "GlyphMaskAtlas packs masks into rows" {
+  let atlas = GlyphMaskAtlas::new(4, 3)
+  assert_eq(atlas.get_width(), 4)
+  assert_eq(atlas.get_height(), 3)
+  assert_true(atlas.is_empty())
+
+  let a_pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  a_pixels[0] = 10
+  a_pixels[3] = 40
+  let a = CoverageMask::new(2, 2, a_pixels)
+  match atlas.insert("a", a) {
+    Some(entry) => {
+      assert_eq(entry.get_key(), "a")
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 0)
+      assert_eq(entry.get_width(), 2)
+      assert_eq(entry.get_height(), 2)
+    }
+    None => abort("expected first atlas entry")
+  }
+  assert_eq(atlas.len(), 1)
+
+  let b_pixels : FixedArray[Byte] = FixedArray::make(2, 0)
+  b_pixels[0] = 50
+  b_pixels[1] = 60
+  let b = CoverageMask::new(2, 1, b_pixels)
+  match atlas.insert("b", b) {
+    Some(entry) => {
+      assert_eq(entry.get_x(), 2)
+      assert_eq(entry.get_y(), 0)
+    }
+    None => abort("expected second atlas entry")
+  }
+
+  let c_pixels : FixedArray[Byte] = FixedArray::make(2, 0)
+  c_pixels[0] = 70
+  c_pixels[1] = 80
+  let c = CoverageMask::new(2, 1, c_pixels)
+  match atlas.insert("c", c) {
+    Some(entry) => {
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 2)
+    }
+    None => abort("expected wrapped atlas entry")
+  }
+
+  a_pixels[0] = 99
+  let packed = atlas.to_mask()
+  assert_eq(packed.get_width(), 4)
+  assert_eq(packed.get_height(), 3)
+  assert_eq(packed.get_pixels()[0], 10)
+  assert_eq(packed.get_pixels()[1 * 4 + 1], 40)
+  assert_eq(packed.get_pixels()[2], 50)
+  assert_eq(packed.get_pixels()[3], 60)
+  assert_eq(packed.get_pixels()[2 * 4], 70)
+  assert_eq(packed.get_pixels()[2 * 4 + 1], 80)
+}
+
+///|
+test "GlyphMaskAtlas reuses keys rejects overflow and clears" {
+  let atlas = GlyphMaskAtlas::new(2, 2)
+  let pixels : FixedArray[Byte] = FixedArray::make(1, 0)
+  pixels[0] = 120
+  let mask = CoverageMask::new(1, 1, pixels)
+  match atlas.insert("same", mask) {
+    Some(entry) => {
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 0)
+    }
+    None => abort("expected atlas entry")
+  }
+
+  let replacement_pixels : FixedArray[Byte] = FixedArray::make(1, 0)
+  replacement_pixels[0] = 240
+  let replacement = CoverageMask::new(1, 1, replacement_pixels)
+  match atlas.insert("same", replacement) {
+    Some(entry) => {
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 0)
+    }
+    None => abort("expected existing atlas entry")
+  }
+  assert_eq(atlas.len(), 1)
+  assert_eq(atlas.to_mask().get_pixels()[0], 120)
+
+  let too_wide = CoverageMask::new(3, 1, FixedArray::make(3, 1))
+  assert_true(atlas.insert("wide", too_wide) is None)
+  let short_pixels = CoverageMask::new(2, 2, FixedArray::make(3, 1))
+  assert_true(atlas.insert("short", short_pixels) is None)
+  let too_tall_after_wrap = CoverageMask::new(2, 2, FixedArray::make(4, 1))
+  assert_true(atlas.insert("too-tall-after-wrap", too_tall_after_wrap) is None)
+  ignore(atlas.insert("one", mask))
+  match atlas.insert("two", mask) {
+    Some(entry) => {
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 1)
+    }
+    None => abort("expected wrap after failed overflow entry")
+  }
+  ignore(atlas.insert("three", mask))
+  assert_true(atlas.insert("overflow", mask) is None)
+
+  atlas.clear()
+  assert_true(atlas.is_empty())
+  assert_true(atlas.get("same") is None)
+  assert_eq(atlas.to_mask().get_pixels()[0], 0)
+  match atlas.insert("after-clear", mask) {
+    Some(entry) => {
+      assert_eq(entry.get_x(), 0)
+      assert_eq(entry.get_y(), 0)
+    }
+    None => abort("expected atlas entry after clear")
+  }
+}
+
+///|
 test "Rasterizer::to_mask snapshots grayscale pixels" {
   let rasterizer = Rasterizer::new(4, 4)
   rasterizer.draw_line(1.0, 1.0, 1.0, 1.0)

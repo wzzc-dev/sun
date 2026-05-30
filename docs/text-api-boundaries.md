@@ -17,6 +17,10 @@ the facade types below.
 - `GlyphMaskCache` is a small keyed cache for individual glyph `CoverageMask`
   values. Renderer and future atlas code can use `get_or_rasterize_glyph` when
   a stable font/glyph/scale/subpixel key is already known.
+- `GlyphMaskAtlas` is a text-local row-packed atlas for copied glyph masks. It
+  records caller-provided glyph keys and mask placement without depending on
+  `graphics.PixelRect`, keeping the renderer atlas path optional and layered on
+  top of text coverage masks.
 - `TextMaskCache` is a small keyed cache for rendered `CoverageMask` values.
   GUI and renderer code can use `get_or_render_face` for repeated labels or
   text runs, while `get` and `insert` copy mask pixels to keep cached entries
@@ -61,6 +65,9 @@ construct these types by hand.
   stable font-resource key and may request the same face repeatedly.
 - Prefer `GlyphMaskCache::get_or_rasterize_glyph(key, glyph, ...)` when renderer
   code already owns a stable glyph-resource key and wants per-glyph reuse.
+- Prefer `GlyphMaskAtlas::insert(key, mask)` when a renderer or GUI resource
+  layer wants deterministic glyph placement before adding package-specific
+  eviction, texture upload, or dirty atlas lifecycle policy.
 - Prefer `TextMaskCache::get_or_render_face(key, face, text, ...)` when a GUI
   owns a stable text-resource key and may draw the same mask repeatedly.
 - Prefer `TextLayout::layout(face, text, config)` or `layout_text_face` over
@@ -72,5 +79,5 @@ construct these types by hand.
 - Keep exact parser error tests in `text/parser_test.mbt`; keep facade and
   renderer integration tests near `FontFace`/`TextLayout` users.
 
-This boundary lets the parser, shaper, fallback strategy, and glyph cache evolve
-without forcing GUI code to depend on table-level TTF details.
+This boundary lets the parser, shaper, fallback strategy, glyph cache, and atlas
+packing evolve without forcing GUI code to depend on table-level TTF details.
