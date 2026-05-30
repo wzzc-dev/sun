@@ -105,8 +105,10 @@ construct these types by hand.
 - Prefer `TextLayout::layout(face, text, config)` or `layout_text_face` over
   calling `layout_text` directly from application code.
 - Prefer `render_text_mask_face` and `Renderer::draw_text_face` when connecting
-  text to pixels. Prefer `Renderer::draw_text_face_cached` for repeated labels
-  or text runs with a caller-owned `TextMaskCache`.
+  one checked face to pixels. Prefer `Renderer::draw_text_fallback_line` when a
+  GUI label owns an ordered font stack and needs first-covering-face fallback
+  spans plus missing-glyph telemetry. Prefer `Renderer::draw_text_face_cached`
+  for repeated labels or text runs with a caller-owned `TextMaskCache`.
 - Add layout-level and renderer-level regressions when changing alignment,
   baseline, wrapping, or glyph positioning semantics.
 - Keep exact parser error tests in `text/parser_test.mbt`; keep facade and

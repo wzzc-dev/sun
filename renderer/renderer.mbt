@@ -40,6 +40,15 @@ pub struct TextMaskDrawResult {
 } derive(Debug)
 
 ///|
+/// Result of drawing a single line through an ordered font fallback stack.
+pub struct TextFallbackDrawResult {
+  plan : @text.FontFallbackPlan
+  drawn_span_count : Int
+  skipped_span_count : Int
+  advance_width : Double
+} derive(Debug)
+
+///|
 /// Result of parsing font bytes through renderer resources and drawing text.
 pub struct CachedFontTextDrawResult {
   did_parse_font : Bool
@@ -322,6 +331,70 @@ pub fn TextMaskDrawResult::did_hit_cache(self : TextMaskDrawResult) -> Bool {
 }
 
 ///|
+/// Get the fallback plan used by this draw.
+pub fn TextFallbackDrawResult::get_plan(
+  self : TextFallbackDrawResult,
+) -> @text.FontFallbackPlan {
+  self.plan
+}
+
+///|
+/// Return the number of fallback spans visited by this draw.
+pub fn TextFallbackDrawResult::get_span_count(
+  self : TextFallbackDrawResult,
+) -> Int {
+  self.plan.span_count()
+}
+
+///|
+/// Return the number of fallback spans drawn with a covering face.
+pub fn TextFallbackDrawResult::get_drawn_span_count(
+  self : TextFallbackDrawResult,
+) -> Int {
+  self.drawn_span_count
+}
+
+///|
+/// Return the number of missing-glyph spans skipped by this draw.
+pub fn TextFallbackDrawResult::get_skipped_span_count(
+  self : TextFallbackDrawResult,
+) -> Int {
+  self.skipped_span_count
+}
+
+///|
+/// Return the number of missing-glyph spans skipped by this draw.
+pub fn TextFallbackDrawResult::get_missing_span_count(
+  self : TextFallbackDrawResult,
+) -> Int {
+  self.skipped_span_count
+}
+
+///|
+/// Return the number of text scalars not covered by any fallback face.
+pub fn TextFallbackDrawResult::get_missing_char_count(
+  self : TextFallbackDrawResult,
+) -> Int {
+  self.plan.get_missing_char_count()
+}
+
+///|
+/// Return whether this draw skipped at least one missing glyph span.
+pub fn TextFallbackDrawResult::has_missing_glyphs(
+  self : TextFallbackDrawResult,
+) -> Bool {
+  self.plan.has_missing_glyphs()
+}
+
+///|
+/// Return the horizontal advance consumed by the fallback line draw.
+pub fn TextFallbackDrawResult::get_advance_width(
+  self : TextFallbackDrawResult,
+) -> Double {
+  self.advance_width
+}
+
+///|
 /// Return whether this draw parsed font bytes instead of hitting cache.
 pub fn CachedFontTextDrawResult::did_parse_font(
   self : CachedFontTextDrawResult,
@@ -590,6 +663,31 @@ pub fn Renderer::draw_text_face_cached_with_renderer_resources(
     config,
     resources.get_text_resources(),
     text_key,
+    paint,
+  )
+}
+
+///|
+/// Draw a single left-to-right text line through an ordered font fallback stack.
+pub fn Renderer::draw_text_fallback_line(
+  self : Renderer,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  paint : @graphics.Paint,
+) -> TextFallbackDrawResult {
+  let pixmap = self.canvas.get_pixmap()
+  draw_text_fallback_line(
+    self.canvas,
+    faces,
+    text,
+    x,
+    y,
+    pixmap.get_width(),
+    pixmap.get_height(),
+    config,
     paint,
   )
 }
@@ -914,6 +1012,48 @@ pub fn draw_text_face_cached(
 }
 
 ///|
+/// Draw a single left-to-right text line through an ordered font fallback stack.
+pub fn draw_text_fallback_line(
+  canvas : @graphics.Canvas,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  width : Int,
+  height : Int,
+  config : @text.LayoutConfig,
+  paint : @graphics.Paint,
+) -> TextFallbackDrawResult {
+  let plan = @text.plan_font_fallback(faces, text)
+  let line_config = fallback_line_config(config)
+  let mut cursor_x = x
+  let mut drawn_span_count = 0
+  let mut skipped_span_count = 0
+  let mut emitted_char_count = 0
+
+  for span in plan.get_spans() {
+    if emitted_char_count > 0 {
+      cursor_x += line_config.letter_spacing
+    }
+    if span.is_missing() {
+      skipped_span_count += 1
+      cursor_x += estimate_missing_span_advance(span.get_text(), line_config)
+    } else {
+      let face = faces[span.get_face_index()]
+      let span_text = span.get_text()
+      draw_text_face(
+        canvas, face, span_text, cursor_x, y, width, height, line_config, paint,
+      )
+      cursor_x += @text.TextLayout::layout(face, span_text, line_config).get_width()
+      drawn_span_count += 1
+    }
+    emitted_char_count += span.get_char_count()
+  }
+
+  { plan, drawn_span_count, skipped_span_count, advance_width: cursor_x - x }
+}
+
+///|
 /// Draw text through caller-owned glyph mask cache and glyph atlas resources.
 pub fn draw_text_face_atlas(
   canvas : @graphics.Canvas,
@@ -1007,6 +1147,38 @@ pub fn draw_text_face_atlas(
     atlas_inserted_count,
     did_clear_atlas,
   }
+}
+
+///|
+fn fallback_line_config(config : @text.LayoutConfig) -> @text.LayoutConfig {
+  @text.LayoutConfig::new(
+    max_width=1000000000.0,
+    font_size=config.font_size,
+    line_height=config.line_height,
+    alignment=@text.TextAlign::Left,
+    letter_spacing=config.letter_spacing,
+    word_spacing=config.word_spacing,
+  )
+}
+
+///|
+fn estimate_missing_span_advance(
+  text : String,
+  config : @text.LayoutConfig,
+) -> Double {
+  let mut width = 0.0
+  let mut char_count = 0
+  for ch in text {
+    width += config.font_size * 0.6
+    if ch is ' ' {
+      width += config.word_spacing
+    }
+    char_count += 1
+  }
+  if char_count > 1 {
+    width += config.letter_spacing * (char_count - 1).to_double()
+  }
+  width
 }
 
 ///|

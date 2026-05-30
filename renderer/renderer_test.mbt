@@ -213,6 +213,109 @@ test "Renderer::draw_text_face_atlas reports glyph cache hits" {
 }
 
 ///|
+test "Renderer::draw_text_fallback_line draws spans with covering faces" {
+  let primary = unwrap_font_face(
+    @text.FontFace::from_bytes(make_ttf_for_codes([65])),
+  )
+  let fallback = unwrap_font_face(
+    @text.FontFace::from_bytes(make_ttf_for_codes([66])),
+  )
+  let canvas = @graphics.Canvas::new(36, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let result = renderer.draw_text_fallback_line(
+    [primary, fallback],
+    "ABZ",
+    1.0,
+    1.0,
+    config,
+    @graphics.Paint::new().set_color(@graphics.Color::black()),
+  )
+  assert_eq(result.get_span_count(), 3)
+  assert_eq(result.get_drawn_span_count(), 2)
+  assert_eq(result.get_skipped_span_count(), 1)
+  assert_eq(result.get_missing_span_count(), 1)
+  assert_eq(result.get_missing_char_count(), 1)
+  assert_true(result.has_missing_glyphs())
+  assert_eq(result.get_advance_width(), 26.0)
+  let plan = result.get_plan()
+  assert_eq(plan.get_missing_char_count(), 1)
+  let spans = plan.get_spans()
+  assert_eq(spans[0].get_face_index(), 0)
+  assert_eq(spans[1].get_face_index(), 1)
+  assert_true(spans[2].is_missing())
+
+  let pixmap = renderer.get_canvas().get_pixmap()
+  assert_eq(pixmap.get_pixel(1, 1), @graphics.Color::black())
+  assert_eq(pixmap.get_pixel(14, 5), @graphics.Color::black())
+  assert_eq(pixmap.get_pixel(21, 1), @graphics.Color::white())
+}
+
+///|
+test "draw_text_fallback_line handles empty fallback stack" {
+  let canvas = @graphics.Canvas::new(24, 12)
+  canvas.clear(@graphics.Color::white())
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let result = draw_text_fallback_line(
+    canvas,
+    [],
+    "AB",
+    1.0,
+    1.0,
+    24,
+    12,
+    config,
+    @graphics.Paint::new().set_color(@graphics.Color::black()),
+  )
+  assert_eq(result.get_span_count(), 1)
+  assert_eq(result.get_drawn_span_count(), 0)
+  assert_eq(result.get_skipped_span_count(), 1)
+  assert_eq(result.get_missing_char_count(), 2)
+  assert_eq(result.get_advance_width(), 12.0)
+  assert_true(!pixmap_has_ink(canvas.get_pixmap()))
+}
+
+///|
+test "draw_text_fallback_line keeps spacing across fallback spans" {
+  let primary = unwrap_font_face(
+    @text.FontFace::from_bytes(make_ttf_for_codes([65])),
+  )
+  let fallback = unwrap_font_face(
+    @text.FontFace::from_bytes(make_ttf_for_codes([66])),
+  )
+  let canvas = @graphics.Canvas::new(40, 12)
+  canvas.clear(@graphics.Color::white())
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+    letter_spacing=2.0,
+  )
+  let result = draw_text_fallback_line(
+    canvas,
+    [primary, fallback],
+    "AB",
+    1.0,
+    1.0,
+    40,
+    12,
+    config,
+    @graphics.Paint::new().set_color(@graphics.Color::black()),
+  )
+  assert_eq(result.get_advance_width(), 22.0)
+  assert_eq(canvas.get_pixmap().get_pixel(16, 5), @graphics.Color::black())
+}
+
+///|
 test "RendererTextResources configures bounded text caches" {
   let resources = RendererTextResources::with_capacities(16, 16, 1, 2)
   let text_cache = resources.get_text_mask_cache()
@@ -1238,6 +1341,20 @@ struct TestOutline {
 ///|
 fn make_minimal_ttf() -> Bytes {
   let glyphs = make_test_glyphs()
+  make_ttf_with_glyphs(glyphs)
+}
+
+///|
+fn make_ttf_for_codes(codepoints : Array[Int]) -> Bytes {
+  let glyphs = []
+  for codepoint in codepoints {
+    glyphs.push(make_ascii_test_glyph(codepoint))
+  }
+  make_ttf_with_glyphs(glyphs)
+}
+
+///|
+fn make_ttf_with_glyphs(glyphs : Array[TestGlyph]) -> Bytes {
   let tags : Array[Bytes] = [
     b"cmap", b"glyf", b"head", b"hhea", b"hmtx", b"loca", b"maxp",
   ]
