@@ -259,6 +259,145 @@ test "RendererResources configures bounded text and image caches" {
 }
 
 ///|
+test "Renderer::draw_pixmap_cached reuses cached pixmap copies" {
+  let canvas = @graphics.Canvas::new(3, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let image_cache = @graphics.PixmapCache::new()
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::red())
+
+  let first = renderer.draw_pixmap_cached(
+    icon,
+    0,
+    0,
+    image_cache,
+    "icon",
+    @graphics.Paint::new(),
+  )
+  assert_true(first.did_insert_pixmap())
+  assert_true(!first.did_hit_cache())
+  assert_eq(image_cache.len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::red())
+
+  icon.set_pixel(0, 0, @graphics.Color::blue())
+  canvas.clear(@graphics.Color::white())
+  let second = renderer.draw_pixmap_cached(
+    icon,
+    1,
+    0,
+    image_cache,
+    "icon",
+    @graphics.Paint::new(),
+  )
+  assert_true(!second.did_insert_pixmap())
+  assert_true(second.did_hit_cache())
+  assert_eq(image_cache.len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+}
+
+///|
+test "Renderer cached image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(2, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::green())
+
+  let first = renderer.draw_pixmap_cached_with_renderer_resources(
+    icon,
+    0,
+    0,
+    resources,
+    "icon",
+    @graphics.Paint::new(),
+  )
+  assert_true(first.did_insert_pixmap())
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+
+  icon.set_pixel(0, 0, @graphics.Color::blue())
+  canvas.clear(@graphics.Color::white())
+  let second = renderer.draw_pixmap_cached_with_renderer_resources(
+    icon,
+    1,
+    0,
+    resources,
+    "icon",
+    @graphics.Paint::new(),
+  )
+  assert_true(second.did_hit_cache())
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+}
+
+///|
+test "Renderer quality cached image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(4, 2)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let panel = @graphics.Pixmap::new(1, 1)
+  panel.set_pixel(0, 0, @graphics.Color::green())
+
+  let first = renderer.draw_quality_pixmap_cached_with_renderer_resources(
+    panel,
+    0,
+    0,
+    2,
+    1,
+    resources,
+    "panel",
+    @graphics.Paint::new(),
+    @graphics.ImageQuality::Fast,
+  )
+  assert_true(first.did_insert_pixmap())
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+
+  panel.set_pixel(0, 0, @graphics.Color::blue())
+  canvas.clear(@graphics.Color::white())
+  let second = renderer.draw_quality_pixmap_cached_with_renderer_resources(
+    panel,
+    2,
+    0,
+    2,
+    1,
+    resources,
+    "panel",
+    @graphics.Paint::new(),
+    @graphics.ImageQuality::Fast,
+  )
+  assert_true(second.did_hit_cache())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+
+  let accent = @graphics.Pixmap::new(1, 1)
+  accent.set_pixel(0, 0, @graphics.Color::red())
+  ignore(
+    renderer.draw_quality_pixmap_cached_with_renderer_resources(
+      accent,
+      0,
+      1,
+      1,
+      1,
+      resources,
+      "accent",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ),
+  )
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_true(resources.get_image_cache().get("panel") is None)
+  match resources.get_image_cache().get("accent") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), @graphics.Color::red())
+    None => abort("expected cached accent pixmap")
+  }
+}
+
+///|
 test "Renderer::draw_text_face_cached_with_resources reuses text masks" {
   let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
   let canvas = @graphics.Canvas::new(12, 12)

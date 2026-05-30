@@ -141,6 +141,8 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
   and glyph atlas state across renderer text draws
 - `RendererResources` for sharing renderer text resources and an image
   `PixmapCache` from one GUI/resource object
+- `Renderer::draw_pixmap_cached` and quality-scaled cached pixmap drawing for
+  `RendererResources` backed image reuse with hit/insert telemetry
 - `Renderer::draw_coverage_mask` for testing and low-level mask composition
 - `Renderer::draw_glyph_atlas_entry` for compositing one glyph placement from a
   `GlyphMaskAtlas` coverage snapshot

@@ -23,11 +23,21 @@ pub fn draw_text_face_cached(@graphics.Canvas, @text.FontFace, String, Double, D
 // Errors
 
 // Types and methods
+pub struct CachedPixmapDrawResult {
+  did_insert_pixmap : Bool
+} derive(@debug.Debug)
+pub fn CachedPixmapDrawResult::did_hit_cache(Self) -> Bool
+pub fn CachedPixmapDrawResult::did_insert_pixmap(Self) -> Bool
+
 pub struct Renderer {
   canvas : @graphics.Canvas
 } derive(@debug.Debug)
 pub fn Renderer::draw_coverage_mask(Self, @text.CoverageMask, @graphics.Paint) -> Unit
 pub fn Renderer::draw_glyph_atlas_entry(Self, @text.CoverageMask, @text.GlyphAtlasEntry, Int, Int, @graphics.Paint) -> Unit
+pub fn Renderer::draw_pixmap_cached(Self, @graphics.Pixmap, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
+pub fn Renderer::draw_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, RendererResources, String, @graphics.Paint) -> CachedPixmapDrawResult
+pub fn Renderer::draw_quality_pixmap_cached(Self, @graphics.Pixmap, Int, Int, Int, Int, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageQuality) -> CachedPixmapDrawResult
+pub fn Renderer::draw_quality_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, Int, Int, RendererResources, String, @graphics.Paint, @graphics.ImageQuality) -> CachedPixmapDrawResult
 pub fn Renderer::draw_text(Self, @text.Font, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text_face_atlas(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @text.GlyphMaskCache, @text.GlyphMaskAtlas, String, @graphics.Paint) -> TextAtlasDrawResult

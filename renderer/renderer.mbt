@@ -39,6 +39,12 @@ pub struct TextMaskDrawResult {
 } derive(Debug)
 
 ///|
+/// Result of drawing through a caller-owned pixmap cache.
+pub struct CachedPixmapDrawResult {
+  did_insert_pixmap : Bool
+} derive(Debug)
+
+///|
 priv struct GlyphAtlasMaskPlacement {
   width : Int
   height : Int
@@ -269,6 +275,22 @@ pub fn TextMaskDrawResult::did_hit_cache(self : TextMaskDrawResult) -> Bool {
 }
 
 ///|
+/// Return whether this draw inserted a pixmap into the image cache.
+pub fn CachedPixmapDrawResult::did_insert_pixmap(
+  self : CachedPixmapDrawResult,
+) -> Bool {
+  self.did_insert_pixmap
+}
+
+///|
+/// Return whether this draw reused a pixmap from the image cache.
+pub fn CachedPixmapDrawResult::did_hit_cache(
+  self : CachedPixmapDrawResult,
+) -> Bool {
+  !self.did_insert_pixmap
+}
+
+///|
 /// Draw text through the real text rasterization pipeline.
 pub fn Renderer::draw_text(
   self : Renderer,
@@ -473,6 +495,97 @@ pub fn Renderer::draw_text_face_atlas_with_renderer_resources(
     resources.get_text_resources(),
     glyph_key_prefix,
     paint,
+  )
+}
+
+///|
+/// Draw an image through a caller-owned pixmap cache.
+pub fn Renderer::draw_pixmap_cached(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> CachedPixmapDrawResult {
+  let result = image_cache.get_or_insert_result(image_key, pixmap)
+  self.canvas.draw_pixmap(result.get_pixmap(), x, y, paint)
+  { did_insert_pixmap: result.did_insert() }
+}
+
+///|
+/// Draw an image through renderer-owned resources and the pixmap cache.
+pub fn Renderer::draw_pixmap_cached_with_renderer_resources(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> CachedPixmapDrawResult {
+  self.draw_pixmap_cached(
+    pixmap,
+    x,
+    y,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+  )
+}
+
+///|
+/// Draw a scaled image through a caller-owned pixmap cache and quality policy.
+pub fn Renderer::draw_quality_pixmap_cached(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> CachedPixmapDrawResult {
+  let result = image_cache.get_or_insert_result(image_key, pixmap)
+  self.canvas.draw_quality_pixmap(
+    result.get_pixmap(),
+    x,
+    y,
+    width,
+    height,
+    paint,
+    quality,
+  )
+  { did_insert_pixmap: result.did_insert() }
+}
+
+///|
+/// Draw a scaled image through renderer-owned resources and quality policy.
+pub fn Renderer::draw_quality_pixmap_cached_with_renderer_resources(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> CachedPixmapDrawResult {
+  self.draw_quality_pixmap_cached(
+    pixmap,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
   )
 }
 
