@@ -29,13 +29,15 @@ The `renderer` package includes the integration regressions that cross package
 boundaries, including parsed TTF bytes through text layout, glyph rasterization,
 coverage-mask composition, and final `Pixmap` pixels.
 
-For headless pixel fixtures, `graphics.Pixmap::to_ppm_bytes` provides a
-deterministic binary PPM(P6) export path without adding filesystem or image
-codec dependencies to the graphics core. `MemorySurface::to_pixmap` and
-`MemorySurface::to_ppm_bytes` expose the same output path directly from the
-reference surface, so examples and tests do not need to hand-copy surface
-pixels. The `headless_render` example checks the exported header, byte length,
-and first rendered RGB pixel as an executable smoke test for off-screen output.
+For headless pixel fixtures, `graphics.Pixmap::to_ppm_bytes` and
+`graphics.Pixmap::to_ppm_rect_bytes` provide deterministic binary PPM(P6)
+export paths without adding filesystem or image codec dependencies to the
+graphics core. `MemorySurface::to_pixmap`, `MemorySurface::to_pixmap_rect`,
+`MemorySurface::to_ppm_bytes`, and `MemorySurface::to_ppm_rect_bytes` expose
+the same output paths directly from the reference surface, so examples and
+tests do not need to hand-copy surface pixels. The `headless_render` example
+checks the exported header, byte length, and first rendered RGB pixel as an
+executable smoke test for off-screen output.
 
 The `softbuffer` package implements the `graphics.Surface` present contract for
 native windows. Its tests cover validation and trait dispatch without requiring

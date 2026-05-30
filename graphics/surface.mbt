@@ -344,6 +344,37 @@ pub fn MemorySurface::to_ppm_bytes(self : MemorySurface) -> Bytes {
 }
 
 ///|
+/// Snapshot a rectangle of this in-memory surface into an isolated pixmap.
+pub fn MemorySurface::to_pixmap_rect(
+  self : MemorySurface,
+  rect : PixelRect,
+) -> Result[Pixmap, PresentError] {
+  match validate_pixel_rect_bounds(self.width, self.height, rect) {
+    Err(error) => Err(error)
+    Ok(_) =>
+      Ok(
+        pixmap_from_packed_rgba(
+          rect.width,
+          rect.height,
+          copy_rgba_rect(self.pixels, self.width, rect),
+        ),
+      )
+  }
+}
+
+///|
+/// Encode a rectangle of this surface as deterministic binary PPM(P6) bytes.
+pub fn MemorySurface::to_ppm_rect_bytes(
+  self : MemorySurface,
+  rect : PixelRect,
+) -> Result[Bytes, PresentError] {
+  match self.to_pixmap_rect(rect) {
+    Ok(pixmap) => Ok(pixmap.to_ppm_bytes())
+    Err(error) => Err(error)
+  }
+}
+
+///|
 pub fn MemorySurface::present_pixels(
   self : MemorySurface,
   width : Int,
@@ -535,6 +566,37 @@ pub fn Pixmap::present_rect_payload(
 }
 
 ///|
+/// Snapshot a rectangle of this pixmap into an isolated pixmap.
+pub fn Pixmap::copy_rect(
+  self : Pixmap,
+  rect : PixelRect,
+) -> Result[Pixmap, PresentError] {
+  match validate_pixmap_present_rect(self, rect) {
+    Err(error) => Err(error)
+    Ok(_) =>
+      Ok(
+        pixmap_from_packed_rgba(
+          rect.width,
+          rect.height,
+          copy_pixmap_rect(self, rect),
+        ),
+      )
+  }
+}
+
+///|
+/// Encode a rectangle of this pixmap as deterministic binary PPM(P6) bytes.
+pub fn Pixmap::to_ppm_rect_bytes(
+  self : Pixmap,
+  rect : PixelRect,
+) -> Result[Bytes, PresentError] {
+  match self.copy_rect(rect) {
+    Ok(pixmap) => Ok(pixmap.to_ppm_bytes())
+    Err(error) => Err(error)
+  }
+}
+
+///|
 pub fn Pixmap::present_batch(
   self : Pixmap,
   plan : DirtyPresentPlan,
@@ -653,21 +715,30 @@ fn validate_pixmap_present_rect(
   pixmap : Pixmap,
   rect : PixelRect,
 ) -> Result[Unit, PresentError] {
+  validate_pixel_rect_bounds(pixmap.get_width(), pixmap.get_height(), rect)
+}
+
+///|
+fn validate_pixel_rect_bounds(
+  width : Int,
+  height : Int,
+  rect : PixelRect,
+) -> Result[Unit, PresentError] {
   guard !rect.is_empty() else {
     return Err(PresentError::InvalidDimensions(rect.width, rect.height))
   }
   guard rect.x >= 0 &&
     rect.y >= 0 &&
-    rect.width <= pixmap.get_width() - rect.x &&
-    rect.height <= pixmap.get_height() - rect.y else {
+    rect.width <= width - rect.x &&
+    rect.height <= height - rect.y else {
     return Err(
       PresentError::RectOutOfBounds(
         rect.x,
         rect.y,
         rect.width,
         rect.height,
-        pixmap.get_width(),
-        pixmap.get_height(),
+        width,
+        height,
       ),
     )
   }
@@ -676,10 +747,18 @@ fn validate_pixmap_present_rect(
 
 ///|
 fn copy_pixmap_rect(pixmap : Pixmap, rect : PixelRect) -> FixedArray[Byte] {
+  copy_rgba_rect(pixmap.get_pixels(), pixmap.get_width(), rect)
+}
+
+///|
+fn copy_rgba_rect(
+  source : FixedArray[Byte],
+  source_width : Int,
+  rect : PixelRect,
+) -> FixedArray[Byte] {
   let row_bytes = rect.width * 4
   let packed : FixedArray[Byte] = FixedArray::make(row_bytes * rect.height, 0)
-  let source_row_bytes = pixmap.get_width() * 4
-  let source = pixmap.get_pixels()
+  let source_row_bytes = source_width * 4
   for row in 0..<rect.height {
     let source_row = (rect.y + row) * source_row_bytes + rect.x * 4
     let packed_row = row * row_bytes
@@ -688,4 +767,18 @@ fn copy_pixmap_rect(pixmap : Pixmap, rect : PixelRect) -> FixedArray[Byte] {
     }
   }
   packed
+}
+
+///|
+fn pixmap_from_packed_rgba(
+  width : Int,
+  height : Int,
+  pixels : FixedArray[Byte],
+) -> Pixmap {
+  let pixmap = Pixmap::new(width, height)
+  let dst = pixmap.get_pixels()
+  for i in 0..<dst.length() {
+    dst[i] = pixels[i]
+  }
+  pixmap
 }

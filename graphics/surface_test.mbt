@@ -129,6 +129,64 @@ test "MemorySurface::to_ppm_bytes exports current RGB pixels" {
 }
 
 ///|
+test "MemorySurface::to_pixmap_rect snapshots a clipped-free rectangle" {
+  let surface = MemorySurface::new(3, 2)
+  let pixels : FixedArray[Byte] = FixedArray::make(24, 0)
+  write_rgba(pixels, 0, Color::red())
+  write_rgba(pixels, 4, Color::green())
+  write_rgba(pixels, 8, Color::blue())
+  write_rgba(pixels, 12, Color::white())
+  write_rgba(pixels, 16, Color::black())
+  write_rgba(pixels, 20, Color::transparent())
+  assert_true(surface.present_pixels(3, 2, 12, pixels) == Ok(()))
+
+  match surface.to_pixmap_rect(PixelRect::new(x=1, y=0, width=2, height=2)) {
+    Ok(snapshot) => {
+      assert_eq(snapshot.get_width(), 2)
+      assert_eq(snapshot.get_height(), 2)
+      assert_eq(snapshot.get_pixel(0, 0), Color::green())
+      assert_eq(snapshot.get_pixel(1, 0), Color::blue())
+      assert_eq(snapshot.get_pixel(0, 1), Color::black())
+      assert_eq(snapshot.get_pixel(1, 1), Color::transparent())
+      snapshot.set_pixel(0, 0, Color::red())
+      assert_eq(surface.get_pixel(1, 0), Color::green())
+    }
+    Err(_) => abort("expected surface rect snapshot")
+  }
+}
+
+///|
+test "MemorySurface::to_ppm_rect_bytes exports a surface rectangle" {
+  let surface = MemorySurface::new(3, 1)
+  let pixels : FixedArray[Byte] = FixedArray::make(12, 0)
+  write_rgba(pixels, 0, Color::red())
+  write_rgba(pixels, 4, Color::green())
+  write_rgba(pixels, 8, Color::blue())
+  assert_true(surface.present_pixels(3, 1, 12, pixels) == Ok(()))
+
+  let expected : Array[Byte] = [
+    80, 54, 10, 50, 32, 49, 10, 50, 53, 53, 10, 0, 255, 0, 0, 0, 255,
+  ]
+  match surface.to_ppm_rect_bytes(PixelRect::new(x=1, y=0, width=2, height=1)) {
+    Ok(ppm) => assert_eq(ppm, Bytes::from_array(expected))
+    Err(_) => abort("expected surface rect ppm")
+  }
+}
+
+///|
+test "MemorySurface rect snapshots reject invalid rectangles" {
+  let surface = MemorySurface::new(2, 2)
+  match surface.to_pixmap_rect(PixelRect::new(x=1, y=1, width=2, height=1)) {
+    Err(PresentError::RectOutOfBounds(1, 1, 2, 1, 2, 2)) => ()
+    _ => abort("expected surface rect snapshot bounds error")
+  }
+  match surface.to_ppm_rect_bytes(PixelRect::new(x=0, y=0, width=0, height=1)) {
+    Err(PresentError::InvalidDimensions(0, 1)) => ()
+    _ => abort("expected surface rect ppm dimension error")
+  }
+}
+
+///|
 test "MemorySurface::present_pixels_rect validates destination bounds" {
   let surface = MemorySurface::new(3, 3)
   let pixels : FixedArray[Byte] = FixedArray::make(16, 0)
@@ -256,6 +314,59 @@ test "Pixmap::present_rect_payload materializes packed pixels" {
       assert_rgba(pixels, 12, Color::transparent())
     }
     Err(_) => abort("expected packed present payload")
+  }
+}
+
+///|
+test "Pixmap::copy_rect snapshots a source rectangle" {
+  let pixmap = Pixmap::new(3, 2)
+  pixmap.set_pixel(0, 0, Color::red())
+  pixmap.set_pixel(1, 0, Color::green())
+  pixmap.set_pixel(2, 0, Color::blue())
+  pixmap.set_pixel(1, 1, Color::black())
+  pixmap.set_pixel(2, 1, Color::white())
+
+  match pixmap.copy_rect(PixelRect::new(x=1, y=0, width=2, height=2)) {
+    Ok(snapshot) => {
+      assert_eq(snapshot.get_width(), 2)
+      assert_eq(snapshot.get_height(), 2)
+      assert_eq(snapshot.get_pixel(0, 0), Color::green())
+      assert_eq(snapshot.get_pixel(1, 0), Color::blue())
+      assert_eq(snapshot.get_pixel(0, 1), Color::black())
+      assert_eq(snapshot.get_pixel(1, 1), Color::white())
+      snapshot.set_pixel(0, 0, Color::red())
+      assert_eq(pixmap.get_pixel(1, 0), Color::green())
+    }
+    Err(_) => abort("expected pixmap rect snapshot")
+  }
+}
+
+///|
+test "Pixmap::to_ppm_rect_bytes exports a source rectangle" {
+  let pixmap = Pixmap::new(3, 1)
+  pixmap.set_pixel(0, 0, Color::red())
+  pixmap.set_pixel(1, 0, Color::new(r=4, g=5, b=6, a=7))
+  pixmap.set_pixel(2, 0, Color::new(r=8, g=9, b=10, a=11))
+  let expected : Array[Byte] = [
+    80, 54, 10, 50, 32, 49, 10, 50, 53, 53, 10, 4, 5, 6, 8, 9, 10,
+  ]
+
+  match pixmap.to_ppm_rect_bytes(PixelRect::new(x=1, y=0, width=2, height=1)) {
+    Ok(ppm) => assert_eq(ppm, Bytes::from_array(expected))
+    Err(_) => abort("expected pixmap rect ppm")
+  }
+}
+
+///|
+test "Pixmap rect snapshots reuse present rect validation" {
+  let pixmap = Pixmap::new(2, 2)
+  match pixmap.copy_rect(PixelRect::new(x=-1, y=0, width=1, height=1)) {
+    Err(PresentError::RectOutOfBounds(-1, 0, 1, 1, 2, 2)) => ()
+    _ => abort("expected pixmap rect snapshot bounds error")
+  }
+  match pixmap.to_ppm_rect_bytes(PixelRect::new(x=0, y=0, width=1, height=0)) {
+    Err(PresentError::InvalidDimensions(1, 0)) => ()
+    _ => abort("expected pixmap rect ppm dimension error")
   }
 }
 

@@ -87,15 +87,15 @@ wzzc-dev/
 - `Canvas::draw_placeholder_text` for debug text boxes; real text drawing lives in `renderer`
 - Canvas save/restore state stack, transform-aware rect/path drawing, transform helpers, and intersecting clip scopes for nested GUI drawing
 - `Surface` trait, `MemorySurface` with present-operation records, aggregate
-  present telemetry, isolated `Pixmap`/PPM snapshots, full/rect present helpers,
-  preflight-validated present batches, and dirty-present batch dry-runs for
-  `Canvas`, `LayerTree`, `RenderFrame`, and `Pixmap`
+  present telemetry, isolated full/rect `Pixmap` and PPM snapshots, full/rect
+  present helpers, preflight-validated present batches, and dirty-present batch
+  dry-runs for `Canvas`, `LayerTree`, `RenderFrame`, and `Pixmap`
 - Pixmap blitting, source-rect atlas drawing, source-rect coverage-mask drawing,
   tiled Pixmap fills, explicit nearest/bilinear/bicubic sampling modes,
   quality strategies for fast/balanced/high image drawing, transform-aware
   sampled Pixmap drawing, Paint blend modes (source-over/multiply/screen/add),
-  deterministic PPM(P6) export for headless pixel fixtures, and straight-alpha
-  composition for image, glyph atlas, and layer caching
+  deterministic full/rect PPM(P6) export for headless pixel fixtures, and
+  straight-alpha composition for image, glyph atlas, and layer caching
 - `PixmapCache` for keyed reuse of image/layer pixmaps with copy-isolated cache
   entries, optional hit/insert telemetry, and opt-in LRU entry limits
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition

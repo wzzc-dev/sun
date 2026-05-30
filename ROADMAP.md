@@ -114,7 +114,7 @@ Application / GUI
 - `headless_render` 示例走 `RenderFrame + LayerTree + MemorySurface`，无需窗口即可自校验离屏渲染与 dirty present 路径
 - `graphics.validate_present_rect` 标准化 Surface rect present 的 bounds、row stride 和 buffer 长度校验，`MemorySurface` 与 `softbuffer.NativeSurface` 共享同一错误语义
 - `MemorySurface` 记录每次 validated present 的目标 rect、row stride 与聚合像素/字节 telemetry，让 headless 测试能直接审查 present lifecycle
-- `MemorySurface` 暴露隔离 `Pixmap` snapshot 与 PPM(P6) bytes 导出，让 headless 示例和测试直接消费离屏像素输出
+- `MemorySurface` 暴露隔离 full/rect `Pixmap` snapshot 与 PPM(P6) bytes 导出，让 headless 示例和测试直接消费离屏像素输出
 - `PresentRectPayload`/`PresentBatch` 将 dirty present plan 物化为 packed rect payload，复用同一批量提交与成本统计语义
 - `Canvas::dirty_present_batch` 支持提交前 dry-run packed rect batch，不触发 present、不清 dirty，供事件循环做批量调度
 - `LayerTree`/`RenderFrame` 支持提交前 dry-run dirty present batch，临时合成 layer 脏区后恢复 target 像素和 dirty 状态
@@ -346,13 +346,13 @@ Application / GUI
 - [x] 增加 bicubic 图像采样，覆盖 Pixmap/Canvas 缩放、source-rect atlas、premultiplied alpha 和 transform-aware sampled Pixmap 回归
 - [x] 增加 `ImageQuality`（fast/balanced/high）图像质量策略 API，统一 Pixmap/Canvas 缩放、source-rect、nine-patch 与 transform-aware image drawing 的采样选择
 - [x] 增加 `Paint` blend mode（source-over/multiply/screen/add），覆盖 vector、mask、Pixmap blit、scaled image 与 transform-aware sampled image composition 回归
-- [x] 增加 `Pixmap::to_ppm_bytes` 确定性 PPM(P6) 导出，覆盖 header、RGB 顺序、alpha 丢弃、空尺寸与 headless 示例输出路径
+- [x] 增加 `Pixmap::to_ppm_bytes` 与 `Pixmap::to_ppm_rect_bytes` 确定性 PPM(P6) 导出，覆盖 header、RGB 顺序、alpha 丢弃、空尺寸、局部矩形与 headless 示例输出路径
 
 #### 4.3 渲染优化
 - [x] `PixelRect`/`DirtyRegion` 数据结构与 Canvas dirty tracking
 - [x] `Surface::present_pixels_rect`、`Pixmap::present_rect_to`、`Canvas::present_dirty_to` 基础 partial present 契约
 - [x] `MemorySurface` 记录 validated full/rect present 操作，暴露目标 rect、row stride、紧凑像素/字节成本与 source-stride 字节成本，便于测试 present lifecycle
-- [x] `MemorySurface` 暴露 `to_pixmap` 与 `to_ppm_bytes`，覆盖 snapshot 拷贝隔离和离屏 PPM fixture 导出路径
+- [x] `MemorySurface` 暴露 full/rect `to_pixmap` 与 `to_ppm_bytes`，覆盖 snapshot 拷贝隔离、非法 rect 错误和离屏 PPM fixture 导出路径
 - [x] `PresentRectPayload`/`PresentBatch` 将 Pixmap dirty present plan 物化为可测试 packed rect payload，并让 Canvas dirty submit 复用批量提交路径
 - [x] `PresentBatch::validate_for` 在批量 present 前预校验所有 rect，避免后端在后续 rect 失败时留下半提交状态
 - [x] `Canvas::dirty_present_batch` 支持提交前 dry-run packed rect batch，并验证不会触发 present 或清理 dirty 状态
