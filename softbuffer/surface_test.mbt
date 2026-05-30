@@ -625,6 +625,90 @@ test "NativeSurface strategy submit consumes clipped-away dirty without presenti
 }
 
 ///|
+test "NativeSurface exposes dry-run frame schedule actions" {
+  let partial_count = Ref(0)
+  let partial_frame = @graphics.RenderFrame::new(4, 1)
+  partial_frame.mark_dirty_rect(
+    @graphics.PixelRect::new(x=1, y=0, width=1, height=1),
+  )
+  let partial_surface = NativeSurface::from_frame(42, partial_frame).with_pre_present_hook(fn() {
+      partial_count.val = partial_count.val + 1
+    },
+  )
+  let partial_schedule = partial_surface.frame_schedule(partial_frame)
+  assert_true(
+    partial_schedule.get_action() == NativeFrameScheduleAction::Present,
+  )
+  assert_true(partial_schedule.should_submit())
+  assert_true(partial_schedule.needs_present())
+  assert_true(partial_schedule.has_dirty())
+  assert_true(!partial_schedule.was_clipped_away())
+  assert_true(!partial_schedule.uses_bounds_fallback())
+  assert_true(
+    partial_schedule.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Partial,
+  )
+  assert_true(
+    partial_schedule.get_state() == @graphics.DirtySubmitState::Present,
+  )
+  assert_true(
+    partial_schedule.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
+  assert_eq(partial_schedule.get_present_rect_count(), 1)
+  assert_eq(partial_schedule.get_present_pixel_count(), 1)
+  assert_eq(partial_schedule.get_present_byte_count(), 4)
+  assert_true(partial_schedule.saves_full_present_pixels())
+  assert_eq(partial_count.val, 0)
+  assert_true(partial_frame.has_dirty())
+
+  let clipped_frame = @graphics.RenderFrame::new(4, 1)
+  clipped_frame.mark_dirty_rect(
+    @graphics.PixelRect::new(x=3, y=0, width=1, height=1),
+  )
+  let clipped_surface = NativeSurface::new(42, 2, 1).with_pre_present_hook(fn() {
+    partial_count.val = partial_count.val + 1
+  })
+  let clipped_schedule = clipped_surface.frame_schedule(clipped_frame)
+  assert_true(
+    clipped_schedule.get_action() ==
+    NativeFrameScheduleAction::SubmitWithoutPresent,
+  )
+  assert_true(clipped_schedule.should_submit())
+  assert_true(!clipped_schedule.needs_present())
+  assert_true(clipped_schedule.has_dirty())
+  assert_true(clipped_schedule.was_clipped_away())
+  assert_true(
+    clipped_schedule.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Skip,
+  )
+  assert_true(
+    clipped_schedule.get_state() == @graphics.DirtySubmitState::DirtyClippedAway,
+  )
+  assert_eq(clipped_schedule.get_present_rect_count(), 0)
+  assert_eq(clipped_schedule.get_present_pixel_count(), 0)
+  assert_eq(clipped_schedule.get_present_byte_count(), 0)
+  assert_true(!clipped_schedule.saves_full_present_pixels())
+  assert_eq(partial_count.val, 0)
+  assert_true(clipped_frame.has_dirty())
+
+  let clean_frame = @graphics.RenderFrame::new(2, 1)
+  let clean_schedule = NativeSurface::from_frame(42, clean_frame).frame_schedule(
+    clean_frame,
+  )
+  assert_true(clean_schedule.get_action() == NativeFrameScheduleAction::Skip)
+  assert_true(!clean_schedule.should_submit())
+  assert_true(!clean_schedule.needs_present())
+  assert_true(!clean_schedule.has_dirty())
+  assert_true(clean_schedule.get_dirty_bounds() == None)
+  assert_true(
+    clean_schedule.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Skip,
+  )
+  assert_true(clean_schedule.get_state() == @graphics.DirtySubmitState::Clean)
+}
+
+///|
 test "NativeSurface dirty submit skips clipped-away presents" {
   let count = Ref(0)
   let frame = @graphics.RenderFrame::new(4, 1)
@@ -689,6 +773,28 @@ test "render frame strategy submit helper constructs NativeSurface internally" {
     Err(_) => abort("expected constructed strategy submit result")
   }
   assert_true(!frame.has_dirty())
+}
+
+///|
+test "render frame schedule helper constructs NativeSurface internally" {
+  let frame = @graphics.RenderFrame::new(2, 1)
+  let layer = @graphics.Layer::new(1, 1).set_position(1, 0)
+  layer.get_canvas().draw_pixel(0, 0, @graphics.Color::red())
+  ignore(frame.get_layer_tree().add_layer(layer))
+
+  let schedule = render_frame_schedule(42, frame)
+  assert_true(schedule.get_action() == NativeFrameScheduleAction::Present)
+  assert_true(schedule.should_submit())
+  assert_true(schedule.needs_present())
+  assert_true(
+    schedule.get_present_strategy() == @graphics.DirtyPresentStrategy::Partial,
+  )
+  assert_true(schedule.get_state() == @graphics.DirtySubmitState::Present)
+  assert_eq(schedule.get_present_rect_count(), 1)
+  assert_eq(schedule.get_present_pixel_count(), 1)
+  assert_eq(schedule.get_present_byte_count(), 4)
+  assert_true(schedule.saves_full_present_pixels())
+  assert_true(frame.has_dirty())
 }
 
 ///|

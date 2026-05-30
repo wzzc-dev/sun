@@ -158,7 +158,7 @@ Pixel display library.
 - Window creation (Win32 API)
 - Pixel buffer presentation through `graphics.Surface`
 - `NativeSurface` adapter for external native window handles
-- `RenderFrame -> NativeSurface` dirty/full present helpers plus dry-run packed present batches and adapters for graphics-core strategy-aware submit/query/plan results with dirty bounds, fallback state, planned rect/cost, and full-present savings telemetry for window integration
+- `RenderFrame -> NativeSurface` dirty/full present helpers plus dry-run packed present batches, event-loop schedule snapshots, and adapters for graphics-core strategy-aware submit/query/plan results with dirty bounds, fallback state, planned rect/cost, and full-present savings telemetry for window integration
 - Optional `NativeSurface` pre-present hook for window lifecycle notifications before validated native presents
 - Native full-frame and rectangle present entry points for dirty redraw plumbing
 - Event loop

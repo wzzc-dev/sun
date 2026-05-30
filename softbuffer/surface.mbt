@@ -38,6 +38,21 @@ pub struct NativeFrameSubmitResult {
 } derive(Debug)
 
 ///|
+/// Event-loop-facing action selected from a dry-run frame submit plan.
+pub(all) enum NativeFrameScheduleAction {
+  Skip
+  SubmitWithoutPresent
+  Present
+} derive(Eq, Debug)
+
+///|
+/// Dry-run scheduling decision for a NativeSurface RenderFrame submit.
+pub struct NativeFrameSchedule {
+  submit_plan : NativeFrameSubmitPlan
+  action : NativeFrameScheduleAction
+} derive(Debug)
+
+///|
 pub fn NativeFrameSubmitPlan::get_present_strategy(
   self : NativeFrameSubmitPlan,
 ) -> @graphics.DirtyPresentStrategy {
@@ -211,6 +226,98 @@ pub fn NativeFrameSubmitResult::did_present(
 }
 
 ///|
+pub fn NativeFrameSchedule::get_submit_plan(
+  self : NativeFrameSchedule,
+) -> NativeFrameSubmitPlan {
+  self.submit_plan
+}
+
+///|
+pub fn NativeFrameSchedule::get_action(
+  self : NativeFrameSchedule,
+) -> NativeFrameScheduleAction {
+  self.action
+}
+
+///|
+pub fn NativeFrameSchedule::get_present_strategy(
+  self : NativeFrameSchedule,
+) -> @graphics.DirtyPresentStrategy {
+  self.submit_plan.get_present_strategy()
+}
+
+///|
+pub fn NativeFrameSchedule::get_state(
+  self : NativeFrameSchedule,
+) -> @graphics.DirtySubmitState {
+  self.submit_plan.get_state()
+}
+
+///|
+pub fn NativeFrameSchedule::get_dirty_bounds(
+  self : NativeFrameSchedule,
+) -> @graphics.PixelRect? {
+  self.submit_plan.get_dirty_bounds()
+}
+
+///|
+pub fn NativeFrameSchedule::has_dirty(self : NativeFrameSchedule) -> Bool {
+  self.submit_plan.has_dirty()
+}
+
+///|
+pub fn NativeFrameSchedule::needs_present(self : NativeFrameSchedule) -> Bool {
+  self.action == NativeFrameScheduleAction::Present
+}
+
+///|
+pub fn NativeFrameSchedule::should_submit(self : NativeFrameSchedule) -> Bool {
+  self.action != NativeFrameScheduleAction::Skip
+}
+
+///|
+pub fn NativeFrameSchedule::was_clipped_away(
+  self : NativeFrameSchedule,
+) -> Bool {
+  self.submit_plan.was_clipped_away()
+}
+
+///|
+pub fn NativeFrameSchedule::uses_bounds_fallback(
+  self : NativeFrameSchedule,
+) -> Bool {
+  self.submit_plan.uses_bounds_fallback()
+}
+
+///|
+pub fn NativeFrameSchedule::get_present_rect_count(
+  self : NativeFrameSchedule,
+) -> Int {
+  self.submit_plan.get_present_rect_count()
+}
+
+///|
+pub fn NativeFrameSchedule::get_present_pixel_count(
+  self : NativeFrameSchedule,
+) -> Int {
+  self.submit_plan.get_present_pixel_count()
+}
+
+///|
+pub fn NativeFrameSchedule::get_present_byte_count(
+  self : NativeFrameSchedule,
+) -> Int {
+  self.submit_plan.get_present_byte_count()
+}
+
+///|
+pub fn NativeFrameSchedule::saves_full_present_pixels(
+  self : NativeFrameSchedule,
+) -> Bool {
+  self.submit_plan.saves_full_present_pixels()
+}
+
+///|
 fn native_frame_submit_plan(
   strategy : @graphics.DirtyPresentStrategy,
   state : @graphics.DirtySubmitState,
@@ -262,6 +369,19 @@ fn native_frame_submit_result_from_frame(
     native_frame_submit_plan_from_frame(result.get_submit_plan()),
     result.get_presented_rect_count(),
   )
+}
+
+///|
+fn native_frame_schedule(
+  submit_plan : NativeFrameSubmitPlan,
+) -> NativeFrameSchedule {
+  let action = match submit_plan.get_state() {
+    @graphics.DirtySubmitState::Clean => NativeFrameScheduleAction::Skip
+    @graphics.DirtySubmitState::DirtyClippedAway =>
+      NativeFrameScheduleAction::SubmitWithoutPresent
+    @graphics.DirtySubmitState::Present => NativeFrameScheduleAction::Present
+  }
+  { submit_plan, action }
 }
 
 ///|
@@ -588,6 +708,14 @@ pub fn NativeSurface::dirty_frame_submit_by_strategy_plan(
 }
 
 ///|
+pub fn NativeSurface::frame_schedule(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+) -> NativeFrameSchedule {
+  native_frame_schedule(self.dirty_frame_submit_by_strategy_plan(frame))
+}
+
+///|
 pub fn NativeSurface::submit_frame_by_strategy(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
@@ -654,6 +782,14 @@ pub fn dirty_render_frame_submit_by_strategy_plan(
   NativeSurface::from_frame(handle, frame).dirty_frame_submit_by_strategy_plan(
     frame,
   )
+}
+
+///|
+pub fn render_frame_schedule(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+) -> NativeFrameSchedule {
+  NativeSurface::from_frame(handle, frame).frame_schedule(frame)
 }
 
 ///|

@@ -375,6 +375,7 @@ Application / GUI
 - [x] softbuffer strategy submit plan/result 暴露计划 present rect 数，给窗口后端提供提交前批量调度 telemetry
 - [x] softbuffer strategy submit plan/result 保留 dirty bounds 与 bounds-fallback 标记，给窗口后端提供更完整的 invalidation telemetry
 - [x] softbuffer strategy submit plan/result 暴露 full-present savings 查询，减少窗口后端重复比较 partial/full 成本
+- [x] softbuffer 暴露 `NativeFrameSchedule` dry-run 调度快照，将 clean skip、clipped-away submit 和 partial/full present 显式化给事件循环
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation
 - [x] `Layer::resize` 保留重叠像素并标记新 bounds dirty
@@ -413,6 +414,7 @@ Application / GUI
 - [x] softbuffer 提供 `RenderFrame -> NativeSurface` dirty-submit plan 查询，并验证查询不会触发 pre-present hook
 - [x] softbuffer 提供 state-aware dirty submit helper，并覆盖 Clean/Present/DirtyClippedAway 的 pre-present 行为
 - [x] softbuffer 提供 strategy-aware submit plan 查询，并验证 dry-run 不触发 pre-present hook、不消费 frame dirty 状态
+- [x] softbuffer 提供 event-loop-facing frame schedule 查询，覆盖 skip/submit-without-present/present 三种动作且不触发 native present
 - [x] `NativeSurface` 增加 pre-present hook，校验通过后、native present 前触发窗口生命周期通知
 - [ ] Windows 支持（Win32）从 demo 后端升级为稳定后端
 - [ ] Linux 支持（Wayland，X11 作为后续选项）
