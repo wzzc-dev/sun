@@ -327,6 +327,23 @@ pub fn MemorySurface::get_pixel(
 }
 
 ///|
+/// Snapshot this in-memory surface into an isolated pixmap.
+pub fn MemorySurface::to_pixmap(self : MemorySurface) -> Pixmap {
+  let pixmap = Pixmap::new(self.width, self.height)
+  let dst = pixmap.get_pixels()
+  for i in 0..<self.pixels.length() {
+    dst[i] = self.pixels[i]
+  }
+  pixmap
+}
+
+///|
+/// Encode the current surface pixels as deterministic binary PPM(P6) bytes.
+pub fn MemorySurface::to_ppm_bytes(self : MemorySurface) -> Bytes {
+  self.to_pixmap().to_ppm_bytes()
+}
+
+///|
 pub fn MemorySurface::present_pixels(
   self : MemorySurface,
   width : Int,

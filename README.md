@@ -86,7 +86,10 @@ wzzc-dev/
 - `Canvas` line/polyline/polygon/arc/pie/rect/circle/ellipse and uniform/per-corner rounded-rect helpers for reusable GUI dividers, borders, progress rings, badges, ovals, panels, tabs, buttons, charts, simple icons, and input backgrounds
 - `Canvas::draw_placeholder_text` for debug text boxes; real text drawing lives in `renderer`
 - Canvas save/restore state stack, transform-aware rect/path drawing, transform helpers, and intersecting clip scopes for nested GUI drawing
-- `Surface` trait, `MemorySurface` with present-operation records and aggregate present telemetry, full/rect present helpers, preflight-validated present batches, and dirty-present batch dry-runs for `Canvas`, `LayerTree`, `RenderFrame`, and `Pixmap`
+- `Surface` trait, `MemorySurface` with present-operation records, aggregate
+  present telemetry, isolated `Pixmap`/PPM snapshots, full/rect present helpers,
+  preflight-validated present batches, and dirty-present batch dry-runs for
+  `Canvas`, `LayerTree`, `RenderFrame`, and `Pixmap`
 - Pixmap blitting, source-rect atlas drawing, source-rect coverage-mask drawing,
   tiled Pixmap fills, explicit nearest/bilinear/bicubic sampling modes,
   quality strategies for fast/balanced/high image drawing, transform-aware

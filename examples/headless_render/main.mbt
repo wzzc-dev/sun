@@ -137,13 +137,7 @@ fn assert_pixel(
 
 ///|
 fn assert_headless_ppm(surface : @graphics.MemorySurface) -> Unit {
-  let pixmap = @graphics.Pixmap::new(surface.get_width(), surface.get_height())
-  let src = surface.get_pixels()
-  let dst = pixmap.get_pixels()
-  for i in 0..<src.length() {
-    dst[i] = src[i]
-  }
-  let ppm = pixmap.to_ppm_bytes()
+  let ppm = surface.to_ppm_bytes()
   let expected_len = 13 + surface.get_width() * surface.get_height() * 3
   guard ppm.length() == expected_len else {
     abort("unexpected headless ppm byte length")

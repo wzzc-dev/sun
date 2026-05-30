@@ -97,6 +97,38 @@ test "MemorySurface::present_pixels_rect updates only destination rectangle" {
 }
 
 ///|
+test "MemorySurface::to_pixmap snapshots pixels with isolated storage" {
+  let surface = MemorySurface::new(2, 1)
+  let pixels : FixedArray[Byte] = FixedArray::make(8, 0)
+  write_rgba(pixels, 0, Color::red())
+  write_rgba(pixels, 4, Color::blue())
+  assert_true(surface.present_pixels(2, 1, 8, pixels) == Ok(()))
+
+  let pixmap = surface.to_pixmap()
+  assert_eq(pixmap.get_width(), 2)
+  assert_eq(pixmap.get_height(), 1)
+  assert_eq(pixmap.get_pixel(0, 0), Color::red())
+  assert_eq(pixmap.get_pixel(1, 0), Color::blue())
+
+  pixmap.set_pixel(0, 0, Color::green())
+  assert_eq(surface.get_pixel(0, 0), Color::red())
+}
+
+///|
+test "MemorySurface::to_ppm_bytes exports current RGB pixels" {
+  let surface = MemorySurface::new(1, 2)
+  let pixels : FixedArray[Byte] = FixedArray::make(8, 0)
+  write_rgba(pixels, 0, Color::new(r=9, g=8, b=7, a=6))
+  write_rgba(pixels, 4, Color::new(r=1, g=2, b=3, a=4))
+  assert_true(surface.present_pixels(1, 2, 4, pixels) == Ok(()))
+
+  let expected : Array[Byte] = [
+    80, 54, 10, 49, 32, 50, 10, 50, 53, 53, 10, 9, 8, 7, 1, 2, 3,
+  ]
+  assert_eq(surface.to_ppm_bytes(), Bytes::from_array(expected))
+}
+
+///|
 test "MemorySurface::present_pixels_rect validates destination bounds" {
   let surface = MemorySurface::new(3, 3)
   let pixels : FixedArray[Byte] = FixedArray::make(16, 0)
