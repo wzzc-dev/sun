@@ -393,6 +393,7 @@ Application / GUI
 - [x] `headless_render` 示例消费 graphics-core strategy-aware submit plan/result，让无窗口 CI 覆盖新的 RenderFrame strategy 调度入口
 - [x] `hello_world` 示例按 Skip/Partial/Full 策略选择跳过、dirty submit 或 full present，推进事件循环 dirty present 调度集成
 - [x] `hello_world` 示例改为调用 softbuffer strategy-aware submit helper，避免窗口循环重复实现 present 策略分派
+- [x] `hello_world` 示例消费 `NativeFrameSchedule` 并通过 precomputed schedule submit helper 处理 redraw/resize 提交，保留 clean OS redraw 的 cached full repaint
 - [x] `RenderFrame::resize_and_clear_layer` 抽出背景 layer resize/clear lifecycle helper，让 GUI resize 代码复用统一 dirty 语义
 - [x] `RenderFrame::resize_and_clear_layers` 支持批量验证并 resize/clear 多个 frame layer cache，让 GUI resize 可用一个调用处理背景、overlay 等多层 lifecycle
 - [x] `RenderFrame::replace_layer`/`replace_layers` 支持 frame 级 layer replacement lifecycle，批量预校验后复用 LayerTree 旧/新 bounds invalidation，减少 GUI 直接操作 LayerTree
@@ -417,6 +418,7 @@ Application / GUI
 - [x] softbuffer 提供 strategy-aware submit plan 查询，并验证 dry-run 不触发 pre-present hook、不消费 frame dirty 状态
 - [x] softbuffer 提供 event-loop-facing frame schedule 查询，覆盖 skip/submit-without-present/present 三种动作且不触发 native present
 - [x] graphics core 提供 event-loop-facing `RenderFrame` schedule 查询，覆盖 skip/submit-without-present/present 且不提交到 surface
+- [x] softbuffer 提供 precomputed `NativeFrameSchedule` submit helper，让事件循环可先 query 再按同一决策执行提交
 - [x] `NativeSurface` 增加 pre-present hook，校验通过后、native present 前触发窗口生命周期通知
 - [ ] Windows 支持（Win32）从 demo 后端升级为稳定后端
 - [ ] Linux 支持（Wayland，X11 作为后续选项）

@@ -247,7 +247,9 @@ fn present_frame(
   window : @windows.Window,
   frame : @graphics.RenderFrame,
 ) -> Unit {
-  match frame_native_surface(window, frame).submit_frame_by_strategy(frame) {
+  let surface = frame_native_surface(window, frame)
+  let schedule = surface.frame_schedule(frame)
+  match surface.submit_frame_schedule(frame, schedule) {
     Ok(result) => handle_frame_submit_result(result)
     Err(_) => println("Present failed")
   }
@@ -321,7 +323,16 @@ fn present_cached_frame(
   window : @windows.Window,
   frame : @graphics.RenderFrame,
 ) -> Unit {
-  present_frame_all(frame_native_surface(window, frame), frame)
+  let surface = frame_native_surface(window, frame)
+  let schedule = surface.frame_schedule(frame)
+  if schedule.should_submit() {
+    match surface.submit_frame_schedule(frame, schedule) {
+      Ok(result) => handle_frame_submit_result(result)
+      Err(_) => println("Present failed")
+    }
+  } else {
+    present_frame_all(surface, frame)
+  }
 }
 
 ///|

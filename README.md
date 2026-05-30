@@ -158,7 +158,7 @@ Pixel display library.
 - Window creation (Win32 API)
 - Pixel buffer presentation through `graphics.Surface`
 - `NativeSurface` adapter for external native window handles
-- `RenderFrame -> NativeSurface` dirty/full present helpers plus dry-run packed present batches, event-loop schedule snapshots, and adapters for graphics-core strategy-aware submit/query/plan results with dirty bounds, fallback state, planned rect/cost, and full-present savings telemetry for window integration
+- `RenderFrame -> NativeSurface` dirty/full present helpers plus dry-run packed present batches, event-loop schedule snapshots, precomputed schedule submit helpers, and adapters for graphics-core strategy-aware submit/query/plan results with dirty bounds, fallback state, planned rect/cost, and full-present savings telemetry for window integration
 - Optional `NativeSurface` pre-present hook for window lifecycle notifications before validated native presents
 - Native full-frame and rectangle present entry points for dirty redraw plumbing
 - Event loop
@@ -171,7 +171,7 @@ Small build-checked programs that exercise the public packages together.
 - `render_bench` runs a deterministic CPU render workload covering fill rect,
   path fill, stroke, glyph raster/mask composition, Pixmap blit, and full
   present-copy telemetry
-- `hello_world` uses `graphics.RenderFrame`, `LayerTree`, frame-level resize/clear/replacement redraw helpers, and `softbuffer` strategy-aware frame-submit helpers as a minimal window submit path with resize/redraw lifecycle reuse
+- `hello_world` uses `graphics.RenderFrame`, `LayerTree`, frame-level resize/clear/replacement redraw helpers, and `softbuffer` schedule-aware frame-submit helpers as a minimal window submit path with resize/redraw lifecycle reuse
 - `font_demo` renders real TTF text through the `renderer` package
 - `triangle_window` keeps a simple native pixel-output smoke test
 

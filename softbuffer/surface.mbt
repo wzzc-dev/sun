@@ -372,6 +372,14 @@ fn native_frame_submit_result_from_frame(
 }
 
 ///|
+fn native_frame_submit_result_from_schedule(
+  schedule : NativeFrameSchedule,
+  presented_rect_count : Int,
+) -> NativeFrameSubmitResult {
+  native_frame_submit_result(schedule.get_submit_plan(), presented_rect_count)
+}
+
+///|
 fn native_frame_schedule(
   submit_plan : NativeFrameSubmitPlan,
 ) -> NativeFrameSchedule {
@@ -716,6 +724,51 @@ pub fn NativeSurface::frame_schedule(
 }
 
 ///|
+pub fn NativeSurface::submit_frame_schedule(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+  schedule : NativeFrameSchedule,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  match schedule.get_action() {
+    NativeFrameScheduleAction::Skip =>
+      Ok(native_frame_submit_result_from_schedule(schedule, 0))
+    NativeFrameScheduleAction::SubmitWithoutPresent =>
+      match frame.submit_dirty_to(self) {
+        Ok(result) =>
+          Ok(
+            native_frame_submit_result_from_schedule(
+              schedule,
+              result.get_presented_rect_count(),
+            ),
+          )
+        Err(error) => Err(error)
+      }
+    NativeFrameScheduleAction::Present =>
+      match schedule.get_present_strategy() {
+        @graphics.DirtyPresentStrategy::Full =>
+          match frame.present_all_to(self) {
+            Ok(presented) =>
+              Ok(native_frame_submit_result_from_schedule(schedule, presented))
+            Err(error) => Err(error)
+          }
+        @graphics.DirtyPresentStrategy::Partial =>
+          match frame.submit_dirty_to(self) {
+            Ok(result) =>
+              Ok(
+                native_frame_submit_result_from_schedule(
+                  schedule,
+                  result.get_presented_rect_count(),
+                ),
+              )
+            Err(error) => Err(error)
+          }
+        @graphics.DirtyPresentStrategy::Skip =>
+          Ok(native_frame_submit_result_from_schedule(schedule, 0))
+      }
+  }
+}
+
+///|
 pub fn NativeSurface::submit_frame_by_strategy(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
@@ -790,6 +843,17 @@ pub fn render_frame_schedule(
   frame : @graphics.RenderFrame,
 ) -> NativeFrameSchedule {
   NativeSurface::from_frame(handle, frame).frame_schedule(frame)
+}
+
+///|
+pub fn submit_render_frame_schedule(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+  schedule : NativeFrameSchedule,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  NativeSurface::from_frame(handle, frame).submit_frame_schedule(
+    frame, schedule,
+  )
 }
 
 ///|
