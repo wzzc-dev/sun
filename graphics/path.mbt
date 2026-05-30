@@ -102,6 +102,46 @@ pub fn Path::add_rect(
 }
 
 ///|
+/// Add a rounded rectangle with a uniform corner radius to the path
+pub fn Path::add_rounded_rect(
+  self : Path,
+  x : Double,
+  y : Double,
+  w : Double,
+  h : Double,
+  radius : Double,
+) -> Path {
+  guard w > 0.0 && h > 0.0 && radius > 0.0 else {
+    return self.add_rect(x, y, w, h)
+  }
+  let r = radius.min(w / 2.0).min(h / 2.0)
+  let k = 0.5522847498
+  let kr = k * r
+  let right = x + w
+  let bottom = y + h
+
+  ignore(self.move_to(x + r, y))
+  ignore(self.line_to(right - r, y))
+  ignore(self.cubic_to(right - r + kr, y, right, y + r - kr, right, y + r))
+  ignore(self.line_to(right, bottom - r))
+  ignore(
+    self.cubic_to(
+      right,
+      bottom - r + kr,
+      right - r + kr,
+      bottom,
+      right - r,
+      bottom,
+    ),
+  )
+  ignore(self.line_to(x + r, bottom))
+  ignore(self.cubic_to(x + r - kr, bottom, x, bottom - r + kr, x, bottom - r))
+  ignore(self.line_to(x, y + r))
+  ignore(self.cubic_to(x, y + r - kr, x + r - kr, y, x + r, y))
+  self.close()
+}
+
+///|
 /// Add a circle approximation using cubic bezier curves
 pub fn Path::add_circle(
   self : Path,

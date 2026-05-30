@@ -795,6 +795,23 @@ test "Canvas::fill_path fills rectangular path" {
 }
 
 ///|
+test "Canvas::fill_path renders rounded rectangles" {
+  let canvas = Canvas::new(5, 5)
+  canvas.clear(Color::white())
+  let path = Path::new().add_rounded_rect(0.0, 0.0, 5.0, 5.0, 2.0)
+  canvas.fill_path(path, Paint::new().set_color(Color::black()))
+  let pixmap = canvas.get_pixmap()
+  assert_true(pixmap.get_pixel(0, 0) != Color::black())
+  assert_eq(pixmap.get_pixel(2, 0), Color::black())
+  assert_true(pixmap.get_pixel(4, 0) != Color::black())
+  assert_eq(pixmap.get_pixel(0, 2), Color::black())
+  assert_eq(pixmap.get_pixel(2, 2), Color::black())
+  assert_eq(pixmap.get_pixel(4, 2), Color::black())
+  assert_true(pixmap.get_pixel(0, 4) != Color::black())
+  assert_eq(pixmap.get_pixel(2, 4), Color::black())
+}
+
+///|
 test "Canvas::fill_path composites paint opacity" {
   let canvas = Canvas::new(2, 2)
   canvas.clear(Color::white())
