@@ -61,6 +61,7 @@ pub struct CoverageMask {
   height : Int
   pixels : FixedArray[Byte]
 } derive(@debug.Debug)
+pub fn CoverageMask::copy(Self) -> Self
 pub fn CoverageMask::get_height(Self) -> Int
 pub fn CoverageMask::get_pixels(Self) -> FixedArray[Byte]
 pub fn CoverageMask::get_width(Self) -> Int
@@ -412,6 +413,18 @@ pub struct TextLine {
 pub fn TextLine::get_width(Self) -> Int
 pub fn TextLine::glyph_count(Self) -> Int
 pub fn TextLine::new(Array[GlyphInfo], Array[GlyphPosition], Int, y_offset? : Int) -> Self
+
+pub struct TextMaskCache {
+  mut masks : Map[String, CoverageMask]
+} derive(@debug.Debug)
+pub fn TextMaskCache::clear(Self) -> Unit
+pub fn TextMaskCache::get(Self, String) -> CoverageMask?
+pub fn TextMaskCache::get_or_render_face(Self, String, FontFace, String, Int, Int, Double, Double, LayoutConfig) -> CoverageMask
+pub fn TextMaskCache::insert(Self, String, CoverageMask) -> CoverageMask
+pub fn TextMaskCache::is_empty(Self) -> Bool
+pub fn TextMaskCache::len(Self) -> Int
+pub fn TextMaskCache::new() -> Self
+pub fn TextMaskCache::remove(Self, String) -> Unit
 
 // Type aliases
 

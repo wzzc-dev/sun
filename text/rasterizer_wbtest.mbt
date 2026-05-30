@@ -279,6 +279,45 @@ test "FontFaceCache::get_or_parse reuses cached face and preserves errors" {
 }
 
 ///|
+test "TextMaskCache::get_or_render_face reuses rendered masks" {
+  let cache = TextMaskCache::new()
+  let config = LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let face = FontFace::from_font(make_box_font())
+  let first = cache.get_or_render_face(
+    "label", face, "A", 12, 12, 1.0, 1.0, config,
+  )
+  assert_eq(first.get_width(), 12)
+  assert_eq(first.get_height(), 12)
+  assert_eq(first.get_pixels()[1 * 12 + 1], 255)
+  assert_eq(cache.len(), 1)
+
+  let first_pixels = first.get_pixels()
+  first_pixels[1 * 12 + 1] = 0
+  match cache.get("label") {
+    Some(cached) => assert_eq(cached.get_pixels()[1 * 12 + 1], 255)
+    None => abort("expected cached text mask")
+  }
+
+  let space_face = FontFace::from_font(make_space_only_font())
+  let second = cache.get_or_render_face(
+    "label", space_face, " ", 12, 12, 1.0, 1.0, config,
+  )
+  assert_eq(second.get_pixels()[1 * 12 + 1], 255)
+  assert_eq(cache.len(), 1)
+
+  cache.remove("label")
+  let rerendered = cache.get_or_render_face(
+    "label", space_face, " ", 12, 12, 1.0, 1.0, config,
+  )
+  assert_eq(rerendered.get_pixels()[1 * 12 + 1], 0)
+  assert_eq(cache.len(), 1)
+}
+
+///|
 test "TextLayout aligns center and right lines" {
   let face = FontFace::from_font(make_box_font())
   let center = TextLayout::layout(

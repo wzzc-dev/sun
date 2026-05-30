@@ -61,6 +61,92 @@ pub fn CoverageMask::get_pixels(self : CoverageMask) -> FixedArray[Byte] {
 }
 
 ///|
+/// Copy this coverage mask and its pixel storage.
+pub fn CoverageMask::copy(self : CoverageMask) -> CoverageMask {
+  CoverageMask::new(self.width, self.height, copy_bytes(self.pixels))
+}
+
+///|
+/// Small keyed cache for rendered text coverage masks.
+pub struct TextMaskCache {
+  mut masks : Map[String, CoverageMask]
+} derive(Debug)
+
+///|
+/// Create an empty text mask cache.
+pub fn TextMaskCache::new() -> TextMaskCache {
+  { masks: {} }
+}
+
+///|
+/// Return the number of cached masks.
+pub fn TextMaskCache::len(self : TextMaskCache) -> Int {
+  self.masks.length()
+}
+
+///|
+/// Return whether the cache currently has no masks.
+pub fn TextMaskCache::is_empty(self : TextMaskCache) -> Bool {
+  self.len() is 0
+}
+
+///|
+/// Look up a rendered mask by caller-provided key.
+pub fn TextMaskCache::get(self : TextMaskCache, key : String) -> CoverageMask? {
+  match self.masks.get(key) {
+    Some(mask) => Some(mask.copy())
+    None => None
+  }
+}
+
+///|
+/// Insert or replace a rendered mask under a caller-provided key.
+pub fn TextMaskCache::insert(
+  self : TextMaskCache,
+  key : String,
+  mask : CoverageMask,
+) -> CoverageMask {
+  let stored = mask.copy()
+  self.masks[key] = stored
+  stored.copy()
+}
+
+///|
+/// Render text from a checked face on first use and return the cached mask afterwards.
+pub fn TextMaskCache::get_or_render_face(
+  self : TextMaskCache,
+  key : String,
+  face : FontFace,
+  text : String,
+  width : Int,
+  height : Int,
+  x : Double,
+  y : Double,
+  config : LayoutConfig,
+) -> CoverageMask {
+  match self.get(key) {
+    Some(mask) => mask
+    None =>
+      self.insert(
+        key,
+        render_text_mask_face(face, text, width, height, x, y, config),
+      )
+  }
+}
+
+///|
+/// Remove a cached mask by key.
+pub fn TextMaskCache::remove(self : TextMaskCache, key : String) -> Unit {
+  self.masks.remove(key)
+}
+
+///|
+/// Drop all cached masks.
+pub fn TextMaskCache::clear(self : TextMaskCache) -> Unit {
+  self.masks = {}
+}
+
+///|
 /// Create a new rasterizer
 pub fn Rasterizer::new(width : Int, height : Int) -> Rasterizer {
   let size = width * height
