@@ -63,6 +63,72 @@ test "Canvas tracks dirty region for pixel and sampled pixmap" {
 }
 
 ///|
+test "Canvas::save and restore preserve transform and clip state" {
+  let canvas = Canvas::new(3, 1)
+  assert_eq(canvas.get_save_count(), 0)
+  assert_true(!canvas.restore())
+  assert_true(canvas.get_transform() == Transform::identity())
+  assert_true(canvas.get_clip_rect() == None)
+
+  let base_transform = Transform::translate(tx=1.0, ty=0.0)
+  let base_clip = Rect::new(x=0.0, y=0.0, width=2.0, height=1.0)
+  canvas.set_transform(base_transform)
+  canvas.set_clip_rect(base_clip)
+  canvas.save()
+  assert_eq(canvas.get_save_count(), 1)
+
+  canvas.set_transform(Transform::translate(tx=2.0, ty=0.0))
+  canvas.set_clip_rect(Rect::new(x=2.0, y=0.0, width=1.0, height=1.0))
+  canvas.save()
+  assert_eq(canvas.get_save_count(), 2)
+
+  canvas.clear_clip()
+  canvas.set_transform(Transform::identity())
+  assert_true(canvas.restore())
+  assert_eq(canvas.get_save_count(), 1)
+  assert_true(canvas.get_transform() == Transform::translate(tx=2.0, ty=0.0))
+  assert_true(
+    canvas.get_clip_rect() ==
+    Some(Rect::new(x=2.0, y=0.0, width=1.0, height=1.0)),
+  )
+
+  assert_true(canvas.restore())
+  assert_eq(canvas.get_save_count(), 0)
+  assert_true(canvas.get_transform() == base_transform)
+  assert_true(canvas.get_clip_rect() == Some(base_clip))
+  assert_true(!canvas.restore())
+  assert_true(canvas.get_transform() == base_transform)
+  assert_true(canvas.get_clip_rect() == Some(base_clip))
+}
+
+///|
+test "Canvas::restore affects subsequent path drawing" {
+  let canvas = Canvas::new(3, 1)
+  canvas.clear(Color::white())
+  canvas.set_transform(Transform::translate(tx=1.0, ty=0.0))
+  canvas.set_clip_rect(Rect::new(x=1.0, y=0.0, width=1.0, height=1.0))
+  canvas.save()
+
+  canvas.set_transform(Transform::identity())
+  canvas.clear_clip()
+  canvas.fill_path(
+    Path::new().add_rect(0.0, 0.0, 1.0, 1.0),
+    Paint::new().set_color(Color::black()),
+  )
+
+  assert_true(canvas.restore())
+  canvas.fill_path(
+    Path::new().add_rect(0.0, 0.0, 1.0, 1.0),
+    Paint::new().set_color(Color::blue()),
+  )
+
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::black())
+  assert_eq(pixmap.get_pixel(1, 0), Color::blue())
+  assert_eq(pixmap.get_pixel(2, 0), Color::white())
+}
+
+///|
 test "Canvas::draw_mask ignores stroke paint" {
   let canvas = Canvas::new(1, 1)
   canvas.clear(Color::white())

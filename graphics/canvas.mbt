@@ -4,7 +4,14 @@ pub struct Canvas {
   pixmap : Pixmap
   mut transform : Transform
   mut clip_rect : Rect?
+  state_stack : Array[CanvasState]
   dirty_region : DirtyRegion
+} derive(Debug)
+
+///|
+struct CanvasState {
+  transform : Transform
+  clip_rect : Rect?
 } derive(Debug)
 
 ///|
@@ -14,6 +21,7 @@ pub fn Canvas::new(width : Int, height : Int) -> Canvas {
     pixmap: Pixmap::new(width, height),
     transform: Transform::identity(),
     clip_rect: None,
+    state_stack: [],
     dirty_region: DirtyRegion::new(),
   }
 }
@@ -53,6 +61,28 @@ pub fn Canvas::set_transform(self : Canvas, transform : Transform) -> Unit {
 /// Get the current transform
 pub fn Canvas::get_transform(self : Canvas) -> Transform {
   self.transform
+}
+
+///|
+/// Save the current transform and clip state.
+pub fn Canvas::save(self : Canvas) -> Unit {
+  self.state_stack.push({ transform: self.transform, clip_rect: self.clip_rect })
+}
+
+///|
+/// Restore the most recently saved transform and clip state.
+pub fn Canvas::restore(self : Canvas) -> Bool {
+  guard self.state_stack.length() > 0 else { return false }
+  let state = self.state_stack.remove(self.state_stack.length() - 1)
+  self.transform = state.transform
+  self.clip_rect = state.clip_rect
+  true
+}
+
+///|
+/// Get the number of saved canvas states.
+pub fn Canvas::get_save_count(self : Canvas) -> Int {
+  self.state_stack.length()
 }
 
 ///|

@@ -17,6 +17,7 @@ pub struct Canvas {
   pixmap : Pixmap
   mut transform : Transform
   mut clip_rect : Rect?
+  state_stack : Array[CanvasState]
   dirty_region : DirtyRegion
 } derive(@debug.Debug)
 pub fn Canvas::clear(Self, Color) -> Unit
@@ -42,16 +43,21 @@ pub fn Canvas::fill_rect(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::get_clip_rect(Self) -> Rect?
 pub fn Canvas::get_dirty_region(Self) -> DirtyRegion
 pub fn Canvas::get_pixmap(Self) -> Pixmap
+pub fn Canvas::get_save_count(Self) -> Int
 pub fn Canvas::get_transform(Self) -> Transform
 pub fn Canvas::new(Int, Int) -> Self
 pub fn[S : Surface] Canvas::present_dirty_to(Self, S) -> Result[Int, PresentError]
 pub fn[S : Surface] Canvas::present_dirty_to_with_limit(Self, S, Int) -> Result[Int, PresentError]
 pub fn[S : Surface] Canvas::present_to(Self, S) -> Result[Unit, PresentError]
+pub fn Canvas::restore(Self) -> Bool
+pub fn Canvas::save(Self) -> Unit
 pub fn Canvas::set_clip_rect(Self, Rect) -> Unit
 pub fn Canvas::set_transform(Self, Transform) -> Unit
 pub fn Canvas::stroke_path(Self, Path, Paint) -> Unit
 
 type CanvasEdge derive(@debug.Debug)
+
+type CanvasState derive(@debug.Debug)
 
 pub(all) struct Color {
   r : Byte
