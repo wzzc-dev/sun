@@ -258,6 +258,95 @@ test "NativeSurface submits dirty frames with scheduler result" {
 }
 
 ///|
+test "NativeSurface submits frames by present strategy" {
+  let partial_count = Ref(0)
+  let partial_frame = @graphics.RenderFrame::new(4, 1)
+  partial_frame.mark_dirty_rect(
+    @graphics.PixelRect::new(x=1, y=0, width=1, height=1),
+  )
+  let partial_surface = NativeSurface::from_frame(42, partial_frame).with_pre_present_hook(fn() {
+      partial_count.val = partial_count.val + 1
+    },
+  )
+
+  match partial_surface.submit_frame_by_strategy(partial_frame) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Partial,
+      )
+      assert_true(result.did_present())
+      assert_eq(result.get_presented_rect_count(), 1)
+    }
+    Err(_) => abort("expected partial strategy submit result")
+  }
+  assert_eq(partial_count.val, 1)
+  assert_true(!partial_frame.has_dirty())
+
+  let full_count = Ref(0)
+  let full_frame = @graphics.RenderFrame::new(2, 1)
+  full_frame.mark_all_dirty()
+  let full_surface = NativeSurface::from_frame(42, full_frame).with_pre_present_hook(fn() {
+      full_count.val = full_count.val + 1
+    },
+  )
+
+  match full_surface.submit_frame_by_strategy(full_frame) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+      )
+      assert_true(result.did_present())
+      assert_eq(result.get_presented_rect_count(), 1)
+    }
+    Err(_) => abort("expected full strategy submit result")
+  }
+  assert_eq(full_count.val, 1)
+  assert_true(!full_frame.has_dirty())
+
+  let clean_count = Ref(0)
+  let clean_frame = @graphics.RenderFrame::new(2, 1)
+  let clean_surface = NativeSurface::from_frame(42, clean_frame).with_pre_present_hook(fn() {
+      clean_count.val = clean_count.val + 1
+    },
+  )
+  match clean_surface.submit_frame_by_strategy(clean_frame) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Skip,
+      )
+      assert_true(!result.did_present())
+      assert_eq(result.get_presented_rect_count(), 0)
+    }
+    Err(_) => abort("expected clean strategy submit result")
+  }
+  assert_eq(clean_count.val, 0)
+  assert_true(!clean_frame.has_dirty())
+}
+
+///|
+test "NativeSurface strategy submit consumes clipped-away dirty without presenting" {
+  let count = Ref(0)
+  let frame = @graphics.RenderFrame::new(4, 1)
+  frame.mark_dirty_rect(@graphics.PixelRect::new(x=3, y=0, width=1, height=1))
+  let surface = NativeSurface::new(42, 2, 1).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+
+  match surface.submit_frame_by_strategy(frame) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Skip,
+      )
+      assert_true(!result.did_present())
+      assert_eq(result.get_presented_rect_count(), 0)
+    }
+    Err(_) => abort("expected clipped-away strategy submit result")
+  }
+  assert_eq(count.val, 0)
+  assert_true(!frame.has_dirty())
+}
+
+///|
 test "NativeSurface dirty submit skips clipped-away presents" {
   let count = Ref(0)
   let frame = @graphics.RenderFrame::new(4, 1)
@@ -287,6 +376,26 @@ test "NativeSurface dirty submit skips clipped-away presents" {
     Err(_) => abort("expected clipped-away submit result")
   }
   assert_eq(count.val, 0)
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "render frame strategy submit helper constructs NativeSurface internally" {
+  let frame = @graphics.RenderFrame::new(2, 1)
+  let layer = @graphics.Layer::new(1, 1).set_position(1, 0)
+  layer.get_canvas().draw_pixel(0, 0, @graphics.Color::red())
+  ignore(frame.get_layer_tree().add_layer(layer))
+
+  match submit_render_frame_by_strategy(42, frame) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Partial,
+      )
+      assert_true(result.did_present())
+      assert_eq(result.get_presented_rect_count(), 1)
+    }
+    Err(_) => abort("expected constructed strategy submit result")
+  }
   assert_true(!frame.has_dirty())
 }
 

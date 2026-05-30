@@ -17,6 +17,43 @@ pub struct NativeSurface {
 }
 
 ///|
+/// Result of submitting a RenderFrame through NativeSurface's strategy-aware
+/// present scheduler.
+pub struct NativeFrameSubmitResult {
+  strategy : @graphics.DirtyPresentStrategy
+  presented_rect_count : Int
+} derive(Debug)
+
+///|
+pub fn NativeFrameSubmitResult::get_present_strategy(
+  self : NativeFrameSubmitResult,
+) -> @graphics.DirtyPresentStrategy {
+  self.strategy
+}
+
+///|
+pub fn NativeFrameSubmitResult::get_presented_rect_count(
+  self : NativeFrameSubmitResult,
+) -> Int {
+  self.presented_rect_count
+}
+
+///|
+pub fn NativeFrameSubmitResult::did_present(
+  self : NativeFrameSubmitResult,
+) -> Bool {
+  self.presented_rect_count > 0
+}
+
+///|
+fn native_frame_submit_result(
+  strategy : @graphics.DirtyPresentStrategy,
+  presented_rect_count : Int,
+) -> NativeFrameSubmitResult {
+  { strategy, presented_rect_count }
+}
+
+///|
 /// Create a new surface for the given window
 pub fn Surface::new(window : Window) -> Surface {
   { window, width: window.width(), height: window.height() }
@@ -324,6 +361,47 @@ pub fn NativeSurface::dirty_frame_present_strategy(
 }
 
 ///|
+pub fn NativeSurface::submit_frame_by_strategy(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  let strategy = self.dirty_frame_present_strategy(frame)
+  match strategy {
+    @graphics.DirtyPresentStrategy::Skip =>
+      if frame.has_dirty() {
+        match self.submit_frame_dirty(frame) {
+          Ok(result) =>
+            Ok(
+              native_frame_submit_result(
+                strategy,
+                result.get_presented_rect_count(),
+              ),
+            )
+          Err(error) => Err(error)
+        }
+      } else {
+        Ok(native_frame_submit_result(strategy, 0))
+      }
+    @graphics.DirtyPresentStrategy::Partial =>
+      match self.submit_frame_dirty(frame) {
+        Ok(result) =>
+          Ok(
+            native_frame_submit_result(
+              strategy,
+              result.get_presented_rect_count(),
+            ),
+          )
+        Err(error) => Err(error)
+      }
+    @graphics.DirtyPresentStrategy::Full =>
+      match self.present_frame_all(frame) {
+        Ok(presented) => Ok(native_frame_submit_result(strategy, presented))
+        Err(error) => Err(error)
+      }
+  }
+}
+
+///|
 pub fn NativeSurface::present_frame_all(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
@@ -361,6 +439,14 @@ pub fn dirty_render_frame_present_strategy(
   frame : @graphics.RenderFrame,
 ) -> @graphics.DirtyPresentStrategy {
   NativeSurface::from_frame(handle, frame).dirty_frame_present_strategy(frame)
+}
+
+///|
+pub fn submit_render_frame_by_strategy(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  NativeSurface::from_frame(handle, frame).submit_frame_by_strategy(frame)
 }
 
 ///|

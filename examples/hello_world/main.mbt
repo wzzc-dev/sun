@@ -248,15 +248,9 @@ fn present_frame(
   window : @windows.Window,
   frame : @graphics.RenderFrame,
 ) -> Unit {
-  let surface = frame_native_surface(window, frame)
-  match surface.dirty_frame_present_strategy(frame) {
-    @graphics.DirtyPresentStrategy::Skip =>
-      if frame.has_dirty() {
-        present_frame_dirty(surface, frame)
-      }
-    @graphics.DirtyPresentStrategy::Partial =>
-      present_frame_dirty(surface, frame)
-    @graphics.DirtyPresentStrategy::Full => present_frame_all(surface, frame)
+  match frame_native_surface(window, frame).submit_frame_by_strategy(frame) {
+    Ok(result) => handle_frame_submit_result(result)
+    Err(_) => println("Present failed")
   }
 }
 
@@ -272,21 +266,9 @@ fn frame_native_surface(
 }
 
 ///|
-fn present_frame_dirty(
-  surface : @softbuffer.NativeSurface,
-  frame : @graphics.RenderFrame,
+fn handle_frame_submit_result(
+  result : @softbuffer.NativeFrameSubmitResult,
 ) -> Unit {
-  match surface.submit_frame_dirty(frame) {
-    Ok(result) => handle_dirty_submit_result(result)
-    Err(_) => println("Present failed")
-  }
-}
-
-///|
-fn handle_dirty_submit_result(result : @graphics.DirtySubmitResult) -> Unit {
-  if result.was_clipped_away() {
-    return ()
-  }
   if result.did_present() {
     ignore(result.get_presented_rect_count())
   }
