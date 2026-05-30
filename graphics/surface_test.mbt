@@ -393,6 +393,7 @@ test "Pixmap::present_rect_payload materializes packed pixels" {
       assert_eq(payload.get_row_bytes(), 8)
       assert_eq(payload.get_present_pixel_count(), 4)
       assert_eq(payload.get_present_byte_count(), 16)
+      assert_eq(payload.get_source_byte_count(), 16)
       let pixels = payload.get_pixels()
       assert_eq(pixels.length(), 16)
       assert_rgba(pixels, 0, Color::green())
@@ -509,6 +510,7 @@ test "Pixmap::present_batch materializes dirty present plan" {
       assert_eq(batch.get_rect_count(), 2)
       assert_eq(batch.get_present_pixel_count(), 2)
       assert_eq(batch.get_present_byte_count(), 8)
+      assert_eq(batch.get_source_byte_count(), 8)
       let payloads = batch.get_payloads()
       assert_true(
         payloads[0].get_rect() == PixelRect::new(x=0, y=0, width=1, height=1),
@@ -534,6 +536,8 @@ test "Pixmap::present_batch materializes dirty present plan" {
       assert_eq(records[1].get_row_bytes(), 4)
       assert_eq(records[0].get_present_pixel_count(), 1)
       assert_eq(records[1].get_present_byte_count(), 4)
+      assert_eq(payloads[0].get_source_byte_count(), 4)
+      assert_eq(payloads[1].get_source_byte_count(), 4)
       assert_eq(records[0].get_source_byte_count(), 4)
       assert_eq(records[1].get_source_byte_count(), 4)
       assert_eq(surface.get_pixel(0, 0), Color::red())
@@ -701,6 +705,7 @@ test "Canvas::dirty_present_batch materializes without clearing dirty" {
       assert_eq(batch.get_rect_count(), 1)
       assert_eq(batch.get_present_pixel_count(), 7)
       assert_eq(batch.get_present_byte_count(), 28)
+      assert_eq(batch.get_source_byte_count(), 28)
       let payloads = batch.get_payloads()
       assert_true(
         payloads[0].get_rect() == PixelRect::new(x=0, y=0, width=7, height=1),
@@ -729,6 +734,7 @@ test "Canvas::dirty_present_batch returns empty batch for clipped dirty" {
       assert_eq(batch.get_rect_count(), 0)
       assert_eq(batch.get_present_pixel_count(), 0)
       assert_eq(batch.get_present_byte_count(), 0)
+      assert_eq(batch.get_source_byte_count(), 0)
     }
     Err(_) => abort("expected empty dirty present batch")
   }

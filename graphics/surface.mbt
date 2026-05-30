@@ -81,6 +81,13 @@ pub fn PresentRectPayload::get_present_byte_count(
 }
 
 ///|
+pub fn PresentRectPayload::get_source_byte_count(
+  self : PresentRectPayload,
+) -> Int {
+  self.row_bytes * self.rect.height
+}
+
+///|
 pub fn[S : Surface] PresentRectPayload::submit_to(
   self : PresentRectPayload,
   surface : S,
@@ -120,6 +127,15 @@ pub fn PresentBatch::get_present_pixel_count(self : PresentBatch) -> Int {
 ///|
 pub fn PresentBatch::get_present_byte_count(self : PresentBatch) -> Int {
   self.present_byte_count
+}
+
+///|
+pub fn PresentBatch::get_source_byte_count(self : PresentBatch) -> Int {
+  let mut bytes = 0
+  for payload in self.payloads {
+    bytes = bytes + payload.get_source_byte_count()
+  }
+  bytes
 }
 
 ///|

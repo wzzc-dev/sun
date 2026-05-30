@@ -498,6 +498,7 @@ pub fn PresentBatch::get_payloads(Self) -> Array[PresentRectPayload]
 pub fn PresentBatch::get_present_byte_count(Self) -> Int
 pub fn PresentBatch::get_present_pixel_count(Self) -> Int
 pub fn PresentBatch::get_rect_count(Self) -> Int
+pub fn PresentBatch::get_source_byte_count(Self) -> Int
 pub fn PresentBatch::is_empty(Self) -> Bool
 pub fn[S : Surface] PresentBatch::submit_to(Self, S) -> Result[Int, PresentError]
 pub fn[S : Surface] PresentBatch::validate_for(Self, S) -> Result[Unit, PresentError]
@@ -527,6 +528,7 @@ pub fn PresentRectPayload::get_present_byte_count(Self) -> Int
 pub fn PresentRectPayload::get_present_pixel_count(Self) -> Int
 pub fn PresentRectPayload::get_rect(Self) -> PixelRect
 pub fn PresentRectPayload::get_row_bytes(Self) -> Int
+pub fn PresentRectPayload::get_source_byte_count(Self) -> Int
 pub fn[S : Surface] PresentRectPayload::submit_to(Self, S) -> Result[Unit, PresentError]
 
 pub struct Rect {

@@ -118,7 +118,7 @@ Application / GUI
 - `MemorySurface` 暴露隔离 full/rect `Pixmap` snapshot 与 PPM(P6) bytes 导出，让 headless 示例和测试直接消费离屏像素输出
 - `Pixmap` 与 `MemorySurface` 暴露隔离 full/rect raw RGBA bytes，让 headless fixture 能直接断言像素字节而不共享可变 backing storage
 - `Pixmap` 与 `MemorySurface` 暴露 full/rect 轻量 RGBA byte checksum，让 headless 回归和 benchmark telemetry 可以复用同一套确定性像素摘要
-- `PresentRectPayload`/`PresentBatch` 将 dirty present plan 物化为 packed rect payload，复用同一批量提交与成本统计语义
+- `PresentRectPayload`/`PresentBatch` 将 dirty present plan 物化为 packed rect payload，复用同一批量提交、present byte 与 source byte 成本统计语义
 - `Canvas::dirty_present_batch` 支持提交前 dry-run packed rect batch，不触发 present、不清 dirty，供事件循环做批量调度
 - `LayerTree`/`RenderFrame` 支持提交前 dry-run dirty present batch，临时合成 layer 脏区后恢复 target 像素和 dirty 状态
 - `DirtyRegion::present_plan` 将 dirty present 策略显式化为 Empty/Rects/Bounds，作为批量提交和事件循环调度的可测试基础
@@ -362,6 +362,7 @@ Application / GUI
 - [x] `MemorySurface` 暴露 full/rect raw RGBA bytes，覆盖离屏像素 fixture 字节序和非法 rect 错误路径
 - [x] `MemorySurface` 暴露 full/rect checksum，覆盖离屏像素摘要和非法 rect 错误路径
 - [x] `PresentRectPayload`/`PresentBatch` 将 Pixmap dirty present plan 物化为可测试 packed rect payload，并让 Canvas dirty submit 复用批量提交路径
+- [x] `PresentRectPayload`/`PresentBatch` 暴露 source byte telemetry，让 packed dry-run 与 `MemoryPresentRecord` 使用同一套 source-stride 成本词汇
 - [x] `PresentBatch::validate_for` 在批量 present 前预校验所有 rect，避免后端在后续 rect 失败时留下半提交状态
 - [x] `Canvas::dirty_present_batch` 支持提交前 dry-run packed rect batch，并验证不会触发 present 或清理 dirty 状态
 - [x] `LayerTree`/`RenderFrame` 支持提交前 dry-run dirty present batch，并验证临时 layer 合成后会恢复 target 像素与 dirty 状态

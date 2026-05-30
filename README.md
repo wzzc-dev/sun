@@ -89,8 +89,9 @@ wzzc-dev/
 - `Surface` trait, `MemorySurface` with present-operation records, aggregate
   present telemetry plus telemetry reset, isolated full/rect `Pixmap`, raw RGBA
   byte, and PPM snapshots, full/rect pixel checksums, present helpers,
-  preflight-validated present batches, and dirty-present batch dry-runs for
-  `Canvas`, `LayerTree`, `RenderFrame`, and `Pixmap`
+  preflight-validated present batches with source-byte telemetry, and
+  dirty-present batch dry-runs for `Canvas`, `LayerTree`, `RenderFrame`, and
+  `Pixmap`
 - Pixmap blitting, source-rect atlas drawing, source-rect coverage-mask drawing,
   tiled Pixmap fills, explicit nearest/bilinear/bicubic sampling modes,
   quality strategies for fast/balanced/high image drawing, transform-aware
