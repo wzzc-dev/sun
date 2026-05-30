@@ -83,7 +83,8 @@ pub fn NativeFrameSubmitPlan::has_dirty(self : NativeFrameSubmitPlan) -> Bool {
 pub fn NativeFrameSubmitPlan::needs_present(
   self : NativeFrameSubmitPlan,
 ) -> Bool {
-  self.state == @graphics.DirtySubmitState::Present
+  self.strategy != @graphics.DirtyPresentStrategy::Skip &&
+  self.present_rect_count > 0
 }
 
 ///|
@@ -736,6 +737,14 @@ pub fn NativeSurface::frame_schedule(
 }
 
 ///|
+pub fn NativeSurface::frame_redraw_schedule(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+) -> NativeFrameSchedule {
+  native_frame_schedule_from_frame(frame.redraw_schedule(self))
+}
+
+///|
 pub fn NativeSurface::submit_frame_schedule(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
@@ -749,6 +758,17 @@ pub fn NativeSurface::submit_frame_schedule(
           result.get_presented_rect_count(),
         ),
       )
+    Err(error) => Err(error)
+  }
+}
+
+///|
+pub fn NativeSurface::submit_frame_redraw(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  match frame.submit_redraw_to(self) {
+    Ok(result) => Ok(native_frame_submit_result_from_frame(result))
     Err(error) => Err(error)
   }
 }
@@ -831,6 +851,14 @@ pub fn render_frame_schedule(
 }
 
 ///|
+pub fn render_frame_redraw_schedule(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+) -> NativeFrameSchedule {
+  NativeSurface::from_frame(handle, frame).frame_redraw_schedule(frame)
+}
+
+///|
 pub fn submit_render_frame_schedule(
   handle : UInt64,
   frame : @graphics.RenderFrame,
@@ -839,6 +867,14 @@ pub fn submit_render_frame_schedule(
   NativeSurface::from_frame(handle, frame).submit_frame_schedule(
     frame, schedule,
   )
+}
+
+///|
+pub fn submit_render_frame_redraw(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  NativeSurface::from_frame(handle, frame).submit_frame_redraw(frame)
 }
 
 ///|

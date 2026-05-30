@@ -662,6 +662,79 @@ test "RenderFrame::submit_scheduled_to preserves dirty after surface error" {
 }
 
 ///|
+test "RenderFrame::redraw_schedule promotes clean redraw to full present" {
+  let frame = RenderFrame::new(2, 1)
+  let layer = Layer::new(2, 1)
+  layer.clear(Color::white())
+  layer.get_canvas().draw_pixel(1, 0, Color::blue())
+  ignore(frame.get_layer_tree().add_layer(layer))
+  assert_true(frame.present_dirty_to(MemorySurface::new(2, 1)) == Ok(1))
+  assert_true(!frame.has_dirty())
+
+  let dirty_surface = MemorySurface::new(2, 1)
+  let dirty_schedule = frame.submit_schedule(dirty_surface)
+  assert_true(dirty_schedule.get_action() == RenderFrameScheduleAction::Skip)
+  assert_true(
+    dirty_schedule.get_present_strategy() == DirtyPresentStrategy::Skip,
+  )
+  assert_true(dirty_schedule.get_state() == DirtySubmitState::Clean)
+  assert_true(!dirty_schedule.needs_present())
+  assert_eq(dirty_schedule.get_present_rect_count(), 0)
+  assert_eq(dirty_schedule.get_present_pixel_count(), 0)
+
+  let redraw_surface = MemorySurface::new(2, 1)
+  let redraw_schedule = frame.redraw_schedule(redraw_surface)
+  assert_true(
+    redraw_schedule.get_action() == RenderFrameScheduleAction::Present,
+  )
+  assert_true(redraw_schedule.should_submit())
+  assert_true(redraw_schedule.needs_present())
+  assert_true(!redraw_schedule.has_dirty())
+  assert_true(
+    redraw_schedule.get_present_strategy() == DirtyPresentStrategy::Full,
+  )
+  assert_true(redraw_schedule.get_state() == DirtySubmitState::Clean)
+  assert_true(redraw_schedule.get_dirty_bounds() == None)
+  assert_eq(redraw_schedule.get_present_rect_count(), 1)
+  assert_eq(redraw_schedule.get_present_pixel_count(), 2)
+  assert_eq(redraw_schedule.get_present_byte_count(), 8)
+  assert_true(!redraw_schedule.saves_full_present_pixels())
+  assert_eq(redraw_surface.get_present_count(), 0)
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "RenderFrame::submit_redraw_to presents cached clean frame" {
+  let frame = RenderFrame::new(2, 1)
+  let layer = Layer::new(2, 1)
+  layer.clear(Color::white())
+  layer.get_canvas().draw_pixel(1, 0, Color::blue())
+  ignore(frame.get_layer_tree().add_layer(layer))
+  assert_true(frame.present_dirty_to(MemorySurface::new(2, 1)) == Ok(1))
+  assert_true(!frame.has_dirty())
+
+  let surface = MemorySurface::new(2, 1)
+  match frame.submit_redraw_to(surface) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Full)
+      assert_true(result.get_state() == DirtySubmitState::Clean)
+      assert_true(!result.has_dirty())
+      assert_true(result.needs_present())
+      assert_true(result.did_present())
+      assert_eq(result.get_present_rect_count(), 1)
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 2)
+      assert_eq(result.get_present_byte_count(), 8)
+    }
+    Err(_) => abort("expected redraw submit result")
+  }
+  assert_eq(surface.get_present_count(), 1)
+  assert_eq(surface.get_pixel(0, 0), Color::white())
+  assert_eq(surface.get_pixel(1, 0), Color::blue())
+  assert_true(!frame.has_dirty())
+}
+
+///|
 test "RenderFrame dirty helpers cover canvas and layer tree dirtiness" {
   let frame = RenderFrame::new(4, 2)
   assert_true(!frame.has_dirty())

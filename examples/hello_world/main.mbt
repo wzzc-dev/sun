@@ -276,17 +276,6 @@ fn handle_frame_submit_result(
 }
 
 ///|
-fn present_frame_all(
-  surface : @softbuffer.NativeSurface,
-  frame : @graphics.RenderFrame,
-) -> Unit {
-  match surface.present_frame_all(frame) {
-    Ok(_) => ()
-    Err(_) => println("Present failed")
-  }
-}
-
-///|
 fn render_and_display(
   window : @windows.Window,
   width : Int,
@@ -324,14 +313,9 @@ fn present_cached_frame(
   frame : @graphics.RenderFrame,
 ) -> Unit {
   let surface = frame_native_surface(window, frame)
-  let schedule = surface.frame_schedule(frame)
-  if schedule.should_submit() {
-    match surface.submit_frame_schedule(frame, schedule) {
-      Ok(result) => handle_frame_submit_result(result)
-      Err(_) => println("Present failed")
-    }
-  } else {
-    present_frame_all(surface, frame)
+  match surface.submit_frame_redraw(frame) {
+    Ok(result) => handle_frame_submit_result(result)
+    Err(_) => println("Present failed")
   }
 }
 

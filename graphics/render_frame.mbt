@@ -140,7 +140,7 @@ pub fn RenderFrameSubmitPlan::has_dirty(self : RenderFrameSubmitPlan) -> Bool {
 pub fn RenderFrameSubmitPlan::needs_present(
   self : RenderFrameSubmitPlan,
 ) -> Bool {
-  self.dirty_submit_plan.needs_present()
+  self.strategy != DirtyPresentStrategy::Skip && self.present_rect_count > 0
 }
 
 ///|
@@ -410,7 +410,49 @@ fn render_frame_schedule(
       RenderFrameScheduleAction::SubmitWithoutPresent
     DirtySubmitState::Present => RenderFrameScheduleAction::Present
   }
+  render_frame_schedule_with_action(submit_plan, action)
+}
+
+///|
+fn render_frame_schedule_with_action(
+  submit_plan : RenderFrameSubmitPlan,
+  action : RenderFrameScheduleAction,
+) -> RenderFrameSchedule {
   { submit_plan, action }
+}
+
+///|
+fn render_frame_full_present_plan(
+  dirty_submit_plan : DirtySubmitPlan,
+  frame_width : Int,
+  frame_height : Int,
+  surface_width : Int,
+  surface_height : Int,
+) -> RenderFrameSubmitPlan {
+  let frame_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=frame_width.max(0),
+    height=frame_height.max(0),
+  )
+  let surface_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=surface_width.max(0),
+    height=surface_height.max(0),
+  )
+  let present_pixels = match frame_bounds.intersection(surface_bounds) {
+    Some(bounds) => bounds.area()
+    None => 0
+  }
+  let present_rect_count = if present_pixels > 0 { 1 } else { 0 }
+  render_frame_submit_plan(
+    dirty_submit_plan,
+    DirtyPresentStrategy::Full,
+    present_rect_count,
+    present_pixels,
+    present_pixels * 4,
+  )
 }
 
 ///|
@@ -741,6 +783,31 @@ pub fn[S : Surface] RenderFrame::submit_schedule(
 }
 
 ///|
+/// Dry-run a window redraw submission. Dirty frames reuse the regular schedule;
+/// clean frames are promoted to a full cached present so OS redraw requests can
+/// repaint without each event loop reimplementing that policy.
+pub fn[S : Surface] RenderFrame::redraw_schedule(
+  self : RenderFrame,
+  surface : S,
+) -> RenderFrameSchedule {
+  let schedule = self.submit_schedule(surface)
+  guard schedule.get_action() == RenderFrameScheduleAction::Skip else {
+    return schedule
+  }
+  guard !schedule.has_dirty() else { return schedule }
+  render_frame_schedule_with_action(
+    render_frame_full_present_plan(
+      schedule.get_submit_plan().get_dirty_submit_plan(),
+      self.get_width(),
+      self.get_height(),
+      surface.get_width(),
+      surface.get_height(),
+    ),
+    RenderFrameScheduleAction::Present,
+  )
+}
+
+///|
 pub fn[S : Surface] RenderFrame::submit_scheduled_to(
   self : RenderFrame,
   surface : S,
@@ -788,6 +855,14 @@ pub fn[S : Surface] RenderFrame::submit_scheduled_to(
           Ok(render_frame_submit_result(schedule.get_submit_plan(), 0))
       }
   }
+}
+
+///|
+pub fn[S : Surface] RenderFrame::submit_redraw_to(
+  self : RenderFrame,
+  surface : S,
+) -> Result[RenderFrameSubmitResult, PresentError] {
+  self.submit_scheduled_to(surface, self.redraw_schedule(surface))
 }
 
 ///|

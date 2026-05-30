@@ -709,6 +709,51 @@ test "NativeSurface exposes dry-run frame schedule actions" {
 }
 
 ///|
+test "NativeSurface exposes clean redraw schedule as full cached present" {
+  let count = Ref(0)
+  let frame = @graphics.RenderFrame::new(2, 1)
+  let layer = @graphics.Layer::new(2, 1)
+  layer.clear(@graphics.Color::white())
+  layer.get_canvas().draw_pixel(1, 0, @graphics.Color::blue())
+  ignore(frame.get_layer_tree().add_layer(layer))
+  assert_true(
+    frame.present_dirty_to(@graphics.MemorySurface::new(2, 1)) == Ok(1),
+  )
+  assert_true(!frame.has_dirty())
+
+  let surface = NativeSurface::from_frame(42, frame).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+  let regular_schedule = surface.frame_schedule(frame)
+  assert_true(regular_schedule.get_action() == NativeFrameScheduleAction::Skip)
+  assert_true(!regular_schedule.needs_present())
+  assert_true(
+    regular_schedule.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Skip,
+  )
+
+  let redraw_schedule = surface.frame_redraw_schedule(frame)
+  assert_true(
+    redraw_schedule.get_action() == NativeFrameScheduleAction::Present,
+  )
+  assert_true(redraw_schedule.should_submit())
+  assert_true(redraw_schedule.needs_present())
+  assert_true(!redraw_schedule.has_dirty())
+  assert_true(
+    redraw_schedule.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_true(redraw_schedule.get_state() == @graphics.DirtySubmitState::Clean)
+  assert_true(redraw_schedule.get_dirty_bounds() == None)
+  assert_eq(redraw_schedule.get_present_rect_count(), 1)
+  assert_eq(redraw_schedule.get_present_pixel_count(), 2)
+  assert_eq(redraw_schedule.get_present_byte_count(), 8)
+  assert_true(!redraw_schedule.saves_full_present_pixels())
+  assert_eq(count.val, 0)
+  assert_true(!frame.has_dirty())
+}
+
+///|
 test "NativeSurface submits precomputed frame schedules" {
   let count = Ref(0)
   let partial_frame = @graphics.RenderFrame::new(4, 1)
@@ -790,6 +835,43 @@ test "NativeSurface submits precomputed frame schedules" {
   }
   assert_eq(count.val, 1)
   assert_true(!clean_frame.has_dirty())
+}
+
+///|
+test "NativeSurface submits clean redraw as cached full present" {
+  let count = Ref(0)
+  let frame = @graphics.RenderFrame::new(2, 1)
+  let layer = @graphics.Layer::new(2, 1)
+  layer.clear(@graphics.Color::white())
+  layer.get_canvas().draw_pixel(1, 0, @graphics.Color::blue())
+  ignore(frame.get_layer_tree().add_layer(layer))
+  assert_true(
+    frame.present_dirty_to(@graphics.MemorySurface::new(2, 1)) == Ok(1),
+  )
+  assert_true(!frame.has_dirty())
+
+  let surface = NativeSurface::from_frame(42, frame).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+  match surface.submit_frame_redraw(frame) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+      )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Clean)
+      assert_true(!result.has_dirty())
+      assert_true(result.needs_present())
+      assert_true(result.did_present())
+      assert_eq(result.get_present_rect_count(), 1)
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 2)
+      assert_eq(result.get_present_byte_count(), 8)
+      assert_true(!result.saves_full_present_pixels())
+    }
+    Err(_) => abort("expected redraw submit result")
+  }
+  assert_eq(count.val, 1)
+  assert_true(!frame.has_dirty())
 }
 
 ///|
@@ -879,6 +961,47 @@ test "render frame schedule helper constructs NativeSurface internally" {
   assert_eq(schedule.get_present_byte_count(), 4)
   assert_true(schedule.saves_full_present_pixels())
   assert_true(frame.has_dirty())
+}
+
+///|
+test "render frame redraw helper constructs NativeSurface internally" {
+  let frame = @graphics.RenderFrame::new(2, 1)
+  let layer = @graphics.Layer::new(2, 1)
+  layer.clear(@graphics.Color::white())
+  layer.get_canvas().draw_pixel(1, 0, @graphics.Color::blue())
+  ignore(frame.get_layer_tree().add_layer(layer))
+  assert_true(
+    frame.present_dirty_to(@graphics.MemorySurface::new(2, 1)) == Ok(1),
+  )
+  assert_true(!frame.has_dirty())
+
+  let schedule = render_frame_redraw_schedule(42, frame)
+  assert_true(schedule.get_action() == NativeFrameScheduleAction::Present)
+  assert_true(schedule.should_submit())
+  assert_true(schedule.needs_present())
+  assert_true(!schedule.has_dirty())
+  assert_true(
+    schedule.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_true(schedule.get_state() == @graphics.DirtySubmitState::Clean)
+  assert_eq(schedule.get_present_rect_count(), 1)
+  assert_eq(schedule.get_present_pixel_count(), 2)
+  assert_eq(schedule.get_present_byte_count(), 8)
+
+  match submit_render_frame_redraw(42, frame) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+      )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Clean)
+      assert_true(result.did_present())
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 2)
+      assert_eq(result.get_present_byte_count(), 8)
+    }
+    Err(_) => abort("expected constructed redraw submit result")
+  }
+  assert_true(!frame.has_dirty())
 }
 
 ///|
