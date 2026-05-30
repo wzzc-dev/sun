@@ -82,13 +82,13 @@ wzzc-dev/
 - `Canvas` line/polyline/polygon/arc/pie/rect/circle/ellipse and uniform/per-corner rounded-rect helpers for reusable GUI dividers, borders, progress rings, badges, ovals, panels, tabs, buttons, charts, simple icons, and input backgrounds
 - `Canvas::draw_placeholder_text` for debug text boxes; real text drawing lives in `renderer`
 - Canvas save/restore state stack, transform-aware rect/path drawing, transform helpers, and intersecting clip scopes for nested GUI drawing
-- `Surface` trait, `MemorySurface`, full/rect present helpers, and dirty-present batch dry-runs for `Canvas` and `Pixmap`
+- `Surface` trait, `MemorySurface`, full/rect present helpers, and dirty-present batch dry-runs for `Canvas`, `LayerTree`, `RenderFrame`, and `Pixmap`
 - Pixmap blitting, source-rect atlas drawing, tiled Pixmap fills, explicit nearest/bilinear sampling modes, and straight-alpha composition for image and layer caching
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition
 - `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present/dirty-submit plans, scheduler states, and `Canvas` bounded dirty-present helpers
 - `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`
-- `LayerTree` z-order composition with dirty rectangle propagation, layer resize/remove/replace/reorder lifecycle, property-change invalidation, dirty-present planning, and partial present submission
-- `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, dirty queries/marking, dirty-submit planning/results, result-level scheduler, did-present, planned rect/cost telemetry, Skip/Partial/Full present strategy planning, and strategy-aware submit helpers for backend event-loop integration
+- `LayerTree` z-order composition with dirty rectangle propagation, layer resize/remove/replace/reorder lifecycle, property-change invalidation, dirty-present planning/batch dry-runs, and partial present submission
+- `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, dirty queries/marking, dirty-submit planning/results, result-level scheduler, did-present, planned rect/cost telemetry, dirty batch dry-runs, Skip/Partial/Full present strategy planning, and strategy-aware submit helpers for backend event-loop integration
 
 ### text
 Text processing library (font parsing, shaping, layout).

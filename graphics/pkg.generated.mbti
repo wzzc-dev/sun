@@ -233,6 +233,7 @@ pub fn LayerTree::clear_dirty_regions(Self) -> Unit
 pub fn LayerTree::composite_dirty_to(Self, Canvas, Int) -> Int
 pub fn LayerTree::composite_to(Self, Canvas) -> Int
 pub fn LayerTree::dirty_bounds(Self) -> PixelRect?
+pub fn[S : Surface] LayerTree::dirty_present_batch(Self, Canvas, S, Int) -> Result[PresentBatch, PresentError]
 pub fn[S : Surface] LayerTree::dirty_present_plan(Self, Canvas, S, Int) -> DirtyPresentPlan
 pub fn LayerTree::dirty_rects(Self, Int) -> Array[PixelRect]
 pub fn[S : Surface] LayerTree::dirty_submit_plan(Self, Canvas, S, Int) -> DirtySubmitPlan
@@ -453,6 +454,7 @@ pub struct RenderFrame {
 } derive(@debug.Debug)
 pub fn RenderFrame::clear_dirty_regions(Self) -> Unit
 pub fn RenderFrame::dirty_bounds(Self) -> PixelRect?
+pub fn[S : Surface] RenderFrame::dirty_present_batch(Self, S) -> Result[PresentBatch, PresentError]
 pub fn[S : Surface] RenderFrame::dirty_present_plan(Self, S) -> DirtyPresentPlan
 pub fn[S : Surface] RenderFrame::dirty_submit_plan(Self, S) -> DirtySubmitPlan
 pub fn RenderFrame::get_canvas(Self) -> Canvas

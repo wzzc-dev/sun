@@ -357,6 +357,18 @@ pub fn[S : Surface] RenderFrame::dirty_submit_plan(
 }
 
 ///|
+pub fn[S : Surface] RenderFrame::dirty_present_batch(
+  self : RenderFrame,
+  surface : S,
+) -> Result[PresentBatch, PresentError] {
+  self.layer_tree.dirty_present_batch(
+    self.canvas,
+    surface,
+    self.dirty_rect_limit,
+  )
+}
+
+///|
 pub fn[S : Surface] RenderFrame::present_strategy(
   self : RenderFrame,
   surface : S,

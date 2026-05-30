@@ -350,6 +350,28 @@ pub fn[S : Surface] LayerTree::present_dirty_to_with_limit(
 }
 
 ///|
+pub fn[S : Surface] LayerTree::dirty_present_batch(
+  self : LayerTree,
+  target : Canvas,
+  surface : S,
+  max_rects : Int,
+) -> Result[PresentBatch, PresentError] {
+  let rects = self.dirty_target_rects(target, max_rects)
+  guard rects.length() > 0 else {
+    return target.dirty_present_batch(surface, max_rects)
+  }
+  let submit_plan = self.dirty_submit_plan(target, surface, max_rects)
+  let plan = submit_plan.get_present_plan()
+  let dirty_snapshot = snapshot_canvas_dirty_region(target)
+  let pixel_snapshot = snapshot_canvas_pixels(target, rects)
+  ignore(self.composite_rects_to(target, rects))
+  let result = target.get_pixmap().present_batch(plan)
+  restore_canvas_pixels(target, rects, pixel_snapshot)
+  restore_canvas_dirty_region(target, dirty_snapshot)
+  result
+}
+
+///|
 fn LayerTree::combined_dirty_region(
   self : LayerTree,
   target : Canvas,

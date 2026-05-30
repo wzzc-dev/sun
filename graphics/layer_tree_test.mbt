@@ -473,6 +473,42 @@ test "LayerTree::dirty_submit_plan snapshots unclipped dirty bounds" {
 }
 
 ///|
+test "LayerTree::dirty_present_batch materializes without consuming dirty" {
+  let target = Canvas::new(8, 1)
+  target.draw_pixel(0, 0, Color::white())
+
+  let layer = Layer::new(1, 1).set_position(6, 0)
+  layer.get_canvas().draw_pixel(0, 0, Color::blue())
+  let tree = LayerTree::new()
+  ignore(tree.add_layer(layer))
+
+  let surface = MemorySurface::new(8, 1)
+  match tree.dirty_present_batch(target, surface, 1) {
+    Ok(batch) => {
+      assert_eq(batch.get_rect_count(), 1)
+      assert_eq(batch.get_present_pixel_count(), 7)
+      assert_eq(batch.get_present_byte_count(), 28)
+      let payloads = batch.get_payloads()
+      assert_true(
+        payloads[0].get_rect() == PixelRect::new(x=0, y=0, width=7, height=1),
+      )
+      let pixels = payloads[0].get_pixels()
+      assert_eq(pixels.length(), 28)
+      assert_eq(pixels[0], Color::white().r)
+      assert_eq(pixels[24], Color::blue().r)
+    }
+    Err(_) => abort("expected layer tree dirty present batch")
+  }
+
+  assert_eq(surface.get_present_count(), 0)
+  assert_eq(target.get_pixmap().get_pixel(6, 0), Color::transparent())
+  assert_true(!target.get_dirty_region().is_empty())
+  assert_true(
+    tree.dirty_bounds() == Some(PixelRect::new(x=6, y=0, width=1, height=1)),
+  )
+}
+
+///|
 test "LayerTree::present_dirty_to_with_limit consumes exposed dirty present plan" {
   let target = Canvas::new(8, 1)
   target.draw_pixel(0, 0, Color::white())
