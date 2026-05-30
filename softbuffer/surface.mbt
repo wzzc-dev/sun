@@ -21,7 +21,10 @@ pub struct NativeSurface {
 /// present scheduler.
 pub struct NativeFrameSubmitResult {
   strategy : @graphics.DirtyPresentStrategy
+  state : @graphics.DirtySubmitState
   presented_rect_count : Int
+  present_pixel_count : Int
+  present_byte_count : Int
 } derive(Debug)
 
 ///|
@@ -39,6 +42,48 @@ pub fn NativeFrameSubmitResult::get_presented_rect_count(
 }
 
 ///|
+pub fn NativeFrameSubmitResult::get_state(
+  self : NativeFrameSubmitResult,
+) -> @graphics.DirtySubmitState {
+  self.state
+}
+
+///|
+pub fn NativeFrameSubmitResult::has_dirty(
+  self : NativeFrameSubmitResult,
+) -> Bool {
+  self.state != @graphics.DirtySubmitState::Clean
+}
+
+///|
+pub fn NativeFrameSubmitResult::needs_present(
+  self : NativeFrameSubmitResult,
+) -> Bool {
+  self.state == @graphics.DirtySubmitState::Present
+}
+
+///|
+pub fn NativeFrameSubmitResult::was_clipped_away(
+  self : NativeFrameSubmitResult,
+) -> Bool {
+  self.state == @graphics.DirtySubmitState::DirtyClippedAway
+}
+
+///|
+pub fn NativeFrameSubmitResult::get_present_pixel_count(
+  self : NativeFrameSubmitResult,
+) -> Int {
+  self.present_pixel_count
+}
+
+///|
+pub fn NativeFrameSubmitResult::get_present_byte_count(
+  self : NativeFrameSubmitResult,
+) -> Int {
+  self.present_byte_count
+}
+
+///|
 pub fn NativeFrameSubmitResult::did_present(
   self : NativeFrameSubmitResult,
 ) -> Bool {
@@ -48,9 +93,32 @@ pub fn NativeFrameSubmitResult::did_present(
 ///|
 fn native_frame_submit_result(
   strategy : @graphics.DirtyPresentStrategy,
+  state : @graphics.DirtySubmitState,
   presented_rect_count : Int,
+  present_pixel_count : Int,
+  present_byte_count : Int,
 ) -> NativeFrameSubmitResult {
-  { strategy, presented_rect_count }
+  {
+    strategy,
+    state,
+    presented_rect_count,
+    present_pixel_count,
+    present_byte_count,
+  }
+}
+
+///|
+fn native_frame_submit_result_from_dirty(
+  strategy : @graphics.DirtyPresentStrategy,
+  result : @graphics.DirtySubmitResult,
+) -> NativeFrameSubmitResult {
+  native_frame_submit_result(
+    strategy,
+    result.get_state(),
+    result.get_presented_rect_count(),
+    result.get_present_pixel_count(),
+    result.get_present_byte_count(),
+  )
 }
 
 ///|
@@ -371,31 +439,41 @@ pub fn NativeSurface::submit_frame_by_strategy(
       if frame.has_dirty() {
         match self.submit_frame_dirty(frame) {
           Ok(result) =>
-            Ok(
-              native_frame_submit_result(
-                strategy,
-                result.get_presented_rect_count(),
-              ),
-            )
+            Ok(native_frame_submit_result_from_dirty(strategy, result))
           Err(error) => Err(error)
         }
       } else {
-        Ok(native_frame_submit_result(strategy, 0))
+        Ok(
+          native_frame_submit_result(
+            strategy,
+            @graphics.DirtySubmitState::Clean,
+            0,
+            0,
+            0,
+          ),
+        )
       }
     @graphics.DirtyPresentStrategy::Partial =>
       match self.submit_frame_dirty(frame) {
         Ok(result) =>
-          Ok(
-            native_frame_submit_result(
-              strategy,
-              result.get_presented_rect_count(),
-            ),
-          )
+          Ok(native_frame_submit_result_from_dirty(strategy, result))
         Err(error) => Err(error)
       }
     @graphics.DirtyPresentStrategy::Full =>
       match self.present_frame_all(frame) {
-        Ok(presented) => Ok(native_frame_submit_result(strategy, presented))
+        Ok(presented) => {
+          let present_pixels = self.get_width().max(0) *
+            self.get_height().max(0)
+          Ok(
+            native_frame_submit_result(
+              strategy,
+              @graphics.DirtySubmitState::Present,
+              presented,
+              present_pixels,
+              present_pixels * 4,
+            ),
+          )
+        }
         Err(error) => Err(error)
       }
   }

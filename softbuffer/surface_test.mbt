@@ -274,8 +274,14 @@ test "NativeSurface submits frames by present strategy" {
       assert_true(
         result.get_present_strategy() == @graphics.DirtyPresentStrategy::Partial,
       )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
+      assert_true(result.has_dirty())
+      assert_true(result.needs_present())
+      assert_true(!result.was_clipped_away())
       assert_true(result.did_present())
       assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 1)
+      assert_eq(result.get_present_byte_count(), 4)
     }
     Err(_) => abort("expected partial strategy submit result")
   }
@@ -295,8 +301,14 @@ test "NativeSurface submits frames by present strategy" {
       assert_true(
         result.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
       )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
+      assert_true(result.has_dirty())
+      assert_true(result.needs_present())
+      assert_true(!result.was_clipped_away())
       assert_true(result.did_present())
       assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 2)
+      assert_eq(result.get_present_byte_count(), 8)
     }
     Err(_) => abort("expected full strategy submit result")
   }
@@ -314,8 +326,14 @@ test "NativeSurface submits frames by present strategy" {
       assert_true(
         result.get_present_strategy() == @graphics.DirtyPresentStrategy::Skip,
       )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Clean)
+      assert_true(!result.has_dirty())
+      assert_true(!result.needs_present())
+      assert_true(!result.was_clipped_away())
       assert_true(!result.did_present())
       assert_eq(result.get_presented_rect_count(), 0)
+      assert_eq(result.get_present_pixel_count(), 0)
+      assert_eq(result.get_present_byte_count(), 0)
     }
     Err(_) => abort("expected clean strategy submit result")
   }
@@ -337,8 +355,16 @@ test "NativeSurface strategy submit consumes clipped-away dirty without presenti
       assert_true(
         result.get_present_strategy() == @graphics.DirtyPresentStrategy::Skip,
       )
+      assert_true(
+        result.get_state() == @graphics.DirtySubmitState::DirtyClippedAway,
+      )
+      assert_true(result.has_dirty())
+      assert_true(!result.needs_present())
+      assert_true(result.was_clipped_away())
       assert_true(!result.did_present())
       assert_eq(result.get_presented_rect_count(), 0)
+      assert_eq(result.get_present_pixel_count(), 0)
+      assert_eq(result.get_present_byte_count(), 0)
     }
     Err(_) => abort("expected clipped-away strategy submit result")
   }
@@ -391,8 +417,11 @@ test "render frame strategy submit helper constructs NativeSurface internally" {
       assert_true(
         result.get_present_strategy() == @graphics.DirtyPresentStrategy::Partial,
       )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
       assert_true(result.did_present())
       assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 1)
+      assert_eq(result.get_present_byte_count(), 4)
     }
     Err(_) => abort("expected constructed strategy submit result")
   }
