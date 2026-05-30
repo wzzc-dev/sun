@@ -550,10 +550,19 @@ pub fn[S : Surface] RenderFrame::present_dirty_to(Self, S) -> Result[Int, Presen
 pub fn[S : Surface] RenderFrame::present_strategy(Self, S) -> DirtyPresentStrategy
 pub fn RenderFrame::resize(Self, Int, Int) -> Self
 pub fn RenderFrame::resize_and_clear_layer(Self, Int, Int, Int, Color) -> Bool
+pub fn RenderFrame::resize_and_clear_layers(Self, Int, Int, Array[RenderFrameLayerClearRequest]) -> Bool
 pub fn RenderFrame::set_dirty_rect_limit(Self, Int) -> Self
 pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(Self, S) -> RenderFrameSubmitPlan
 pub fn[S : Surface] RenderFrame::submit_by_strategy_to(Self, S) -> Result[RenderFrameSubmitResult, PresentError]
 pub fn[S : Surface] RenderFrame::submit_dirty_to(Self, S) -> Result[DirtySubmitResult, PresentError]
+
+pub struct RenderFrameLayerClearRequest {
+  layer_index : Int
+  color : Color
+} derive(Eq, @debug.Debug)
+pub fn RenderFrameLayerClearRequest::get_color(Self) -> Color
+pub fn RenderFrameLayerClearRequest::get_layer_index(Self) -> Int
+pub fn RenderFrameLayerClearRequest::new(Int, Color) -> Self
 
 pub struct RenderFrameSubmitPlan {
   dirty_submit_plan : DirtySubmitPlan

@@ -392,8 +392,9 @@ Application / GUI
 - [x] `hello_world` 示例按 Skip/Partial/Full 策略选择跳过、dirty submit 或 full present，推进事件循环 dirty present 调度集成
 - [x] `hello_world` 示例改为调用 softbuffer strategy-aware submit helper，避免窗口循环重复实现 present 策略分派
 - [x] `RenderFrame::resize_and_clear_layer` 抽出背景 layer resize/clear lifecycle helper，让 GUI resize 代码复用统一 dirty 语义
+- [x] `RenderFrame::resize_and_clear_layers` 支持批量验证并 resize/clear 多个 frame layer cache，让 GUI resize 可用一个调用处理背景、overlay 等多层 lifecycle
 - [ ] 脏矩形渲染调度与窗口事件循环深度集成
-- [ ] GUI 级 layer lifecycle：更通用的背景清除策略和 present 调度 API
+- [ ] GUI 级 layer lifecycle：更通用的 layer replacement/redraw policy 和 present 调度 API
 - [x] 添加确定性 microbenchmark smoke：覆盖 fill_rect、path fill、stroke、glyph raster/mask composition、pixmap blit 与 present copy telemetry
 - [ ] GPU 加速（可选，WebGPU/Vulkan）
 

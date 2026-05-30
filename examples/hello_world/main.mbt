@@ -231,7 +231,9 @@ fn update_hello_world_frame(
   let tree = frame.get_layer_tree()
   guard tree.get_layer_count() >= 2 else { return false }
 
-  guard frame.resize_and_clear_layer(0, width, height, @graphics.Color::white()) else {
+  guard frame.resize_and_clear_layers(width, height, [
+    @graphics.RenderFrameLayerClearRequest::new(0, @graphics.Color::white()),
+  ]) else {
     return false
   }
   match tree.replace_layer(1, build_text_layer(width, height)) {

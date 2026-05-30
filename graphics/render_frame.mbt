@@ -25,6 +25,38 @@ pub struct RenderFrameSubmitResult {
 } derive(Debug)
 
 ///|
+/// Request to resize one frame-owned layer cache and clear it to a color.
+pub struct RenderFrameLayerClearRequest {
+  layer_index : Int
+  color : Color
+} derive(Eq, Debug)
+
+///|
+/// Create a layer clear request for a RenderFrame resize lifecycle operation.
+pub fn RenderFrameLayerClearRequest::new(
+  layer_index : Int,
+  color : Color,
+) -> RenderFrameLayerClearRequest {
+  { layer_index, color }
+}
+
+///|
+/// Return the target layer index.
+pub fn RenderFrameLayerClearRequest::get_layer_index(
+  self : RenderFrameLayerClearRequest,
+) -> Int {
+  self.layer_index
+}
+
+///|
+/// Return the clear color for the target layer.
+pub fn RenderFrameLayerClearRequest::get_color(
+  self : RenderFrameLayerClearRequest,
+) -> Color {
+  self.color
+}
+
+///|
 pub fn RenderFrameSubmitPlan::get_dirty_submit_plan(
   self : RenderFrameSubmitPlan,
 ) -> DirtySubmitPlan {
@@ -298,15 +330,36 @@ pub fn RenderFrame::resize_and_clear_layer(
   height : Int,
   color : Color,
 ) -> Bool {
+  self.resize_and_clear_layers(width, height, [
+    RenderFrameLayerClearRequest::new(layer_index, color),
+  ])
+}
+
+///|
+/// Resize the frame and multiple layer-sized caches, then clear each layer.
+/// This validates all requested layers before mutating frame or layer state.
+pub fn RenderFrame::resize_and_clear_layers(
+  self : RenderFrame,
+  width : Int,
+  height : Int,
+  requests : Array[RenderFrameLayerClearRequest],
+) -> Bool {
   guard width > 0 && height > 0 else { return false }
-  guard self.layer_tree.get_layer(layer_index) is Some(layer) else {
-    return false
+  guard requests.length() > 0 else { return false }
+  for request in requests {
+    guard self.layer_tree.get_layer(request.get_layer_index()) is Some(_) else {
+      return false
+    }
   }
   ignore(self.resize(width, height))
-  guard self.layer_tree.resize_layer(layer_index, width, height) else {
-    return false
+  for request in requests {
+    let layer_index = request.get_layer_index()
+    ignore(self.layer_tree.resize_layer(layer_index, width, height))
+    match self.layer_tree.get_layer(layer_index) {
+      Some(layer) => layer.clear(request.get_color())
+      None => return false
+    }
   }
-  layer.clear(color)
   true
 }
 
