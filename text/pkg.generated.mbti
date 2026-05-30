@@ -113,11 +113,20 @@ pub struct FontFaceCache {
 pub fn FontFaceCache::clear(Self) -> Unit
 pub fn FontFaceCache::get(Self, String) -> FontFace?
 pub fn FontFaceCache::get_or_parse(Self, String, Bytes) -> Result[FontFace, FontParseError]
+pub fn FontFaceCache::get_or_parse_result(Self, String, Bytes) -> Result[FontFaceCacheParseResult, FontParseError]
 pub fn FontFaceCache::insert(Self, String, FontFace) -> FontFace
 pub fn FontFaceCache::is_empty(Self) -> Bool
 pub fn FontFaceCache::len(Self) -> Int
 pub fn FontFaceCache::new() -> Self
 pub fn FontFaceCache::remove(Self, String) -> Unit
+
+pub struct FontFaceCacheParseResult {
+  face : FontFace
+  did_parse : Bool
+} derive(@debug.Debug)
+pub fn FontFaceCacheParseResult::did_hit_cache(Self) -> Bool
+pub fn FontFaceCacheParseResult::did_parse(Self) -> Bool
+pub fn FontFaceCacheParseResult::get_face(Self) -> FontFace
 
 pub struct FontHead {
   units_per_em : Int

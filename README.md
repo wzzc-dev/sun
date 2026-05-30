@@ -102,7 +102,8 @@ Text processing library (font parsing, shaping, layout).
 - `parse_font_result` for checked TTF structural validation while retaining the legacy `parse_font` compatibility entry point
 - Documented `FontParseError` categories for callers that load untrusted font bytes
 - `FontFace`, `GlyphRun`, and `TextLayout` facades for renderer and GUI-facing text APIs
-- `FontFaceCache` for keyed reuse of checked parsed faces in GUI/resource code
+- `FontFaceCache` for keyed reuse of checked parsed faces in GUI/resource code,
+  with optional hit/parse-miss telemetry
 - `GlyphMaskCache` for keyed reuse of individual glyph coverage masks, with
   optional hit/rasterize-miss telemetry
 - `GlyphMaskAtlas` for text-local row-packed placement of copied glyph masks,

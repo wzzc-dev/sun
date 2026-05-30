@@ -39,9 +39,40 @@ pub struct FontFaceCache {
 } derive(Debug)
 
 ///|
+/// Result of reading a checked font face from cache or parsing it on miss.
+pub struct FontFaceCacheParseResult {
+  face : FontFace
+  did_parse : Bool
+} derive(Debug)
+
+///|
 /// Create an empty font-face cache.
 pub fn FontFaceCache::new() -> FontFaceCache {
   { faces: {} }
+}
+
+///|
+/// Get the resulting checked font face.
+pub fn FontFaceCacheParseResult::get_face(
+  self : FontFaceCacheParseResult,
+) -> FontFace {
+  self.face
+}
+
+///|
+/// Return whether this lookup parsed bytes instead of hitting cache.
+pub fn FontFaceCacheParseResult::did_parse(
+  self : FontFaceCacheParseResult,
+) -> Bool {
+  self.did_parse
+}
+
+///|
+/// Return whether this lookup reused a checked face from cache.
+pub fn FontFaceCacheParseResult::did_hit_cache(
+  self : FontFaceCacheParseResult,
+) -> Bool {
+  !self.did_parse
 }
 
 ///|
@@ -80,11 +111,24 @@ pub fn FontFaceCache::get_or_parse(
   key : String,
   data : Bytes,
 ) -> Result[FontFace, FontParseError] {
+  match self.get_or_parse_result(key, data) {
+    Ok(result) => Ok(result.get_face())
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Parse bytes on first use and report whether cache missed.
+pub fn FontFaceCache::get_or_parse_result(
+  self : FontFaceCache,
+  key : String,
+  data : Bytes,
+) -> Result[FontFaceCacheParseResult, FontParseError] {
   match self.get(key) {
-    Some(face) => Ok(face)
+    Some(face) => Ok({ face, did_parse: false })
     None =>
       match FontFace::from_bytes(data) {
-        Ok(face) => Ok(self.insert(key, face))
+        Ok(face) => Ok({ face: self.insert(key, face), did_parse: true })
         Err(error) => Err(error)
       }
   }

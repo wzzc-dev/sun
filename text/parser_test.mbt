@@ -225,6 +225,30 @@ test "parse_font_result parses a structurally valid empty glyph font" {
 }
 
 ///|
+test "FontFaceCache::get_or_parse_result reports cache misses" {
+  let cache = FontFaceCache::new()
+  match cache.get_or_parse_result("ui", make_structural_font()) {
+    Ok(result) => {
+      assert_true(result.did_parse())
+      assert_true(!result.did_hit_cache())
+      assert_eq(result.get_face().get_units_per_em(), 10)
+    }
+    Err(_) => abort("expected parsed font face")
+  }
+  assert_eq(cache.len(), 1)
+
+  match cache.get_or_parse_result("ui", b"not a font") {
+    Ok(result) => {
+      assert_true(!result.did_parse())
+      assert_true(result.did_hit_cache())
+      assert_eq(result.get_face().get_units_per_em(), 10)
+    }
+    Err(_) => abort("expected cache hit to avoid parsing invalid bytes")
+  }
+  assert_eq(cache.len(), 1)
+}
+
+///|
 test "parse_font_result parses cmap format 4 mappings" {
   let bytes = make_structural_font_with_cmap(make_cmap_format4_mapping())
   match parse_font_result(bytes) {

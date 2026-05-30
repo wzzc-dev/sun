@@ -247,7 +247,7 @@ Application / GUI
 - [x] 为 `FontParseError` 建立文档化契约，明确哪些错误属于稳定 public API，哪些仍是兼容迁移期细节，见 `docs/font-parser-errors.md`
 - [ ] 建立真实字体 fixture 矩阵：基础 Latin、带孔洞 glyph、复合 glyph、kerning、CJK fallback
 - [x] 明确 `text` 包中哪些结构是 facade stable，哪些仍是 implementation-adjacent，见 `docs/text-api-boundaries.md`
-- [x] 增加 `FontFaceCache`，让 GUI/resource 代码可按 key 复用 checked `FontFace` 并保留解析错误语义
+- [x] 增加 `FontFaceCache`，让 GUI/resource 代码可按 key 复用 checked `FontFace`、保留解析错误语义，并报告 cache hit/parse telemetry
 - [x] 增加 `GlyphMaskCache`，让 renderer/resource 代码可按 key 复用单 glyph mask，并为 cache hit/miss telemetry 与后续 glyph atlas 铺底
 - [x] 将 `TextMaskCache` 接入 Renderer，提供 repeated label/text run 的 cached draw path 与 hit/render telemetry
 - [x] 增加最小 `GlyphMaskAtlas`，让 renderer/resource 代码可先获得确定性的 glyph mask 行打包 placement、占用 telemetry、hit/insert telemetry 与满载清空重插信号
@@ -429,7 +429,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有最小 `FontFaceCache`，glyph/text mask cache 已有最小 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有最小 `PixmapCache` 与 hit/insert telemetry，后续补 eviction 和 renderer 集成策略
+- [ ] 设计资源缓存：font cache 已有最小 `FontFaceCache` 与 hit/parse telemetry，glyph/text mask cache 已有最小 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有最小 `PixmapCache` 与 hit/insert telemetry，后续补 eviction 和 renderer 集成策略
 
 ---
 
