@@ -31,11 +31,26 @@ pub fn Renderer::draw_glyph_atlas_entry(Self, @text.CoverageMask, @text.GlyphAtl
 pub fn Renderer::draw_text(Self, @text.Font, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text_face_atlas(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @text.GlyphMaskCache, @text.GlyphMaskAtlas, String, @graphics.Paint) -> TextAtlasDrawResult
+pub fn Renderer::draw_text_face_atlas_with_renderer_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> TextAtlasDrawResult
 pub fn Renderer::draw_text_face_atlas_with_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextAtlasDrawResult
 pub fn Renderer::draw_text_face_cached(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @text.TextMaskCache, String, @graphics.Paint) -> TextMaskDrawResult
+pub fn Renderer::draw_text_face_cached_with_renderer_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> TextMaskDrawResult
 pub fn Renderer::draw_text_face_cached_with_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextMaskDrawResult
 pub fn Renderer::get_canvas(Self) -> @graphics.Canvas
 pub fn Renderer::new(@graphics.Canvas) -> Self
+
+pub struct RendererResources {
+  text : RendererTextResources
+  image_cache : @graphics.PixmapCache
+} derive(@debug.Debug)
+pub fn RendererResources::clear(Self) -> Unit
+pub fn RendererResources::get_glyph_mask_atlas(Self) -> @text.GlyphMaskAtlas
+pub fn RendererResources::get_glyph_mask_cache(Self) -> @text.GlyphMaskCache
+pub fn RendererResources::get_image_cache(Self) -> @graphics.PixmapCache
+pub fn RendererResources::get_text_mask_cache(Self) -> @text.TextMaskCache
+pub fn RendererResources::get_text_resources(Self) -> RendererTextResources
+pub fn RendererResources::new(Int, Int) -> Self
+pub fn RendererResources::with_capacities(Int, Int, Int, Int, Int) -> Self
 
 pub struct RendererTextResources {
   text_cache : @text.TextMaskCache

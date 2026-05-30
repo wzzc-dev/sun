@@ -13,6 +13,13 @@ pub struct RendererTextResources {
 } derive(Debug)
 
 ///|
+/// Caller-owned renderer resources shared across GUI text and image draws.
+pub struct RendererResources {
+  text : RendererTextResources
+  image_cache : @graphics.PixmapCache
+} derive(Debug)
+
+///|
 /// Result of drawing text through glyph-mask cache and atlas resources.
 pub struct TextAtlasDrawResult {
   glyph_count : Int
@@ -76,6 +83,35 @@ pub fn RendererTextResources::with_capacities(
 }
 
 ///|
+/// Create renderer resources with unbounded text and image caches.
+pub fn RendererResources::new(
+  atlas_width : Int,
+  atlas_height : Int,
+) -> RendererResources {
+  {
+    text: RendererTextResources::new(atlas_width, atlas_height),
+    image_cache: @graphics.PixmapCache::new(),
+  }
+}
+
+///|
+/// Create renderer resources with bounded text and image caches.
+pub fn RendererResources::with_capacities(
+  atlas_width : Int,
+  atlas_height : Int,
+  text_mask_capacity : Int,
+  glyph_mask_capacity : Int,
+  image_capacity : Int,
+) -> RendererResources {
+  {
+    text: RendererTextResources::with_capacities(
+      atlas_width, atlas_height, text_mask_capacity, glyph_mask_capacity,
+    ),
+    image_cache: @graphics.PixmapCache::with_capacity(image_capacity),
+  }
+}
+
+///|
 /// Get the reusable rendered text-mask cache.
 pub fn RendererTextResources::get_text_mask_cache(
   self : RendererTextResources,
@@ -100,11 +136,58 @@ pub fn RendererTextResources::get_glyph_mask_atlas(
 }
 
 ///|
+/// Get the reusable text rendering resources.
+pub fn RendererResources::get_text_resources(
+  self : RendererResources,
+) -> RendererTextResources {
+  self.text
+}
+
+///|
+/// Get the reusable rendered text-mask cache.
+pub fn RendererResources::get_text_mask_cache(
+  self : RendererResources,
+) -> @text.TextMaskCache {
+  self.text.get_text_mask_cache()
+}
+
+///|
+/// Get the reusable glyph mask cache.
+pub fn RendererResources::get_glyph_mask_cache(
+  self : RendererResources,
+) -> @text.GlyphMaskCache {
+  self.text.get_glyph_mask_cache()
+}
+
+///|
+/// Get the reusable glyph mask atlas.
+pub fn RendererResources::get_glyph_mask_atlas(
+  self : RendererResources,
+) -> @text.GlyphMaskAtlas {
+  self.text.get_glyph_mask_atlas()
+}
+
+///|
+/// Get the reusable image pixmap cache.
+pub fn RendererResources::get_image_cache(
+  self : RendererResources,
+) -> @graphics.PixmapCache {
+  self.image_cache
+}
+
+///|
 /// Drop all cached text masks, glyph masks, and atlas entries.
 pub fn RendererTextResources::clear(self : RendererTextResources) -> Unit {
   self.text_cache.clear()
   self.glyph_cache.clear()
   self.atlas.clear()
+}
+
+///|
+/// Drop all cached text masks, glyph masks, atlas entries, and image pixmaps.
+pub fn RendererResources::clear(self : RendererResources) -> Unit {
+  self.text.clear()
+  self.image_cache.clear()
 }
 
 ///|
@@ -290,6 +373,31 @@ pub fn Renderer::draw_text_face_cached_with_resources(
 }
 
 ///|
+/// Draw text through renderer-owned resources and the rendered mask cache.
+pub fn Renderer::draw_text_face_cached_with_renderer_resources(
+  self : Renderer,
+  face : @text.FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  text_key : String,
+  paint : @graphics.Paint,
+) -> TextMaskDrawResult {
+  self.draw_text_face_cached_with_resources(
+    face,
+    text,
+    x,
+    y,
+    config,
+    resources.get_text_resources(),
+    text_key,
+    paint,
+  )
+}
+
+///|
 /// Draw text through caller-owned glyph mask cache and glyph atlas resources.
 pub fn Renderer::draw_text_face_atlas(
   self : Renderer,
@@ -338,6 +446,31 @@ pub fn Renderer::draw_text_face_atlas_with_resources(
     config,
     resources.get_glyph_mask_cache(),
     resources.get_glyph_mask_atlas(),
+    glyph_key_prefix,
+    paint,
+  )
+}
+
+///|
+/// Draw text through renderer-owned resources and the glyph atlas path.
+pub fn Renderer::draw_text_face_atlas_with_renderer_resources(
+  self : Renderer,
+  face : @text.FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextAtlasDrawResult {
+  self.draw_text_face_atlas_with_resources(
+    face,
+    text,
+    x,
+    y,
+    config,
+    resources.get_text_resources(),
     glyph_key_prefix,
     paint,
   )

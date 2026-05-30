@@ -139,6 +139,8 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
   telemetry
 - `RendererTextResources` for sharing bounded text-mask cache, glyph-mask cache,
   and glyph atlas state across renderer text draws
+- `RendererResources` for sharing renderer text resources and an image
+  `PixmapCache` from one GUI/resource object
 - `Renderer::draw_coverage_mask` for testing and low-level mask composition
 - `Renderer::draw_glyph_atlas_entry` for compositing one glyph placement from a
   `GlyphMaskAtlas` coverage snapshot
