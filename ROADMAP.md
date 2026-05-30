@@ -116,6 +116,7 @@ Application / GUI
 - `DirtyRegion::present_plan` 将 dirty present 策略显式化为 Empty/Rects/Bounds，作为批量提交和事件循环调度的可测试基础
 - `Canvas::dirty_present_plan` 让提交前可查询同一份 dirty present plan，`Canvas::present_dirty_to_with_limit` 也按该 plan 执行提交
 - `LayerTree` 与 `RenderFrame` 暴露 dirty present plan 查询，合并 canvas 与 layer dirty 区域后再按统一计划提交
+- `DirtySubmitPlan` 将逻辑 dirty bounds 与裁剪后的 present plan 合成可测试快照，供事件循环区分 dirty、present 与 clipped-away dirty 状态
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - `NativeSurface` 支持可选 pre-present hook，让窗口生命周期通知进入统一 present helper，而不是散落在示例事件处理器里
 - `hello_world` 示例走 `RenderFrame + LayerTree + softbuffer frame-present helpers`，并在 resize/redraw 中复用 frame 与 layer lifecycle，作为事件循环 dirty submit 的最小真实用例
@@ -300,6 +301,7 @@ Application / GUI
 - [x] `DirtyRegion::present_plan` 暴露 Empty/Rects/Bounds 提交计划，便于后续事件循环和后端批量 present 共享调度语义
 - [x] `Canvas::dirty_present_plan` 将查询计划和实际 dirty present 提交对齐，避免上层重复实现裁剪/阈值 fallback
 - [x] `LayerTree`/`RenderFrame` 提供 dirty present plan 查询，并让 layer-tree submit 消费同一份计划以覆盖 canvas 与 layer 脏区
+- [x] `DirtySubmitPlan` 暴露 dirty bounds 与 clipped present plan 快照，作为事件循环 dirty submit 调度的可测试中间层
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation
 - [x] `Layer::resize` 保留重叠像素并标记新 bounds dirty

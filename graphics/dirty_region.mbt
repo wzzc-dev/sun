@@ -24,6 +24,14 @@ pub struct DirtyPresentPlan {
 } derive(Debug)
 
 ///|
+/// Dirty state snapshot for schedulers: logical dirty bounds plus the clipped
+/// present plan that would be submitted to the current surface.
+pub struct DirtySubmitPlan {
+  dirty_bounds : PixelRect?
+  present_plan : DirtyPresentPlan
+} derive(Debug)
+
+///|
 pub fn DirtyPresentPlan::get_mode(
   self : DirtyPresentPlan,
 ) -> DirtyPresentPlanMode {
@@ -48,6 +56,41 @@ pub fn DirtyPresentPlan::is_empty(self : DirtyPresentPlan) -> Bool {
 ///|
 pub fn DirtyPresentPlan::uses_bounds_fallback(self : DirtyPresentPlan) -> Bool {
   self.mode == DirtyPresentPlanMode::Bounds
+}
+
+///|
+pub fn DirtySubmitPlan::get_dirty_bounds(self : DirtySubmitPlan) -> PixelRect? {
+  self.dirty_bounds
+}
+
+///|
+pub fn DirtySubmitPlan::get_present_plan(
+  self : DirtySubmitPlan,
+) -> DirtyPresentPlan {
+  self.present_plan
+}
+
+///|
+pub fn DirtySubmitPlan::has_dirty(self : DirtySubmitPlan) -> Bool {
+  match self.dirty_bounds {
+    Some(_) => true
+    None => false
+  }
+}
+
+///|
+pub fn DirtySubmitPlan::needs_present(self : DirtySubmitPlan) -> Bool {
+  !self.present_plan.is_empty()
+}
+
+///|
+pub fn DirtySubmitPlan::get_present_rect_count(self : DirtySubmitPlan) -> Int {
+  self.present_plan.get_rect_count()
+}
+
+///|
+pub fn DirtySubmitPlan::uses_bounds_fallback(self : DirtySubmitPlan) -> Bool {
+  self.present_plan.uses_bounds_fallback()
 }
 
 ///|

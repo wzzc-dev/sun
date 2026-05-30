@@ -214,6 +214,32 @@ pub fn[S : Surface] LayerTree::dirty_present_plan(
   max_rects : Int,
 ) -> DirtyPresentPlan {
   let region = self.combined_dirty_region(target)
+  dirty_present_plan_for_region(region, target, surface, max_rects)
+}
+
+///|
+pub fn[S : Surface] LayerTree::dirty_submit_plan(
+  self : LayerTree,
+  target : Canvas,
+  surface : S,
+  max_rects : Int,
+) -> DirtySubmitPlan {
+  let region = self.combined_dirty_region(target)
+  {
+    dirty_bounds: region.bounds(),
+    present_plan: dirty_present_plan_for_region(
+      region, target, surface, max_rects,
+    ),
+  }
+}
+
+///|
+fn[S : Surface] dirty_present_plan_for_region(
+  region : DirtyRegion,
+  target : Canvas,
+  surface : S,
+  max_rects : Int,
+) -> DirtyPresentPlan {
   let target_bounds = PixelRect::new(
     x=0,
     y=0,
@@ -299,7 +325,8 @@ pub fn[S : Surface] LayerTree::present_dirty_to_with_limit(
   guard rects.length() > 0 else {
     return target.present_dirty_to_with_limit(surface, max_rects)
   }
-  let plan = self.dirty_present_plan(target, surface, max_rects)
+  let submit_plan = self.dirty_submit_plan(target, surface, max_rects)
+  let plan = submit_plan.get_present_plan()
   let dirty_snapshot = snapshot_canvas_dirty_region(target)
   let pixel_snapshot = snapshot_canvas_pixels(target, rects)
   ignore(self.composite_rects_to(target, rects))

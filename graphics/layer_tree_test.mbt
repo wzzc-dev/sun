@@ -444,6 +444,35 @@ test "LayerTree::dirty_present_plan merges canvas and layer dirty regions" {
 }
 
 ///|
+test "LayerTree::dirty_submit_plan snapshots unclipped dirty bounds" {
+  let target = Canvas::new(8, 1)
+  target.draw_pixel(7, 0, Color::white())
+
+  let layer = Layer::new(1, 1).set_position(3, 0)
+  layer.get_canvas().draw_pixel(0, 0, Color::blue())
+  let tree = LayerTree::new()
+  ignore(tree.add_layer(layer))
+
+  let submit_plan = tree.dirty_submit_plan(target, MemorySurface::new(4, 1), 4)
+  assert_true(submit_plan.has_dirty())
+  assert_true(submit_plan.needs_present())
+  assert_true(!submit_plan.uses_bounds_fallback())
+  assert_true(
+    submit_plan.get_dirty_bounds() ==
+    Some(PixelRect::new(x=3, y=0, width=5, height=1)),
+  )
+  assert_eq(submit_plan.get_present_rect_count(), 1)
+  assert_true(
+    submit_plan.get_present_plan().get_rects()[0] ==
+    PixelRect::new(x=3, y=0, width=1, height=1),
+  )
+  assert_true(!target.get_dirty_region().is_empty())
+  assert_true(
+    tree.dirty_bounds() == Some(PixelRect::new(x=3, y=0, width=1, height=1)),
+  )
+}
+
+///|
 test "LayerTree::present_dirty_to_with_limit consumes exposed dirty present plan" {
   let target = Canvas::new(8, 1)
   target.draw_pixel(0, 0, Color::white())

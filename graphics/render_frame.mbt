@@ -123,11 +123,15 @@ pub fn[S : Surface] RenderFrame::dirty_present_plan(
   self : RenderFrame,
   surface : S,
 ) -> DirtyPresentPlan {
-  self.layer_tree.dirty_present_plan(
-    self.canvas,
-    surface,
-    self.dirty_rect_limit,
-  )
+  self.dirty_submit_plan(surface).get_present_plan()
+}
+
+///|
+pub fn[S : Surface] RenderFrame::dirty_submit_plan(
+  self : RenderFrame,
+  surface : S,
+) -> DirtySubmitPlan {
+  self.layer_tree.dirty_submit_plan(self.canvas, surface, self.dirty_rect_limit)
 }
 
 ///|

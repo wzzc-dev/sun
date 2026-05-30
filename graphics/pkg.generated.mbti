@@ -134,6 +134,17 @@ pub fn DirtyRegion::new() -> Self
 pub fn DirtyRegion::present_plan(Self, PixelRect, Int) -> DirtyPresentPlan
 pub fn DirtyRegion::present_rects(Self, PixelRect, Int) -> Array[PixelRect]
 
+pub struct DirtySubmitPlan {
+  dirty_bounds : PixelRect?
+  present_plan : DirtyPresentPlan
+} derive(@debug.Debug)
+pub fn DirtySubmitPlan::get_dirty_bounds(Self) -> PixelRect?
+pub fn DirtySubmitPlan::get_present_plan(Self) -> DirtyPresentPlan
+pub fn DirtySubmitPlan::get_present_rect_count(Self) -> Int
+pub fn DirtySubmitPlan::has_dirty(Self) -> Bool
+pub fn DirtySubmitPlan::needs_present(Self) -> Bool
+pub fn DirtySubmitPlan::uses_bounds_fallback(Self) -> Bool
+
 pub(all) enum FillRule {
   NonZero
   EvenOdd
@@ -184,6 +195,7 @@ pub fn LayerTree::composite_to(Self, Canvas) -> Int
 pub fn LayerTree::dirty_bounds(Self) -> PixelRect?
 pub fn[S : Surface] LayerTree::dirty_present_plan(Self, Canvas, S, Int) -> DirtyPresentPlan
 pub fn LayerTree::dirty_rects(Self, Int) -> Array[PixelRect]
+pub fn[S : Surface] LayerTree::dirty_submit_plan(Self, Canvas, S, Int) -> DirtySubmitPlan
 pub fn LayerTree::get_layer(Self, Int) -> Layer?
 pub fn LayerTree::get_layer_count(Self) -> Int
 pub fn LayerTree::invalidate_layer(Self, Int) -> Bool
@@ -375,6 +387,7 @@ pub struct RenderFrame {
 pub fn RenderFrame::clear_dirty_regions(Self) -> Unit
 pub fn RenderFrame::dirty_bounds(Self) -> PixelRect?
 pub fn[S : Surface] RenderFrame::dirty_present_plan(Self, S) -> DirtyPresentPlan
+pub fn[S : Surface] RenderFrame::dirty_submit_plan(Self, S) -> DirtySubmitPlan
 pub fn RenderFrame::get_canvas(Self) -> Canvas
 pub fn RenderFrame::get_dirty_rect_limit(Self) -> Int
 pub fn RenderFrame::get_height(Self) -> Int

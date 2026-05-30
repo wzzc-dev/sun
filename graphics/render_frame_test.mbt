@@ -91,6 +91,53 @@ test "RenderFrame::dirty_present_plan uses frame dirty rect limit" {
 }
 
 ///|
+test "RenderFrame::dirty_submit_plan snapshots dirty bounds and present plan" {
+  let frame = RenderFrame::new(8, 1).set_dirty_rect_limit(2)
+  frame.get_canvas().draw_pixel(0, 0, Color::red())
+
+  let middle = Layer::new(1, 1).set_position(3, 0)
+  middle.get_canvas().draw_pixel(0, 0, Color::green())
+  let right = Layer::new(1, 1).set_position(6, 0)
+  right.get_canvas().draw_pixel(0, 0, Color::blue())
+  ignore(frame.get_layer_tree().add_layer(middle))
+  ignore(frame.get_layer_tree().add_layer(right))
+
+  let submit_plan = frame.dirty_submit_plan(MemorySurface::new(8, 1))
+  assert_true(submit_plan.has_dirty())
+  assert_true(submit_plan.needs_present())
+  assert_true(submit_plan.uses_bounds_fallback())
+  assert_eq(submit_plan.get_present_rect_count(), 1)
+  assert_true(
+    submit_plan.get_dirty_bounds() ==
+    Some(PixelRect::new(x=0, y=0, width=7, height=1)),
+  )
+  assert_true(
+    submit_plan.get_present_plan().get_rects()[0] ==
+    PixelRect::new(x=0, y=0, width=7, height=1),
+  )
+  assert_true(frame.has_dirty())
+}
+
+///|
+test "RenderFrame::dirty_submit_plan keeps clipped-away dirty visible to scheduler" {
+  let frame = RenderFrame::new(4, 1)
+  frame.mark_dirty_rect(PixelRect::new(x=3, y=0, width=1, height=1))
+
+  let submit_plan = frame.dirty_submit_plan(MemorySurface::new(2, 1))
+  assert_true(submit_plan.has_dirty())
+  assert_true(!submit_plan.needs_present())
+  assert_eq(submit_plan.get_present_rect_count(), 0)
+  assert_true(
+    submit_plan.get_dirty_bounds() ==
+    Some(PixelRect::new(x=3, y=0, width=1, height=1)),
+  )
+  assert_true(
+    submit_plan.get_present_plan().get_mode() == DirtyPresentPlanMode::Empty,
+  )
+  assert_true(frame.has_dirty())
+}
+
+///|
 test "RenderFrame dirty helpers cover canvas and layer tree dirtiness" {
   let frame = RenderFrame::new(4, 2)
   assert_true(!frame.has_dirty())
