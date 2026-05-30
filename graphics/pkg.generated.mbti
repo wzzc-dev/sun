@@ -59,6 +59,7 @@ pub fn Canvas::save(Self) -> Unit
 pub fn Canvas::scale(Self, sx~ : Double, sy~ : Double) -> Unit
 pub fn Canvas::set_clip_rect(Self, Rect) -> Unit
 pub fn Canvas::set_transform(Self, Transform) -> Unit
+pub fn Canvas::stroke_line(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::stroke_path(Self, Path, Paint) -> Unit
 pub fn Canvas::stroke_rect(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::stroke_rounded_rect(Self, Double, Double, Double, Double, Double, Paint) -> Unit

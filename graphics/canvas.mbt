@@ -226,6 +226,19 @@ pub fn Canvas::stroke_rect(
 }
 
 ///|
+/// Draw a stroked line segment.
+pub fn Canvas::stroke_line(
+  self : Canvas,
+  x0 : Double,
+  y0 : Double,
+  x1 : Double,
+  y1 : Double,
+  paint : Paint,
+) -> Unit {
+  self.stroke_path(Path::new().move_to(x0, y0).line_to(x1, y1), paint)
+}
+
+///|
 /// Fill a path with the given paint
 pub fn Canvas::fill_path(self : Canvas, path : Path, paint : Paint) -> Unit {
   guard paint.style is PaintStyle::Fill && !path.is_empty() else { return }

@@ -75,7 +75,7 @@ wzzc-dev/
 - Scanline triangle/polygon fill
 - Bresenham line drawing
 - Bezier curve rendering
-- `Canvas::stroke_rect`, `Path::add_rounded_rect`, and rounded-rect fill/stroke helpers for reusable GUI borders, panels, buttons, and input backgrounds
+- `Canvas::stroke_line`/`stroke_rect`, `Path::add_rounded_rect`, and rounded-rect fill/stroke helpers for reusable GUI dividers, borders, panels, buttons, and input backgrounds
 - `Canvas::draw_placeholder_text` for debug text boxes; real text drawing lives in `renderer`
 - Canvas save/restore state stack, transform-aware rect/path drawing, transform helpers, and intersecting clip scopes for nested GUI drawing
 - `Surface` trait, `MemorySurface`, and full/rect present helpers for `Canvas` and `Pixmap`
