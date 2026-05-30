@@ -111,6 +111,58 @@ test "NativeSurface presents dirty and full RenderFrame paths" {
 }
 
 ///|
+test "NativeSurface exposes RenderFrame dirty submit plans" {
+  let frame = @graphics.RenderFrame::new(8, 1).set_dirty_rect_limit(2)
+  frame.get_canvas().draw_pixel(0, 0, @graphics.Color::red())
+
+  let middle = @graphics.Layer::new(1, 1).set_position(3, 0)
+  middle.get_canvas().draw_pixel(0, 0, @graphics.Color::green())
+  let right = @graphics.Layer::new(1, 1).set_position(6, 0)
+  right.get_canvas().draw_pixel(0, 0, @graphics.Color::blue())
+  ignore(frame.get_layer_tree().add_layer(middle))
+  ignore(frame.get_layer_tree().add_layer(right))
+
+  let surface = NativeSurface::from_frame(42, frame)
+  let submit_plan = surface.dirty_frame_submit_plan(frame)
+  assert_true(submit_plan.has_dirty())
+  assert_true(submit_plan.needs_present())
+  assert_true(submit_plan.uses_bounds_fallback())
+  assert_eq(submit_plan.get_present_rect_count(), 1)
+  assert_true(
+    submit_plan.get_present_plan().get_rects()[0] ==
+    @graphics.PixelRect::new(x=0, y=0, width=7, height=1),
+  )
+  assert_true(frame.has_dirty())
+
+  let constructed_plan = dirty_render_frame_submit_plan(42, frame)
+  assert_true(
+    constructed_plan.get_present_plan().get_rects()[0] ==
+    submit_plan.get_present_plan().get_rects()[0],
+  )
+}
+
+///|
+test "NativeSurface dirty submit plan preserves clipped-away dirty without presenting" {
+  let count = Ref(0)
+  let frame = @graphics.RenderFrame::new(4, 1)
+  frame.mark_dirty_rect(@graphics.PixelRect::new(x=3, y=0, width=1, height=1))
+  let surface = NativeSurface::new(42, 2, 1).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+
+  let submit_plan = surface.dirty_frame_submit_plan(frame)
+  assert_true(submit_plan.has_dirty())
+  assert_true(!submit_plan.needs_present())
+  assert_eq(submit_plan.get_present_rect_count(), 0)
+  assert_true(
+    submit_plan.get_present_plan().get_mode() ==
+    @graphics.DirtyPresentPlanMode::Empty,
+  )
+  assert_eq(count.val, 0)
+  assert_true(frame.has_dirty())
+}
+
+///|
 test "render frame present helpers construct NativeSurface internally" {
   let frame = @graphics.RenderFrame::new(2, 1)
   let layer = @graphics.Layer::new(1, 1).set_position(1, 0)
