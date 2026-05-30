@@ -847,6 +847,39 @@ test "Canvas::fill_rounded_rect matches rounded path fill" {
 }
 
 ///|
+test "Canvas::fill_circle matches circle path fill" {
+  let helper_canvas = Canvas::new(7, 7)
+  helper_canvas.clear(Color::white())
+  helper_canvas.clear_dirty_region()
+  helper_canvas.set_clip_rect(Rect::new(x=1.0, y=0.0, width=5.0, height=7.0))
+  helper_canvas.translate(tx=1.0, ty=0.0)
+  helper_canvas.fill_circle(
+    2.0,
+    3.0,
+    2.0,
+    Paint::new().set_color(Color::black()),
+  )
+
+  let path_canvas = Canvas::new(7, 7)
+  path_canvas.clear(Color::white())
+  path_canvas.clear_dirty_region()
+  path_canvas.set_clip_rect(Rect::new(x=1.0, y=0.0, width=5.0, height=7.0))
+  path_canvas.translate(tx=1.0, ty=0.0)
+  path_canvas.fill_path(
+    Path::new().add_circle(2.0, 3.0, 2.0),
+    Paint::new().set_color(Color::black()),
+  )
+
+  assert_same_pixmap(helper_canvas.get_pixmap(), path_canvas.get_pixmap())
+  assert_true(
+    helper_canvas.get_dirty_region().bounds() ==
+    path_canvas.get_dirty_region().bounds(),
+  )
+  assert_eq(helper_canvas.get_pixmap().get_pixel(3, 3), Color::black())
+  assert_true(helper_canvas.get_pixmap().get_pixel(1, 1) != Color::black())
+}
+
+///|
 test "Canvas::fill_path composites paint opacity" {
   let canvas = Canvas::new(2, 2)
   canvas.clear(Color::white())
@@ -1051,6 +1084,32 @@ test "Canvas::stroke_line applies transform and clip" {
     canvas.get_dirty_region().bounds() ==
     Some(PixelRect::new(x=2, y=0, width=3, height=2)),
   )
+}
+
+///|
+test "Canvas::stroke_circle matches circle path stroke" {
+  let paint = Paint::new()
+    .set_color(Color::black())
+    .set_style(PaintStyle::Stroke)
+    .set_stroke_width(1.0)
+
+  let helper_canvas = Canvas::new(7, 7)
+  helper_canvas.clear(Color::white())
+  helper_canvas.clear_dirty_region()
+  helper_canvas.stroke_circle(3.0, 3.0, 2.0, paint)
+
+  let path_canvas = Canvas::new(7, 7)
+  path_canvas.clear(Color::white())
+  path_canvas.clear_dirty_region()
+  path_canvas.stroke_path(Path::new().add_circle(3.0, 3.0, 2.0), paint)
+
+  assert_same_pixmap(helper_canvas.get_pixmap(), path_canvas.get_pixmap())
+  assert_true(
+    helper_canvas.get_dirty_region().bounds() ==
+    path_canvas.get_dirty_region().bounds(),
+  )
+  assert_not_white(helper_canvas.get_pixmap().get_pixel(3, 1))
+  assert_eq(helper_canvas.get_pixmap().get_pixel(3, 3), Color::white())
 }
 
 ///|

@@ -90,7 +90,7 @@ Application / GUI
 | 能力域 | v0.2 可用基线 | v0.5 稳定目标 | v1.0-alpha 目标 |
 |--------|---------------|---------------|-----------------|
 | Text | TTF -> layout -> glyph mask -> Canvas，Latin/ASCII 回归，`TextLayout` 基础对齐、显式换行、尾随空格和 spacing | 明确 `FontFace`/`GlyphRun`/`TextLayout` API，基础 CJK、kerning、fallback 轮廓 | Unicode 分段、BiDi 初版、字体缓存、更多 OpenType 表 |
-| Vector | transform-aware rect/path fill、line/rect/rounded-rect Canvas helpers、stroke、cap/join/dash、clip/intersect clip、transform helpers、Canvas save/restore state stack、4x4 coverage | 更稳定的 fill rule、miter/dash 行为、路径简化和基础 boolean 可评估 | 文档化 Canvas API、复杂路径回归、性能基准 |
+| Vector | transform-aware rect/path fill、line/rect/circle/rounded-rect Canvas helpers、stroke、cap/join/dash、clip/intersect clip、transform helpers、Canvas save/restore state stack、4x4 coverage | 更稳定的 fill rule、miter/dash 行为、路径简化和基础 boolean 可评估 | 文档化 Canvas API、复杂路径回归、性能基准 |
 | Image/Layer | Pixmap blit、source-rect atlas drawing、tiled Pixmap fills、nearest/bilinear sampling modes、nine-patch GUI image scaling、dirty region 合并、mask/alpha composition、Layer cache、LayerTree、属性变化 invalidation、LayerTree partial present、RenderFrame resize、rect present API | 更高质量采样、GUI event-loop 调度与 layer lifecycle 策略 | PNG 基础解码、GUI 集成 |
 | Surface | `MemorySurface`、`NativeSurface`、`Canvas/Pixmap::present_to`、`RenderFrame -> NativeSurface` helpers、`present_pixels_rect` | dirty rect 调度、row stride、错误传播和 pre-present hook 标准化 | Win32/macOS/Linux/WASM 后端都有 build 或运行验证 |
 | Tooling | `scripts/check_ci.sh`、`.mbti`、核心单测 | warning baseline 可审查、覆盖率/benchmark 初版 | release checklist、示例矩阵、性能趋势 |
@@ -262,6 +262,7 @@ Application / GUI
 - [x] Canvas `fill_rect` 支持当前 transform，与 path/stroke 状态语义保持一致，并覆盖 transformed clip 与 dirty bounds 回归
 - [x] Canvas 支持 `stroke_line` helper，用于 GUI 分隔线、下划线和焦点线，并覆盖 path 等价、transform、clip 与 dirty bounds 回归
 - [x] Canvas 支持 `stroke_rect` helper，用于 GUI 边框和焦点框，并覆盖 path 等价、transform、clip 与 dirty bounds 回归
+- [x] Canvas 支持圆形 fill/stroke helper，用于 GUI badge、radio 和 slider knob，并覆盖 path 等价、transform、clip 与 dirty bounds 回归
 - [x] Path 支持圆角矩形构造，用于 GUI 面板、按钮和输入框背景，并覆盖半径 clamp、退化矩形与 Canvas 像素回归
 - [x] Canvas 支持圆角矩形 fill/stroke helper，复用 path 语义并覆盖 transform、clip、dirty region 与描边像素回归
 - [ ] 路径布尔运算（并集、交集、差集）

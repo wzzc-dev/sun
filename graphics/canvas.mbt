@@ -212,6 +212,19 @@ pub fn Canvas::fill_rounded_rect(
 }
 
 ///|
+/// Draw a filled circle.
+pub fn Canvas::fill_circle(
+  self : Canvas,
+  cx : Double,
+  cy : Double,
+  radius : Double,
+  paint : Paint,
+) -> Unit {
+  guard radius > 0.0 else { return }
+  self.fill_path(Path::new().add_circle(cx, cy, radius), paint)
+}
+
+///|
 /// Draw a stroked rectangle.
 pub fn Canvas::stroke_rect(
   self : Canvas,
@@ -236,6 +249,19 @@ pub fn Canvas::stroke_line(
   paint : Paint,
 ) -> Unit {
   self.stroke_path(Path::new().move_to(x0, y0).line_to(x1, y1), paint)
+}
+
+///|
+/// Draw a stroked circle.
+pub fn Canvas::stroke_circle(
+  self : Canvas,
+  cx : Double,
+  cy : Double,
+  radius : Double,
+  paint : Paint,
+) -> Unit {
+  guard radius > 0.0 else { return }
+  self.stroke_path(Path::new().add_circle(cx, cy, radius), paint)
 }
 
 ///|

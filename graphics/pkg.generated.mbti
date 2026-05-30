@@ -39,6 +39,7 @@ pub fn Canvas::draw_scaled_pixmap_rect_bilinear(Self, Pixmap, PixelRect, Int, In
 #deprecated
 pub fn Canvas::draw_text(Self, String, Double, Double, Double, Color) -> Unit
 pub fn Canvas::draw_tiled_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint) -> Unit
+pub fn Canvas::fill_circle(Self, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::fill_path(Self, Path, Paint) -> Unit
 pub fn Canvas::fill_rect(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::fill_rounded_rect(Self, Double, Double, Double, Double, Double, Paint) -> Unit
@@ -59,6 +60,7 @@ pub fn Canvas::save(Self) -> Unit
 pub fn Canvas::scale(Self, sx~ : Double, sy~ : Double) -> Unit
 pub fn Canvas::set_clip_rect(Self, Rect) -> Unit
 pub fn Canvas::set_transform(Self, Transform) -> Unit
+pub fn Canvas::stroke_circle(Self, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::stroke_line(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::stroke_path(Self, Path, Paint) -> Unit
 pub fn Canvas::stroke_rect(Self, Double, Double, Double, Double, Paint) -> Unit
