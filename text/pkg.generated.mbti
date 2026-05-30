@@ -273,6 +273,8 @@ pub enum LineBreakClass {
   AI
   Unknown
 } derive(Eq, @debug.Debug)
+pub fn LineBreakClass::to_string(Self) -> String
+pub impl Show for LineBreakClass
 
 pub struct LineSegment {
   x0 : Double
@@ -332,6 +334,8 @@ pub struct ShapedText {
   positions : Array[GlyphPosition]
   width : Int
 } derive(@debug.Debug)
+pub fn ShapedText::get_glyphs(Self) -> Array[GlyphInfo]
+pub fn ShapedText::get_positions(Self) -> Array[GlyphPosition]
 pub fn ShapedText::get_width(Self) -> Int
 pub fn ShapedText::glyph_count(Self) -> Int
 
@@ -370,6 +374,8 @@ pub enum TextDirection {
   LeftToRight
   RightToLeft
 } derive(Eq, @debug.Debug)
+pub fn TextDirection::left_to_right() -> Self
+pub fn TextDirection::right_to_left() -> Self
 
 pub struct TextLayout {
   runs : Array[GlyphRun]

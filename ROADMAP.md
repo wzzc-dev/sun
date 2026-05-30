@@ -150,7 +150,8 @@ Application / GUI
 - [x] 修复 workspace 中 window 本地依赖的模块名对齐
 - [x] 建立根项目验证脚本 `scripts/check_ci.sh`
 - [x] 生成并纳入 `graphics/pkg.generated.mbti`
-- [ ] 将核心 warning 分批清理到可审查水平
+- [x] 清理 `text` 核心包 unused constructor warning，将 `TextDirection::RightToLeft` 与 Unicode line-break class 构造路径转化为可测试行为
+- [ ] 将其余核心 warning 分批清理到可审查水平
 - [x] 为渲染快照测试确定稳定格式（灰度 mask 文本 dump）
 
 #### 1.1 修复字形渲染缺陷
@@ -226,6 +227,7 @@ Application / GUI
 #### 3.1 Unicode 支持
 - [ ] 完整 Unicode 字符映射
 - [ ] 支持 Unicode 码点 > U+FFFF（代理对）
+- [x] 扩展基础 Unicode line-break class 映射，覆盖数字、组合符、Hangul cluster、ZWJ/word joiner、emoji modifier 和非法码点兜底
 - [ ] 实现 Unicode 段落与行分割算法（UAX #14, #9）
 - [ ] 双向文本支持（BiDi，UAX #9）
 
@@ -240,7 +242,8 @@ Application / GUI
 
 #### 3.3 国际化
 - [ ] CJK 文本支持（中日韩）
-- [ ] 从右到左文本（RTL，阿拉伯语、希伯来语）
+- [x] `ShapingBuffer` 支持基础 RightToLeft cluster 顺序，并暴露 inspectable shaped glyph/position 访问器
+- [ ] 完整从右到左文本（RTL，阿拉伯语、希伯来语，含 BiDi 与 shaping 细节）
 - [ ] 垂直文本布局
 
 ---

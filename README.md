@@ -98,8 +98,8 @@ Text processing library (font parsing, shaping, layout).
 - Explicit newline and empty-line preservation in `TextLayout`, text masks, and renderer text drawing
 - Configurable letter spacing and word spacing through `LayoutConfig`
 - Trailing-space measurement and wrapping semantics suitable for editor-style text blocks
-- Text shaping (simplified)
-- Text layout and line breaking
+- Simplified LTR/RTL shaping order with inspectable `ShapedText` glyphs and positions
+- Text layout and basic Unicode line-break classes for digits, combining marks, Hangul clusters, joiners, emoji modifiers, and CJK ranges
 - Glyph rasterization with anti-aliasing
 - Kerning support
 

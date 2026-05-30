@@ -6,6 +6,18 @@ pub enum TextDirection {
 } derive(Eq, Debug)
 
 ///|
+/// Left-to-right text direction.
+pub fn TextDirection::left_to_right() -> TextDirection {
+  TextDirection::LeftToRight
+}
+
+///|
+/// Right-to-left text direction.
+pub fn TextDirection::right_to_left() -> TextDirection {
+  TextDirection::RightToLeft
+}
+
+///|
 /// Text script (ISO 15924 code)
 pub struct Script {
   tag : String
@@ -60,10 +72,14 @@ pub fn ShapingBuffer::shape(
   let mut total_width = 0
 
   for i in 0..<len {
-    let glyph_id = GlyphId::new(i)
+    let cluster = match self.direction {
+      TextDirection::LeftToRight => i
+      TextDirection::RightToLeft => len - i - 1
+    }
+    let glyph_id = GlyphId::new(cluster)
     let char_width = (self.font_size * 0.6).to_int()
 
-    glyphs.push(GlyphInfo::new(glyph_id~, cluster=i))
+    glyphs.push(GlyphInfo::new(glyph_id~, cluster~))
     positions.push(
       GlyphPosition::new(
         glyph_id~,

@@ -70,3 +70,15 @@ pub fn ShapedText::get_width(self : ShapedText) -> Int {
 pub fn ShapedText::glyph_count(self : ShapedText) -> Int {
   self.glyphs.length()
 }
+
+///|
+/// Get shaped glyph infos.
+pub fn ShapedText::get_glyphs(self : ShapedText) -> Array[GlyphInfo] {
+  self.glyphs
+}
+
+///|
+/// Get shaped glyph positions.
+pub fn ShapedText::get_positions(self : ShapedText) -> Array[GlyphPosition] {
+  self.positions
+}
