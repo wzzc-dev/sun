@@ -177,6 +177,7 @@ Application / GUI
 - Renderer 提供 `RendererTextResources`，让 GUI/resource 代码以单个对象复用 bounded text mask cache、glyph mask cache 与 glyph atlas 状态
 - `examples/render_bench` 提供确定性的 CPU render microbenchmark smoke，覆盖 fill_rect、path fill、stroke、glyph raster/mask composition、Pixmap blit 与 present copy telemetry
 - `TextLayout` 支持基于现有 Unicode line-break class 的无空格 CJK/Hangul 软换行，作为基础 CJK GUI 文本块换行能力
+- `FontFace`/`TextLayout` 覆盖 TTF format-12 cmap 的 supplementary-plane codepoint 映射，保证 U+FFFF 以上字符能进入 glyph run
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
 - Canvas 路径描边（Butt/Round/Square cap，Miter/Round/Bevel join，dash/dotted）
 - 基础 clip rect 与 intersect clip，覆盖 rect/path/stroke/mask/pixel/pixmap 绘制入口
@@ -286,7 +287,7 @@ Application / GUI
 
 #### 3.1 Unicode 支持
 - [ ] 完整 Unicode 字符映射
-- [ ] 支持 Unicode 码点 > U+FFFF（代理对）
+- [x] 支持 Unicode 码点 > U+FFFF 从 TTF format-12 cmap 经 `FontFace::char_to_glyph` 进入 `TextLayout` glyph run
 - [x] 扩展基础 Unicode line-break class 映射，覆盖数字、组合符、Hangul cluster、ZWJ/word joiner、emoji modifier 和非法码点兜底
 - [ ] 实现 Unicode 段落与行分割算法（UAX #14, #9）
 - [ ] 双向文本支持（BiDi，UAX #9）

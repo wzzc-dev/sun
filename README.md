@@ -129,7 +129,7 @@ Text processing library (font parsing, shaping, layout).
 - Configurable letter spacing and word spacing through `LayoutConfig`
 - Trailing-space measurement and wrapping semantics suitable for editor-style text blocks
 - Simplified LTR/RTL shaping order with inspectable `ShapedText` glyphs and positions
-- Text layout and basic Unicode line-break classes for digits, combining marks, Hangul clusters, joiners, emoji modifiers, and CJK ranges, with unspaced CJK/Hangul wrapping through `TextLayout`
+- Text layout and basic Unicode line-break classes for digits, combining marks, Hangul clusters, joiners, emoji modifiers, CJK ranges, and supplementary-plane format-12 cmap input, with unspaced CJK/Hangul wrapping through `TextLayout`
 - Glyph rasterization with anti-aliasing
 - Kerning support
 

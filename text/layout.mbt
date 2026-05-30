@@ -346,6 +346,7 @@ fn has_non_space_after(
 fn split_layout_tokens(text : String) -> Array[LayoutToken] {
   let tokens = []
   let mut current_word = ""
+  let mut current_word_class = None
   let mut i = 0
   let len = text.length()
 
@@ -358,6 +359,7 @@ fn split_layout_tokens(text : String) -> Array[LayoutToken] {
           if current_word.length() > 0 {
             tokens.push(LayoutToken::Text(current_word))
             current_word = ""
+            current_word_class = None
           }
           tokens.push(LayoutToken::LineBreak)
           if c is '\r' {
@@ -371,6 +373,7 @@ fn split_layout_tokens(text : String) -> Array[LayoutToken] {
           if current_word.length() > 0 {
             tokens.push(LayoutToken::Text(current_word))
             current_word = ""
+            current_word_class = None
           }
           // Add space as separate word
           if c is ' ' {
@@ -378,15 +381,17 @@ fn split_layout_tokens(text : String) -> Array[LayoutToken] {
           }
         } else {
           let curr_class = get_line_break_class(c.to_int())
-          match previous_layout_word_class(current_word) {
+          match current_word_class {
             Some(prev_class) =>
               if should_split_unspaced_layout_token(prev_class, curr_class) {
                 tokens.push(LayoutToken::Text(current_word))
                 current_word = ""
+                current_word_class = None
               }
             None => ()
           }
           current_word = current_word + c.to_string()
+          current_word_class = Some(curr_class)
         }
       None => ignore(0)
     }
@@ -399,15 +404,6 @@ fn split_layout_tokens(text : String) -> Array[LayoutToken] {
   }
 
   tokens
-}
-
-///|
-fn previous_layout_word_class(word : String) -> LineBreakClass? {
-  guard word.length() > 0 else { return None }
-  match word.get_char(word.length() - 1) {
-    Some(ch) => Some(get_line_break_class(ch.to_int()))
-    None => None
-  }
 }
 
 ///|

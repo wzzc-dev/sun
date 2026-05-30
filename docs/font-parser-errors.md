@@ -57,6 +57,9 @@ categories rather than depending on a precise validation order.
   inverted.
 - `InvalidCmapGroupRange(start, end)` means a format 12 group is inverted or
   outside Unicode scalar range.
+- Supported format 12 groups can map supplementary-plane codepoints such as
+  emoji or CJK extension characters into `FontFace::char_to_glyph` and
+  `TextLayout` glyph runs.
 - `InvalidTable(tag, reason)` is a compatibility catch-all for future or
   migration-only validation. Prefer adding a structured variant for new parser
   behavior that callers or tests need to handle explicitly.

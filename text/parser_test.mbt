@@ -258,6 +258,37 @@ test "parse_font_result parses cmap format 4 mappings" {
 }
 
 ///|
+test "parse_font_result maps supplementary Unicode cmap format 12 groups" {
+  let bytes = make_structural_font_with_core_tables(
+    make_head_table_with(10, 1),
+    make_hhea_table_with(10, 0, 0, 2),
+    make_hmtx_table_two_metrics(),
+    make_maxp_table_with(2),
+    make_cmap_format12_mapping(),
+    make_loca_long_table_from_offsets([0, 0, 0]),
+    [],
+    None,
+  )
+  match FontFace::from_bytes(bytes) {
+    Ok(face) => {
+      assert_eq(face.char_to_glyph(0x1F600), 1)
+      assert_eq(face.char_to_glyph(0x1F601), 0)
+      let text = string_from_codepoints([0x1F600])
+      let layout = TextLayout::layout(
+        face,
+        text,
+        LayoutConfig::new(max_width=20.0, font_size=10.0, line_height=10.0),
+      )
+      assert_eq(layout.run_count(), 1)
+      assert_eq(layout.get_width(), 7.0)
+      assert_eq(layout.get_runs()[0].glyph_count(), 1)
+      assert_eq(layout.get_runs()[0].get_glyphs()[0].glyph_id, 1)
+    }
+    Err(_) => abort("expected format 12 supplementary font face")
+  }
+}
+
+///|
 test "parse_font_result reads long loca glyph offsets" {
   let glyph = make_simple_triangle_glyph()
   let bytes = make_structural_font_with_core_tables(
@@ -736,6 +767,25 @@ fn make_cmap_format4_mapping() -> Array[Byte] {
 }
 
 ///|
+fn make_cmap_format12_mapping() -> Array[Byte] {
+  let out = []
+  append_u16(out, 0) // version
+  append_u16(out, 1) // numTables
+  append_u16(out, 3) // platform
+  append_u16(out, 10) // encoding
+  append_u32(out, 12) // subtable offset
+  append_u16(out, 12) // format
+  append_u16(out, 0) // reserved
+  append_u32(out, 28) // length
+  append_u32(out, 0) // language
+  append_u32(out, 1) // nGroups
+  append_u32(out, 0x1F600) // startCharCode
+  append_u32(out, 0x1F600) // endCharCode
+  append_u32(out, 1) // startGlyphID
+  out
+}
+
+///|
 fn make_empty_cmap_table() -> Array[Byte] {
   let out = []
   append_u16(out, 0) // version
@@ -892,4 +942,13 @@ fn append_zeroes(out : Array[Byte], count : Int) -> Unit {
   for _ in 0..<count {
     append_byte(out, 0)
   }
+}
+
+///|
+fn string_from_codepoints(codepoints : Array[Int]) -> String {
+  let out = StringBuilder(size_hint=codepoints.length())
+  for codepoint in codepoints {
+    out.write_char(codepoint.unsafe_to_char())
+  }
+  out.to_string()
 }

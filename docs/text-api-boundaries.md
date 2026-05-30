@@ -55,6 +55,8 @@ the facade types below.
 - Unspaced CJK and Hangul text is split at the package's Unicode line-break
   opportunities before width wrapping, so GUI text blocks can wrap common CJK
   runs without requiring ASCII spaces between glyphs.
+- Supplementary-plane Unicode codepoints can flow from checked format-12 TTF
+  `cmap` parsing through `FontFace::char_to_glyph` into `TextLayout` glyph runs.
 
 The renderer package should accept `FontFace`/`TextLayout` level concepts first.
 Legacy functions that accept `Font` or `LayoutResult` may remain for tests and
