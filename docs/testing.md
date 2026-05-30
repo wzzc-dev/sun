@@ -42,8 +42,11 @@ tests do not need to hand-copy surface pixels. For compact regression checks
 and benchmark telemetry, `Pixmap::checksum`, `Pixmap::checksum_rect`,
 `MemorySurface::checksum`, and `MemorySurface::checksum_rect` use the same
 deterministic raw RGBA byte checksum without treating it as a cryptographic
-hash. The `headless_render` example checks the exported header, byte length,
-and first rendered RGB pixel as an executable smoke test for off-screen output.
+hash. `MemorySurface::reset_present_telemetry` clears present records and
+aggregate counters while preserving pixels, which keeps multi-frame headless
+tests from allocating a new reference surface only to restart telemetry. The
+`headless_render` example checks the exported header, byte length, and first
+rendered RGB pixel as an executable smoke test for off-screen output.
 
 The `softbuffer` package implements the `graphics.Surface` present contract for
 native windows. Its tests cover validation and trait dispatch without requiring

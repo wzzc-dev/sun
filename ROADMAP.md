@@ -114,6 +114,7 @@ Application / GUI
 - `headless_render` 示例走 `RenderFrame + LayerTree + MemorySurface`，无需窗口即可自校验离屏渲染与 dirty present 路径
 - `graphics.validate_present_rect` 标准化 Surface rect present 的 bounds、row stride 和 buffer 长度校验，`MemorySurface` 与 `softbuffer.NativeSurface` 共享同一错误语义
 - `MemorySurface` 记录每次 validated present 的目标 rect、row stride 与聚合像素/字节 telemetry，让 headless 测试能直接审查 present lifecycle
+- `MemorySurface` 可在保留像素内容的同时 reset present telemetry，让多帧 headless 测试能复用 reference surface 并重新统计 present lifecycle
 - `MemorySurface` 暴露隔离 full/rect `Pixmap` snapshot 与 PPM(P6) bytes 导出，让 headless 示例和测试直接消费离屏像素输出
 - `Pixmap` 与 `MemorySurface` 暴露隔离 full/rect raw RGBA bytes，让 headless fixture 能直接断言像素字节而不共享可变 backing storage
 - `Pixmap` 与 `MemorySurface` 暴露 full/rect 轻量 RGBA byte checksum，让 headless 回归和 benchmark telemetry 可以复用同一套确定性像素摘要
@@ -356,6 +357,7 @@ Application / GUI
 - [x] `PixelRect`/`DirtyRegion` 数据结构与 Canvas dirty tracking
 - [x] `Surface::present_pixels_rect`、`Pixmap::present_rect_to`、`Canvas::present_dirty_to` 基础 partial present 契约
 - [x] `MemorySurface` 记录 validated full/rect present 操作，暴露目标 rect、row stride、紧凑像素/字节成本与 source-stride 字节成本，便于测试 present lifecycle
+- [x] `MemorySurface::reset_present_telemetry` 清理 present 计数与 records，同时保留像素内容，方便多帧 headless 测试复用 surface
 - [x] `MemorySurface` 暴露 full/rect `to_pixmap` 与 `to_ppm_bytes`，覆盖 snapshot 拷贝隔离、非法 rect 错误和离屏 PPM fixture 导出路径
 - [x] `MemorySurface` 暴露 full/rect raw RGBA bytes，覆盖离屏像素 fixture 字节序和非法 rect 错误路径
 - [x] `MemorySurface` 暴露 full/rect checksum，覆盖离屏像素摘要和非法 rect 错误路径

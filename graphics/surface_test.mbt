@@ -97,6 +97,30 @@ test "MemorySurface::present_pixels_rect updates only destination rectangle" {
 }
 
 ///|
+test "MemorySurface::reset_present_telemetry clears records but keeps pixels" {
+  let surface = MemorySurface::new(2, 1)
+  let pixels : FixedArray[Byte] = FixedArray::make(8, 0)
+  write_rgba(pixels, 0, Color::red())
+  write_rgba(pixels, 4, Color::blue())
+  assert_true(surface.present_pixels(2, 1, 8, pixels) == Ok(()))
+  assert_eq(surface.get_present_count(), 1)
+  assert_eq(surface.get_present_pixel_count(), 2)
+  assert_eq(surface.get_present_byte_count(), 8)
+  assert_eq(surface.get_present_source_byte_count(), 8)
+  assert_eq(surface.get_present_records().length(), 1)
+
+  surface.reset_present_telemetry()
+  assert_eq(surface.get_present_count(), 0)
+  assert_eq(surface.get_present_pixel_count(), 0)
+  assert_eq(surface.get_present_byte_count(), 0)
+  assert_eq(surface.get_present_source_byte_count(), 0)
+  assert_eq(surface.get_present_records().length(), 0)
+  assert_true(surface.get_last_present_record() is None)
+  assert_eq(surface.get_pixel(0, 0), Color::red())
+  assert_eq(surface.get_pixel(1, 0), Color::blue())
+}
+
+///|
 test "MemorySurface::to_pixmap snapshots pixels with isolated storage" {
   let surface = MemorySurface::new(2, 1)
   let pixels : FixedArray[Byte] = FixedArray::make(8, 0)

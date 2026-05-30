@@ -309,6 +309,15 @@ pub fn MemorySurface::get_last_present_record(
 }
 
 ///|
+/// Clear accumulated present telemetry while preserving surface pixels.
+pub fn MemorySurface::reset_present_telemetry(self : MemorySurface) -> Unit {
+  self.present_count = 0
+  while self.present_records.length() > 0 {
+    ignore(self.present_records.remove(self.present_records.length() - 1))
+  }
+}
+
+///|
 pub fn MemorySurface::get_pixel(
   self : MemorySurface,
   x : Int,
