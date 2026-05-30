@@ -175,6 +175,7 @@ Application / GUI
 - `TextMaskCache` 支持按 key 复用 rendered `CoverageMask`，并通过像素拷贝隔离缓存内容，同时提供 hit/render miss telemetry，作为 GUI label/text run 缓存基础
 - Renderer 提供 `draw_text_face_cached`，让调用方传入 `TextMaskCache` 直接绘制 repeated label/text run，并返回 text-mask cache hit/render telemetry
 - Renderer 提供 `draw_text_fallback_line`，消费 `FontFallbackPlan` 对有序 `FontFace` 栈进行单行 fallback 绘制并报告 missing span telemetry
+- Renderer 提供 `draw_text_fallback_line_cached`，让 repeated fallback label 可复用 `TextMaskCache` 中的 per-span rendered mask，并报告 span 级 render/cache-hit telemetry
 - Renderer 提供 `RendererTextResources`，让 GUI/resource 代码以单个对象复用 bounded text mask cache、glyph mask cache 与 glyph atlas 状态
 - `examples/render_bench` 提供确定性的 CPU render microbenchmark smoke，覆盖 fill_rect、path fill、stroke、glyph raster/mask composition、Pixmap blit 与 present copy telemetry
 - `Font`/`FontFace` 暴露 glyph coverage 查询，供后续 fallback/resource 调度在绘制前判断 missing glyph
@@ -239,6 +240,7 @@ Application / GUI
 - [x] 暴露 `Canvas::draw_mask_rect`、`Renderer::draw_glyph_atlas_entry`、`Renderer::draw_text_face_cached` 与 `Renderer::draw_text_face_atlas`，让 text mask cache、glyph atlas entry 和带 cache/atlas telemetry 的基础 atlas-backed text path 可直接合成到 Pixmap
 - [x] 暴露 `FontFallbackPlan` 与 `plan_font_fallback`，让 GUI/resource 层可在 shaping 与绘制前做有序字体覆盖分段和 missing glyph 统计
 - [x] 暴露 `Renderer::draw_text_fallback_line`，让 GUI label 可用有序 `FontFace` 栈绘制 fallback span 并获得 missing glyph telemetry
+- [x] 暴露 `Renderer::draw_text_fallback_line_cached`，让 repeated fallback label 可通过 `TextMaskCache` 复用 per-span rendered mask 并获得 render/cache-hit telemetry
 - [x] 在 `text` 侧产出稳定的 glyph/text mask，并在 `font_demo` 接入 `Canvas::draw_mask`
 - [x] 将 `font_demo` 改为调用 Renderer Core 文本绘制入口
 - [x] 将旧 `Canvas::draw_text` 的公开 API 迁移到真实字体渲染管线或标记废弃
@@ -265,6 +267,7 @@ Application / GUI
 - [x] 为 `FontFaceCache` 增加 opt-in LRU entry limit，覆盖最近访问刷新、最旧条目淘汰和非法容量 clamp 回归
 - [x] 增加 `GlyphMaskCache`，让 renderer/resource 代码可按 key 复用单 glyph mask，并为 cache hit/miss telemetry 与后续 glyph atlas 铺底
 - [x] 将 `TextMaskCache` 接入 Renderer，提供 repeated label/text run 的 cached draw path 与 hit/render telemetry
+- [x] 将 `TextMaskCache` 接入 Renderer fallback line path，提供 repeated fallback label span 的 cached draw path 与 hit/render telemetry
 - [x] 为 `GlyphMaskCache`/`TextMaskCache` 增加 opt-in LRU entry limit，覆盖最近访问刷新、最旧条目淘汰和非法容量 clamp 回归
 - [x] 增加最小 `GlyphMaskAtlas`，让 renderer/resource 代码可先获得确定性的 glyph mask 行打包 placement、占用 telemetry、hit/insert telemetry 与满载清空重插信号
 - [x] 增加 `RendererTextResources`，让 renderer 调用方复用 bounded text/glyph mask cache 与 glyph atlas，并覆盖 cached-mask/atlas draw path 与 clear lifecycle
@@ -295,6 +298,7 @@ Application / GUI
 - [x] 支持 Unicode 码点 > U+FFFF 从 TTF format-12 cmap 经 `FontFace::char_to_glyph` 进入 `TextLayout` glyph run
 - [x] `Font`/`FontFace` 暴露 codepoint glyph coverage 查询，覆盖 BMP、CJK、missing glyph 与 supplementary-plane cmap
 - [x] Renderer 提供单行 fallback span 绘制入口，连接 `FontFallbackPlan` 与像素输出并覆盖 missing glyph telemetry
+- [x] Renderer 提供 cached 单行 fallback span 绘制入口，让 fallback label 能复用 rendered text masks 并覆盖 span cache telemetry
 - [x] 扩展基础 Unicode line-break class 映射，覆盖数字、组合符、Hangul cluster、ZWJ/word joiner、emoji modifier 和非法码点兜底
 - [ ] 实现 Unicode 段落与行分割算法（UAX #14, #9）
 - [ ] 双向文本支持（BiDi，UAX #9）

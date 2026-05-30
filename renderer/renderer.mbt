@@ -45,6 +45,8 @@ pub struct TextFallbackDrawResult {
   plan : @text.FontFallbackPlan
   drawn_span_count : Int
   skipped_span_count : Int
+  rendered_mask_count : Int
+  cache_hit_count : Int
   advance_width : Double
 } derive(Debug)
 
@@ -379,6 +381,22 @@ pub fn TextFallbackDrawResult::get_missing_char_count(
 }
 
 ///|
+/// Return the number of fallback spans that rendered a fresh mask.
+pub fn TextFallbackDrawResult::get_rendered_mask_count(
+  self : TextFallbackDrawResult,
+) -> Int {
+  self.rendered_mask_count
+}
+
+///|
+/// Return the number of fallback spans reused from a text-mask cache.
+pub fn TextFallbackDrawResult::get_cache_hit_count(
+  self : TextFallbackDrawResult,
+) -> Int {
+  self.cache_hit_count
+}
+
+///|
 /// Return whether this draw skipped at least one missing glyph span.
 pub fn TextFallbackDrawResult::has_missing_glyphs(
   self : TextFallbackDrawResult,
@@ -688,6 +706,85 @@ pub fn Renderer::draw_text_fallback_line(
     pixmap.get_width(),
     pixmap.get_height(),
     config,
+    paint,
+  )
+}
+
+///|
+/// Draw a single fallback line through a caller-owned rendered text-mask cache.
+pub fn Renderer::draw_text_fallback_line_cached(
+  self : Renderer,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  text_cache : @text.TextMaskCache,
+  text_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextFallbackDrawResult {
+  let pixmap = self.canvas.get_pixmap()
+  draw_text_fallback_line_cached(
+    self.canvas,
+    faces,
+    text,
+    x,
+    y,
+    pixmap.get_width(),
+    pixmap.get_height(),
+    config,
+    text_cache,
+    text_key_prefix,
+    paint,
+  )
+}
+
+///|
+/// Draw a cached fallback line through renderer-owned text resources.
+pub fn Renderer::draw_text_fallback_line_cached_with_resources(
+  self : Renderer,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererTextResources,
+  text_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextFallbackDrawResult {
+  self.draw_text_fallback_line_cached(
+    faces,
+    text,
+    x,
+    y,
+    config,
+    resources.get_text_mask_cache(),
+    text_key_prefix,
+    paint,
+  )
+}
+
+///|
+/// Draw a cached fallback line through renderer-owned resources.
+pub fn Renderer::draw_text_fallback_line_cached_with_renderer_resources(
+  self : Renderer,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  text_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextFallbackDrawResult {
+  self.draw_text_fallback_line_cached_with_resources(
+    faces,
+    text,
+    x,
+    y,
+    config,
+    resources.get_text_resources(),
+    text_key_prefix,
     paint,
   )
 }
@@ -1024,12 +1121,74 @@ pub fn draw_text_fallback_line(
   config : @text.LayoutConfig,
   paint : @graphics.Paint,
 ) -> TextFallbackDrawResult {
+  draw_text_fallback_line_with_cache(
+    canvas,
+    faces,
+    text,
+    x,
+    y,
+    width,
+    height,
+    config,
+    None,
+    "",
+    paint,
+  )
+}
+
+///|
+/// Draw a single fallback line through a caller-owned rendered text-mask cache.
+pub fn draw_text_fallback_line_cached(
+  canvas : @graphics.Canvas,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  width : Int,
+  height : Int,
+  config : @text.LayoutConfig,
+  text_cache : @text.TextMaskCache,
+  text_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextFallbackDrawResult {
+  draw_text_fallback_line_with_cache(
+    canvas,
+    faces,
+    text,
+    x,
+    y,
+    width,
+    height,
+    config,
+    Some(text_cache),
+    text_key_prefix,
+    paint,
+  )
+}
+
+///|
+fn draw_text_fallback_line_with_cache(
+  canvas : @graphics.Canvas,
+  faces : Array[@text.FontFace],
+  text : String,
+  x : Double,
+  y : Double,
+  width : Int,
+  height : Int,
+  config : @text.LayoutConfig,
+  text_cache : @text.TextMaskCache?,
+  text_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextFallbackDrawResult {
   let plan = @text.plan_font_fallback(faces, text)
   let line_config = fallback_line_config(config)
   let mut cursor_x = x
   let mut drawn_span_count = 0
   let mut skipped_span_count = 0
+  let mut rendered_mask_count = 0
+  let mut cache_hit_count = 0
   let mut emitted_char_count = 0
+  let mut span_index = 0
 
   for span in plan.get_spans() {
     if emitted_char_count > 0 {
@@ -1041,16 +1200,49 @@ pub fn draw_text_fallback_line(
     } else {
       let face = faces[span.get_face_index()]
       let span_text = span.get_text()
-      draw_text_face(
-        canvas, face, span_text, cursor_x, y, width, height, line_config, paint,
-      )
+      match text_cache {
+        Some(cache) => {
+          let key = fallback_text_cache_key(
+            text_key_prefix,
+            span_index,
+            span.get_face_index(),
+            span_text,
+            width,
+            height,
+            cursor_x,
+            y,
+            line_config,
+          )
+          let result = cache.get_or_render_face_result(
+            key, face, span_text, width, height, cursor_x, y, line_config,
+          )
+          draw_coverage_mask(canvas, result.get_mask(), paint)
+          if result.did_render() {
+            rendered_mask_count += 1
+          } else {
+            cache_hit_count += 1
+          }
+        }
+        None =>
+          draw_text_face(
+            canvas, face, span_text, cursor_x, y, width, height, line_config, paint,
+          )
+      }
       cursor_x += @text.TextLayout::layout(face, span_text, line_config).get_width()
       drawn_span_count += 1
     }
     emitted_char_count += span.get_char_count()
+    span_index += 1
   }
 
-  { plan, drawn_span_count, skipped_span_count, advance_width: cursor_x - x }
+  {
+    plan,
+    drawn_span_count,
+    skipped_span_count,
+    rendered_mask_count,
+    cache_hit_count,
+    advance_width: cursor_x - x,
+  }
 }
 
 ///|
@@ -1179,6 +1371,41 @@ fn estimate_missing_span_advance(
     width += config.letter_spacing * (char_count - 1).to_double()
   }
   width
+}
+
+///|
+fn fallback_text_cache_key(
+  prefix : String,
+  span_index : Int,
+  face_index : Int,
+  text : String,
+  width : Int,
+  height : Int,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+) -> String {
+  prefix +
+  ":fallback-span:" +
+  span_index.to_string() +
+  ":face:" +
+  face_index.to_string() +
+  ":width:" +
+  width.to_string() +
+  ":height:" +
+  height.to_string() +
+  ":x:" +
+  x.to_string() +
+  ":y:" +
+  y.to_string() +
+  ":size:" +
+  config.font_size.to_string() +
+  ":letter:" +
+  config.letter_spacing.to_string() +
+  ":word:" +
+  config.word_spacing.to_string() +
+  ":text:" +
+  text
 }
 
 ///|

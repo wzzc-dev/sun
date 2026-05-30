@@ -107,8 +107,11 @@ construct these types by hand.
 - Prefer `render_text_mask_face` and `Renderer::draw_text_face` when connecting
   one checked face to pixels. Prefer `Renderer::draw_text_fallback_line` when a
   GUI label owns an ordered font stack and needs first-covering-face fallback
-  spans plus missing-glyph telemetry. Prefer `Renderer::draw_text_face_cached`
-  for repeated labels or text runs with a caller-owned `TextMaskCache`.
+  spans plus missing-glyph telemetry. Prefer
+  `Renderer::draw_text_fallback_line_cached` when those repeated labels also
+  need ordered fallback spans through a caller-owned `TextMaskCache`. Prefer
+  `Renderer::draw_text_face_cached` for repeated single-face labels or text
+  runs with a caller-owned `TextMaskCache`.
 - Add layout-level and renderer-level regressions when changing alignment,
   baseline, wrapping, or glyph positioning semantics.
 - Keep exact parser error tests in `text/parser_test.mbt`; keep facade and

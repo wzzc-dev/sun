@@ -22,6 +22,8 @@ pub fn draw_text_face_cached(@graphics.Canvas, @text.FontFace, String, Double, D
 
 pub fn draw_text_fallback_line(@graphics.Canvas, Array[@text.FontFace], String, Double, Double, Int, Int, @text.LayoutConfig, @graphics.Paint) -> TextFallbackDrawResult
 
+pub fn draw_text_fallback_line_cached(@graphics.Canvas, Array[@text.FontFace], String, Double, Double, Int, Int, @text.LayoutConfig, @text.TextMaskCache, String, @graphics.Paint) -> TextFallbackDrawResult
+
 // Errors
 
 // Types and methods
@@ -77,6 +79,9 @@ pub fn Renderer::draw_text_face_cached(Self, @text.FontFace, String, Double, Dou
 pub fn Renderer::draw_text_face_cached_with_renderer_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> TextMaskDrawResult
 pub fn Renderer::draw_text_face_cached_with_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextMaskDrawResult
 pub fn Renderer::draw_text_fallback_line(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> TextFallbackDrawResult
+pub fn Renderer::draw_text_fallback_line_cached(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, @text.TextMaskCache, String, @graphics.Paint) -> TextFallbackDrawResult
+pub fn Renderer::draw_text_fallback_line_cached_with_renderer_resources(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> TextFallbackDrawResult
+pub fn Renderer::draw_text_fallback_line_cached_with_resources(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextFallbackDrawResult
 pub fn Renderer::get_canvas(Self) -> @graphics.Canvas
 pub fn Renderer::new(@graphics.Canvas) -> Self
 
@@ -131,13 +136,17 @@ pub struct TextFallbackDrawResult {
   plan : @text.FontFallbackPlan
   drawn_span_count : Int
   skipped_span_count : Int
+  rendered_mask_count : Int
+  cache_hit_count : Int
   advance_width : Double
 } derive(@debug.Debug)
 pub fn TextFallbackDrawResult::get_advance_width(Self) -> Double
+pub fn TextFallbackDrawResult::get_cache_hit_count(Self) -> Int
 pub fn TextFallbackDrawResult::get_drawn_span_count(Self) -> Int
 pub fn TextFallbackDrawResult::get_missing_char_count(Self) -> Int
 pub fn TextFallbackDrawResult::get_missing_span_count(Self) -> Int
 pub fn TextFallbackDrawResult::get_plan(Self) -> @text.FontFallbackPlan
+pub fn TextFallbackDrawResult::get_rendered_mask_count(Self) -> Int
 pub fn TextFallbackDrawResult::get_skipped_span_count(Self) -> Int
 pub fn TextFallbackDrawResult::get_span_count(Self) -> Int
 pub fn TextFallbackDrawResult::has_missing_glyphs(Self) -> Bool

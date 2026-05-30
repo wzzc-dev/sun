@@ -143,6 +143,8 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
 - `Renderer::draw_text_face` for checked `FontFace -> TextLayout -> Canvas` drawing
 - `Renderer::draw_text_fallback_line` for ordered `FontFace` fallback spans,
   with missing-glyph span telemetry for GUI labels and resource scheduling
+- `Renderer::draw_text_fallback_line_cached` for repeated ordered `FontFace`
+  fallback labels backed by `TextMaskCache`, with render-hit telemetry per span
 - `Renderer::draw_text_face_cached` for caller-owned `TextMaskCache` backed
   label/text-run drawing with hit/render telemetry
 - `Renderer::draw_text_face_atlas` for caller-owned glyph mask cache and
