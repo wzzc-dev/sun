@@ -337,54 +337,41 @@ fn present_rect_to_handle(
   row_bytes : Int,
   pixels : FixedArray[Byte],
 ) -> Result[Unit, @graphics.PresentError] {
-  guard width > 0 && height > 0 else {
-    return Err(@graphics.PresentError::InvalidDimensions(width, height))
+  match
+    @graphics.validate_present_rect(
+      surface_width, surface_height, x, y, width, height, row_bytes, pixels,
+    ) {
+    Err(error) => Err(error)
+    Ok(info) => {
+      if row_bytes == info.required_row_bytes() {
+        display_pixels_rect(handle, pixels, x, y, width, height)
+      } else {
+        display_pixels_rect(
+          handle,
+          copy_tightly_packed_rows(
+            height,
+            row_bytes,
+            info.required_row_bytes(),
+            pixels,
+          ),
+          x,
+          y,
+          width,
+          height,
+        )
+      }
+      Ok(())
+    }
   }
-  guard x >= 0 &&
-    y >= 0 &&
-    width <= surface_width - x &&
-    height <= surface_height - y else {
-    return Err(
-      @graphics.PresentError::RectOutOfBounds(
-        x, y, width, height, surface_width, surface_height,
-      ),
-    )
-  }
-  let required_row_bytes = width * 4
-  guard row_bytes >= required_row_bytes else {
-    return Err(
-      @graphics.PresentError::InvalidRowBytes(row_bytes, required_row_bytes),
-    )
-  }
-  let required_len = row_bytes * (height - 1) + required_row_bytes
-  guard pixels.length() >= required_len else {
-    return Err(
-      @graphics.PresentError::PixelBufferTooSmall(pixels.length(), required_len),
-    )
-  }
-  if row_bytes == required_row_bytes {
-    display_pixels_rect(handle, pixels, x, y, width, height)
-  } else {
-    display_pixels_rect(
-      handle,
-      copy_tightly_packed_rows(width, height, row_bytes, pixels),
-      x,
-      y,
-      width,
-      height,
-    )
-  }
-  Ok(())
 }
 
 ///|
 fn copy_tightly_packed_rows(
-  width : Int,
   height : Int,
   row_bytes : Int,
+  packed_row_bytes : Int,
   pixels : FixedArray[Byte],
 ) -> FixedArray[Byte] {
-  let packed_row_bytes = width * 4
   let packed : FixedArray[Byte] = FixedArray::make(
     packed_row_bytes * height,
     0b0,

@@ -9,6 +9,24 @@ pub(all) enum PresentError {
 } derive(Eq, Debug)
 
 ///|
+/// Validated geometry for a rectangle present call. Backends can use this to
+/// share row-stride and buffer-size checks with the reference MemorySurface.
+pub(all) struct PresentRectInfo {
+  required_row_bytes : Int
+  required_len : Int
+} derive(Eq, Debug)
+
+///|
+pub fn PresentRectInfo::required_row_bytes(self : PresentRectInfo) -> Int {
+  self.required_row_bytes
+}
+
+///|
+pub fn PresentRectInfo::required_len(self : PresentRectInfo) -> Int {
+  self.required_len
+}
+
+///|
 /// Destination for CPU-rendered RGBA pixels.
 pub(open) trait Surface {
   fn get_width(Self) -> Int
@@ -131,11 +149,11 @@ pub fn MemorySurface::present_pixels_rect(
       pixels,
     ) {
     Err(error) => return Err(error)
-    Ok(required_row_bytes) => {
+    Ok(info) => {
       for row in 0..<height {
         let src_row = row * row_bytes
         let dst_row = ((y + row) * self.width + x) * 4
-        for column in 0..<required_row_bytes {
+        for column in 0..<info.required_row_bytes() {
           self.pixels[dst_row + column] = pixels[src_row + column]
         }
       }
@@ -146,7 +164,7 @@ pub fn MemorySurface::present_pixels_rect(
 }
 
 ///|
-fn validate_present_rect(
+pub fn validate_present_rect(
   surface_width : Int,
   surface_height : Int,
   x : Int,
@@ -155,7 +173,7 @@ fn validate_present_rect(
   height : Int,
   row_bytes : Int,
   pixels : FixedArray[Byte],
-) -> Result[Int, PresentError] {
+) -> Result[PresentRectInfo, PresentError] {
   guard width > 0 && height > 0 else {
     return Err(PresentError::InvalidDimensions(width, height))
   }
@@ -177,7 +195,7 @@ fn validate_present_rect(
   guard pixels.length() >= required_len else {
     return Err(PresentError::PixelBufferTooSmall(pixels.length(), required_len))
   }
-  Ok(required_row_bytes)
+  Ok({ required_row_bytes, required_len })
 }
 
 ///|

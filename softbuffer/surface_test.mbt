@@ -49,6 +49,14 @@ test "NativeSurface dispatches through graphics Surface trait" {
 }
 
 ///|
+test "NativeSurface accepts padded row bytes through shared validation" {
+  let surface = NativeSurface::new(42, 1, 2)
+  let pixels : FixedArray[Byte] = FixedArray::make(12, 0)
+  let result = surface.present_pixels(1, 2, 8, pixels)
+  assert_true(result == Ok(()))
+}
+
+///|
 test "NativeSurface builds from RenderFrame dimensions" {
   let frame = @graphics.RenderFrame::new(3, 2)
   let surface = NativeSurface::from_frame(42, frame)

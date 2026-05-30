@@ -65,6 +65,31 @@ test "MemorySurface::present_pixels_rect validates destination bounds" {
 }
 
 ///|
+test "validate_present_rect reports shared row-stride contract" {
+  let pixels : FixedArray[Byte] = FixedArray::make(20, 0)
+  match validate_present_rect(4, 3, 1, 1, 2, 2, 12, pixels) {
+    Ok(info) => {
+      assert_eq(info.required_row_bytes(), 8)
+      assert_eq(info.required_len(), 20)
+    }
+    Err(_) => abort("expected valid present rect")
+  }
+  assert_true(
+    validate_present_rect(4, 3, 3, 1, 2, 1, 8, pixels) ==
+    Err(PresentError::RectOutOfBounds(3, 1, 2, 1, 4, 3)),
+  )
+  assert_true(
+    validate_present_rect(4, 3, 1, 1, 2, 2, 4, pixels) ==
+    Err(PresentError::InvalidRowBytes(4, 8)),
+  )
+  let short_pixels : FixedArray[Byte] = FixedArray::make(19, 0)
+  assert_true(
+    validate_present_rect(4, 3, 1, 1, 2, 2, 12, short_pixels) ==
+    Err(PresentError::PixelBufferTooSmall(19, 20)),
+  )
+}
+
+///|
 test "MemorySurface::present_pixels validates dimensions and buffer" {
   let surface = MemorySurface::new(2, 2)
   let pixels : FixedArray[Byte] = FixedArray::make(16, 0)
