@@ -7,5 +7,6 @@ members = [
   "./examples/hello_world",
   "./examples/font_demo",
   "./examples/headless_render",
+  "./examples/render_bench",
   "./.local_repos/window",
 ]

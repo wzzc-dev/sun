@@ -200,6 +200,7 @@ pub struct GlyphComponent {
 pub struct GlyphContour {
   points : Array[GlyphPoint]
 } derive(@debug.Debug)
+pub fn GlyphContour::new(Array[GlyphPoint]) -> Self
 
 pub enum GlyphData {
   Simple(SimpleGlyph)
@@ -285,6 +286,7 @@ pub struct GlyphPoint {
   y : Int
   on_curve : Bool
 } derive(Eq, @debug.Debug)
+pub fn GlyphPoint::new(x~ : Int, y~ : Int, on_curve? : Bool) -> Self
 
 pub struct GlyphPosition {
   glyph_id : GlyphId
@@ -460,6 +462,7 @@ pub struct SimpleGlyph {
   xmax : Int
   ymax : Int
 } derive(@debug.Debug)
+pub fn SimpleGlyph::new(Array[GlyphContour], xmin~ : Int, ymin~ : Int, xmax~ : Int, ymax~ : Int) -> Self
 
 pub struct TableRecord {
   tag : String

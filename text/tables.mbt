@@ -30,10 +30,26 @@ pub struct GlyphPoint {
 } derive(Eq, Debug)
 
 ///|
+/// Create a simple glyph point.
+pub fn GlyphPoint::new(
+  x~ : Int,
+  y~ : Int,
+  on_curve? : Bool = true,
+) -> GlyphPoint {
+  { x, y, on_curve }
+}
+
+///|
 /// Glyph contour
 pub struct GlyphContour {
   points : Array[GlyphPoint]
 } derive(Debug)
+
+///|
+/// Create a glyph contour from ordered points.
+pub fn GlyphContour::new(points : Array[GlyphPoint]) -> GlyphContour {
+  { points, }
+}
 
 ///|
 /// Simple glyph data
@@ -44,6 +60,18 @@ pub struct SimpleGlyph {
   xmax : Int
   ymax : Int
 } derive(Debug)
+
+///|
+/// Create a simple glyph from contours and explicit bounds.
+pub fn SimpleGlyph::new(
+  contours : Array[GlyphContour],
+  xmin~ : Int,
+  ymin~ : Int,
+  xmax~ : Int,
+  ymax~ : Int,
+) -> SimpleGlyph {
+  { contours, xmin, ymin, xmax, ymax }
+}
 
 ///|
 /// A component of a composite glyph
