@@ -110,6 +110,7 @@ pub struct DirtyPresentPlan {
 pub fn DirtyPresentPlan::get_mode(Self) -> DirtyPresentPlanMode
 pub fn DirtyPresentPlan::get_present_byte_count(Self) -> Int
 pub fn DirtyPresentPlan::get_present_pixel_count(Self) -> Int
+pub fn DirtyPresentPlan::get_present_strategy(Self, Int, Int) -> DirtyPresentStrategy
 pub fn DirtyPresentPlan::get_rect_count(Self) -> Int
 pub fn DirtyPresentPlan::get_rects(Self) -> Array[PixelRect]
 pub fn DirtyPresentPlan::is_empty(Self) -> Bool
@@ -120,6 +121,12 @@ pub(all) enum DirtyPresentPlanMode {
   Empty
   Rects
   Bounds
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DirtyPresentStrategy {
+  Skip
+  Partial
+  Full
 } derive(Eq, @debug.Debug)
 
 pub struct DirtyRegion {
@@ -146,6 +153,7 @@ pub fn DirtySubmitPlan::get_present_byte_count(Self) -> Int
 pub fn DirtySubmitPlan::get_present_pixel_count(Self) -> Int
 pub fn DirtySubmitPlan::get_present_plan(Self) -> DirtyPresentPlan
 pub fn DirtySubmitPlan::get_present_rect_count(Self) -> Int
+pub fn DirtySubmitPlan::get_present_strategy(Self, Int, Int) -> DirtyPresentStrategy
 pub fn DirtySubmitPlan::get_state(Self) -> DirtySubmitState
 pub fn DirtySubmitPlan::has_dirty(Self) -> Bool
 pub fn DirtySubmitPlan::needs_present(Self) -> Bool
@@ -160,6 +168,7 @@ pub fn DirtySubmitResult::did_present(Self) -> Bool
 pub fn DirtySubmitResult::get_dirty_bounds(Self) -> PixelRect?
 pub fn DirtySubmitResult::get_present_byte_count(Self) -> Int
 pub fn DirtySubmitResult::get_present_pixel_count(Self) -> Int
+pub fn DirtySubmitResult::get_present_strategy(Self, Int, Int) -> DirtyPresentStrategy
 pub fn DirtySubmitResult::get_presented_rect_count(Self) -> Int
 pub fn DirtySubmitResult::get_state(Self) -> DirtySubmitState
 pub fn DirtySubmitResult::get_submit_plan(Self) -> DirtySubmitPlan

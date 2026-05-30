@@ -16,6 +16,15 @@ pub(all) enum DirtyPresentPlanMode {
 } derive(Eq, Debug)
 
 ///|
+/// Scheduler-facing present strategy chosen from a dirty present plan and the
+/// full-frame pixel budget.
+pub(all) enum DirtyPresentStrategy {
+  Skip
+  Partial
+  Full
+} derive(Eq, Debug)
+
+///|
 /// Scheduler-facing state for a dirty submit snapshot.
 pub(all) enum DirtySubmitState {
   Clean
@@ -93,6 +102,20 @@ pub fn DirtyPresentPlan::saves_full_present_pixels(
 }
 
 ///|
+pub fn DirtyPresentPlan::get_present_strategy(
+  self : DirtyPresentPlan,
+  width : Int,
+  height : Int,
+) -> DirtyPresentStrategy {
+  guard !self.is_empty() else { return DirtyPresentStrategy::Skip }
+  if self.saves_full_present_pixels(width, height) {
+    DirtyPresentStrategy::Partial
+  } else {
+    DirtyPresentStrategy::Full
+  }
+}
+
+///|
 pub fn DirtyPresentPlan::is_empty(self : DirtyPresentPlan) -> Bool {
   self.mode == DirtyPresentPlanMode::Empty || self.rects.length() == 0
 }
@@ -160,6 +183,15 @@ pub fn DirtySubmitPlan::saves_full_present_pixels(
   height : Int,
 ) -> Bool {
   self.present_plan.saves_full_present_pixels(width, height)
+}
+
+///|
+pub fn DirtySubmitPlan::get_present_strategy(
+  self : DirtySubmitPlan,
+  width : Int,
+  height : Int,
+) -> DirtyPresentStrategy {
+  self.present_plan.get_present_strategy(width, height)
 }
 
 ///|
@@ -243,6 +275,15 @@ pub fn DirtySubmitResult::saves_full_present_pixels(
   height : Int,
 ) -> Bool {
   self.submit_plan.saves_full_present_pixels(width, height)
+}
+
+///|
+pub fn DirtySubmitResult::get_present_strategy(
+  self : DirtySubmitResult,
+  width : Int,
+  height : Int,
+) -> DirtyPresentStrategy {
+  self.submit_plan.get_present_strategy(width, height)
 }
 
 ///|

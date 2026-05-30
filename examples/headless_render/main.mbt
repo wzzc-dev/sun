@@ -96,6 +96,10 @@ fn present_headless(frame : @graphics.RenderFrame) -> @graphics.MemorySurface {
       ) else {
         abort("initial frame should not claim partial present savings")
       }
+      guard result.get_present_strategy(frame.get_width(), frame.get_height()) ==
+        @graphics.DirtyPresentStrategy::Full else {
+        abort("initial frame should prefer full present")
+      }
       surface
     }
     Err(_) => abort("headless present failed")
