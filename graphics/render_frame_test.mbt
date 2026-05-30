@@ -735,6 +735,129 @@ test "RenderFrame::submit_redraw_to presents cached clean frame" {
 }
 
 ///|
+test "RenderFrame policy schedules dirty-only cached and full redraw paths" {
+  let clean_frame = RenderFrame::new(2, 1)
+  let clean_surface = MemorySurface::new(2, 1)
+  let dirty_only_schedule = clean_frame.submit_schedule_by_policy(
+    clean_surface,
+    RenderFrameSubmitPolicy::DirtyOnly,
+  )
+  assert_true(
+    dirty_only_schedule.get_action() == RenderFrameScheduleAction::Skip,
+  )
+  assert_true(
+    dirty_only_schedule.get_present_strategy() == DirtyPresentStrategy::Skip,
+  )
+  assert_true(dirty_only_schedule.get_state() == DirtySubmitState::Clean)
+  assert_true(!dirty_only_schedule.needs_present())
+  assert_eq(dirty_only_schedule.get_present_rect_count(), 0)
+
+  let cached_schedule = clean_frame.submit_schedule_by_policy(
+    clean_surface,
+    RenderFrameSubmitPolicy::CachedRedraw,
+  )
+  assert_true(
+    cached_schedule.get_action() == RenderFrameScheduleAction::Present,
+  )
+  assert_true(
+    cached_schedule.get_present_strategy() == DirtyPresentStrategy::Full,
+  )
+  assert_true(cached_schedule.get_state() == DirtySubmitState::Clean)
+  assert_true(cached_schedule.needs_present())
+  assert_true(!cached_schedule.has_dirty())
+  assert_eq(cached_schedule.get_present_rect_count(), 1)
+  assert_eq(cached_schedule.get_present_pixel_count(), 2)
+  assert_eq(cached_schedule.get_present_byte_count(), 8)
+
+  let dirty_frame = RenderFrame::new(4, 1)
+  dirty_frame.get_canvas().draw_pixel(1, 0, Color::red())
+  let dirty_surface = MemorySurface::new(4, 1)
+  let cached_dirty_schedule = dirty_frame.submit_schedule_by_policy(
+    dirty_surface,
+    RenderFrameSubmitPolicy::CachedRedraw,
+  )
+  assert_true(
+    cached_dirty_schedule.get_action() == RenderFrameScheduleAction::Present,
+  )
+  assert_true(
+    cached_dirty_schedule.get_present_strategy() ==
+    DirtyPresentStrategy::Partial,
+  )
+  assert_true(cached_dirty_schedule.get_state() == DirtySubmitState::Present)
+  assert_true(cached_dirty_schedule.has_dirty())
+  assert_eq(cached_dirty_schedule.get_present_rect_count(), 1)
+  assert_eq(cached_dirty_schedule.get_present_pixel_count(), 1)
+  assert_eq(cached_dirty_schedule.get_present_byte_count(), 4)
+
+  let full_dirty_schedule = dirty_frame.submit_schedule_by_policy(
+    dirty_surface,
+    RenderFrameSubmitPolicy::FullRedraw,
+  )
+  assert_true(
+    full_dirty_schedule.get_action() == RenderFrameScheduleAction::Present,
+  )
+  assert_true(
+    full_dirty_schedule.get_present_strategy() == DirtyPresentStrategy::Full,
+  )
+  assert_true(full_dirty_schedule.get_state() == DirtySubmitState::Present)
+  assert_true(full_dirty_schedule.has_dirty())
+  assert_true(full_dirty_schedule.needs_present())
+  assert_eq(full_dirty_schedule.get_present_rect_count(), 1)
+  assert_eq(full_dirty_schedule.get_present_pixel_count(), 4)
+  assert_eq(full_dirty_schedule.get_present_byte_count(), 16)
+  assert_true(!full_dirty_schedule.saves_full_present_pixels())
+  assert_true(dirty_frame.has_dirty())
+  assert_eq(dirty_surface.get_present_count(), 0)
+}
+
+///|
+test "RenderFrame::submit_to_by_policy executes requested policy" {
+  let dirty_frame = RenderFrame::new(4, 1)
+  dirty_frame.get_canvas().draw_pixel(1, 0, Color::red())
+  let dirty_surface = MemorySurface::new(4, 1)
+
+  match
+    dirty_frame.submit_to_by_policy(
+      dirty_surface,
+      RenderFrameSubmitPolicy::FullRedraw,
+    ) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Full)
+      assert_true(result.get_state() == DirtySubmitState::Present)
+      assert_true(result.has_dirty())
+      assert_true(result.did_present())
+      assert_eq(result.get_present_rect_count(), 1)
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 4)
+      assert_eq(result.get_present_byte_count(), 16)
+    }
+    Err(_) => abort("expected policy submit result")
+  }
+  assert_eq(dirty_surface.get_present_count(), 1)
+  assert_eq(dirty_surface.get_pixel(1, 0), Color::red())
+  assert_true(!dirty_frame.has_dirty())
+
+  let clean_frame = RenderFrame::new(2, 1)
+  let clean_surface = MemorySurface::new(2, 1)
+  match
+    clean_frame.submit_to_by_policy(
+      clean_surface,
+      RenderFrameSubmitPolicy::DirtyOnly,
+    ) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Skip)
+      assert_true(result.get_state() == DirtySubmitState::Clean)
+      assert_true(!result.has_dirty())
+      assert_true(!result.needs_present())
+      assert_true(!result.did_present())
+      assert_eq(result.get_presented_rect_count(), 0)
+    }
+    Err(_) => abort("expected clean dirty-only policy submit result")
+  }
+  assert_eq(clean_surface.get_present_count(), 0)
+}
+
+///|
 test "RenderFrame dirty helpers cover canvas and layer tree dirtiness" {
   let frame = RenderFrame::new(4, 2)
   assert_true(!frame.has_dirty())

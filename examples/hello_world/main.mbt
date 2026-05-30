@@ -313,7 +313,11 @@ fn present_cached_frame(
   frame : @graphics.RenderFrame,
 ) -> Unit {
   let surface = frame_native_surface(window, frame)
-  match surface.submit_frame_redraw(frame) {
+  match
+    surface.submit_frame_by_policy(
+      frame,
+      @softbuffer.NativeFrameSubmitPolicy::CachedRedraw,
+    ) {
     Ok(result) => handle_frame_submit_result(result)
     Err(_) => println("Present failed")
   }

@@ -754,6 +754,87 @@ test "NativeSurface exposes clean redraw schedule as full cached present" {
 }
 
 ///|
+test "NativeSurface exposes policy-driven frame schedules" {
+  let clean_frame = @graphics.RenderFrame::new(2, 1)
+  let clean_surface = NativeSurface::from_frame(42, clean_frame)
+  let dirty_only_schedule = clean_surface.frame_schedule_by_policy(
+    clean_frame,
+    NativeFrameSubmitPolicy::DirtyOnly,
+  )
+  assert_true(
+    dirty_only_schedule.get_action() == NativeFrameScheduleAction::Skip,
+  )
+  assert_true(
+    dirty_only_schedule.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Skip,
+  )
+  assert_true(
+    dirty_only_schedule.get_state() == @graphics.DirtySubmitState::Clean,
+  )
+  assert_true(!dirty_only_schedule.needs_present())
+
+  let cached_schedule = clean_surface.frame_schedule_by_policy(
+    clean_frame,
+    NativeFrameSubmitPolicy::CachedRedraw,
+  )
+  assert_true(
+    cached_schedule.get_action() == NativeFrameScheduleAction::Present,
+  )
+  assert_true(
+    cached_schedule.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_true(cached_schedule.get_state() == @graphics.DirtySubmitState::Clean)
+  assert_true(cached_schedule.needs_present())
+  assert_true(!cached_schedule.has_dirty())
+  assert_eq(cached_schedule.get_present_pixel_count(), 2)
+  assert_eq(cached_schedule.get_present_byte_count(), 8)
+
+  let dirty_frame = @graphics.RenderFrame::new(4, 1)
+  dirty_frame.get_canvas().draw_pixel(1, 0, @graphics.Color::red())
+  let dirty_surface = NativeSurface::from_frame(42, dirty_frame)
+  let cached_dirty_schedule = dirty_surface.frame_schedule_by_policy(
+    dirty_frame,
+    NativeFrameSubmitPolicy::CachedRedraw,
+  )
+  assert_true(
+    cached_dirty_schedule.get_action() == NativeFrameScheduleAction::Present,
+  )
+  assert_true(
+    cached_dirty_schedule.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Partial,
+  )
+  assert_true(
+    cached_dirty_schedule.get_state() == @graphics.DirtySubmitState::Present,
+  )
+  assert_true(cached_dirty_schedule.has_dirty())
+  assert_eq(cached_dirty_schedule.get_present_pixel_count(), 1)
+  assert_eq(cached_dirty_schedule.get_present_byte_count(), 4)
+
+  let full_dirty_schedule = dirty_surface.frame_schedule_by_policy(
+    dirty_frame,
+    NativeFrameSubmitPolicy::FullRedraw,
+  )
+  assert_true(
+    full_dirty_schedule.get_action() == NativeFrameScheduleAction::Present,
+  )
+  assert_true(
+    full_dirty_schedule.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_true(
+    full_dirty_schedule.get_state() == @graphics.DirtySubmitState::Present,
+  )
+  assert_true(full_dirty_schedule.has_dirty())
+  assert_true(full_dirty_schedule.needs_present())
+  assert_eq(full_dirty_schedule.get_present_rect_count(), 1)
+  assert_eq(full_dirty_schedule.get_present_pixel_count(), 4)
+  assert_eq(full_dirty_schedule.get_present_byte_count(), 16)
+  assert_true(!full_dirty_schedule.saves_full_present_pixels())
+  assert_true(dirty_frame.has_dirty())
+}
+
+///|
 test "NativeSurface submits precomputed frame schedules" {
   let count = Ref(0)
   let partial_frame = @graphics.RenderFrame::new(4, 1)
@@ -872,6 +953,63 @@ test "NativeSurface submits clean redraw as cached full present" {
   }
   assert_eq(count.val, 1)
   assert_true(!frame.has_dirty())
+}
+
+///|
+test "NativeSurface submits frame by explicit policy" {
+  let count = Ref(0)
+  let dirty_frame = @graphics.RenderFrame::new(4, 1)
+  dirty_frame.get_canvas().draw_pixel(1, 0, @graphics.Color::red())
+  let dirty_surface = NativeSurface::from_frame(42, dirty_frame).with_pre_present_hook(fn() {
+      count.val = count.val + 1
+    },
+  )
+
+  match
+    dirty_surface.submit_frame_by_policy(
+      dirty_frame,
+      NativeFrameSubmitPolicy::FullRedraw,
+    ) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+      )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
+      assert_true(result.has_dirty())
+      assert_true(result.did_present())
+      assert_eq(result.get_present_rect_count(), 1)
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 4)
+      assert_eq(result.get_present_byte_count(), 16)
+    }
+    Err(_) => abort("expected policy submit result")
+  }
+  assert_eq(count.val, 1)
+  assert_true(!dirty_frame.has_dirty())
+
+  let clean_frame = @graphics.RenderFrame::new(2, 1)
+  let clean_surface = NativeSurface::from_frame(42, clean_frame).with_pre_present_hook(fn() {
+      count.val = count.val + 1
+    },
+  )
+  match
+    clean_surface.submit_frame_by_policy(
+      clean_frame,
+      NativeFrameSubmitPolicy::DirtyOnly,
+    ) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Skip,
+      )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Clean)
+      assert_true(!result.has_dirty())
+      assert_true(!result.needs_present())
+      assert_true(!result.did_present())
+      assert_eq(result.get_presented_rect_count(), 0)
+    }
+    Err(_) => abort("expected dirty-only policy submit result")
+  }
+  assert_eq(count.val, 1)
 }
 
 ///|
@@ -1000,6 +1138,46 @@ test "render frame redraw helper constructs NativeSurface internally" {
       assert_eq(result.get_present_byte_count(), 8)
     }
     Err(_) => abort("expected constructed redraw submit result")
+  }
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "render frame policy helpers construct NativeSurface internally" {
+  let frame = @graphics.RenderFrame::new(4, 1)
+  frame.get_canvas().draw_pixel(1, 0, @graphics.Color::red())
+
+  let schedule = render_frame_schedule_by_policy(
+    42,
+    frame,
+    NativeFrameSubmitPolicy::FullRedraw,
+  )
+  assert_true(schedule.get_action() == NativeFrameScheduleAction::Present)
+  assert_true(
+    schedule.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_true(schedule.get_state() == @graphics.DirtySubmitState::Present)
+  assert_true(schedule.has_dirty())
+  assert_eq(schedule.get_present_pixel_count(), 4)
+  assert_eq(schedule.get_present_byte_count(), 16)
+
+  match
+    submit_render_frame_by_policy(
+      42,
+      frame,
+      NativeFrameSubmitPolicy::FullRedraw,
+    ) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+      )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
+      assert_true(result.did_present())
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 4)
+      assert_eq(result.get_present_byte_count(), 16)
+    }
+    Err(_) => abort("expected constructed policy submit result")
   }
   assert_true(!frame.has_dirty())
 }

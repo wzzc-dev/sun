@@ -46,6 +46,14 @@ pub(all) enum NativeFrameScheduleAction {
 } derive(Eq, Debug)
 
 ///|
+/// Native event-loop submit policy mirroring graphics RenderFrame policy.
+pub(all) enum NativeFrameSubmitPolicy {
+  DirtyOnly
+  CachedRedraw
+  FullRedraw
+} derive(Eq, Debug)
+
+///|
 /// Dry-run scheduling decision for a NativeSurface RenderFrame submit.
 pub struct NativeFrameSchedule {
   render_frame_schedule : @graphics.RenderFrameSchedule
@@ -406,6 +414,20 @@ fn native_frame_schedule_from_frame(
 }
 
 ///|
+fn native_frame_submit_policy_to_graphics(
+  policy : NativeFrameSubmitPolicy,
+) -> @graphics.RenderFrameSubmitPolicy {
+  match policy {
+    NativeFrameSubmitPolicy::DirtyOnly =>
+      @graphics.RenderFrameSubmitPolicy::DirtyOnly
+    NativeFrameSubmitPolicy::CachedRedraw =>
+      @graphics.RenderFrameSubmitPolicy::CachedRedraw
+    NativeFrameSubmitPolicy::FullRedraw =>
+      @graphics.RenderFrameSubmitPolicy::FullRedraw
+  }
+}
+
+///|
 /// Create a new surface for the given window
 pub fn Surface::new(window : Window) -> Surface {
   { window, width: window.width(), height: window.height() }
@@ -745,6 +767,20 @@ pub fn NativeSurface::frame_redraw_schedule(
 }
 
 ///|
+pub fn NativeSurface::frame_schedule_by_policy(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+  policy : NativeFrameSubmitPolicy,
+) -> NativeFrameSchedule {
+  native_frame_schedule_from_frame(
+    frame.submit_schedule_by_policy(
+      self,
+      native_frame_submit_policy_to_graphics(policy),
+    ),
+  )
+}
+
+///|
 pub fn NativeSurface::submit_frame_schedule(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
@@ -768,6 +804,22 @@ pub fn NativeSurface::submit_frame_redraw(
   frame : @graphics.RenderFrame,
 ) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
   match frame.submit_redraw_to(self) {
+    Ok(result) => Ok(native_frame_submit_result_from_frame(result))
+    Err(error) => Err(error)
+  }
+}
+
+///|
+pub fn NativeSurface::submit_frame_by_policy(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+  policy : NativeFrameSubmitPolicy,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  match
+    frame.submit_to_by_policy(
+      self,
+      native_frame_submit_policy_to_graphics(policy),
+    ) {
     Ok(result) => Ok(native_frame_submit_result_from_frame(result))
     Err(error) => Err(error)
   }
@@ -859,6 +911,17 @@ pub fn render_frame_redraw_schedule(
 }
 
 ///|
+pub fn render_frame_schedule_by_policy(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+  policy : NativeFrameSubmitPolicy,
+) -> NativeFrameSchedule {
+  NativeSurface::from_frame(handle, frame).frame_schedule_by_policy(
+    frame, policy,
+  )
+}
+
+///|
 pub fn submit_render_frame_schedule(
   handle : UInt64,
   frame : @graphics.RenderFrame,
@@ -875,6 +938,15 @@ pub fn submit_render_frame_redraw(
   frame : @graphics.RenderFrame,
 ) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
   NativeSurface::from_frame(handle, frame).submit_frame_redraw(frame)
+}
+
+///|
+pub fn submit_render_frame_by_policy(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+  policy : NativeFrameSubmitPolicy,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  NativeSurface::from_frame(handle, frame).submit_frame_by_policy(frame, policy)
 }
 
 ///|

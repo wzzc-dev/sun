@@ -561,7 +561,9 @@ pub fn[S : Surface] RenderFrame::submit_by_strategy_to(Self, S) -> Result[Render
 pub fn[S : Surface] RenderFrame::submit_dirty_to(Self, S) -> Result[DirtySubmitResult, PresentError]
 pub fn[S : Surface] RenderFrame::submit_redraw_to(Self, S) -> Result[RenderFrameSubmitResult, PresentError]
 pub fn[S : Surface] RenderFrame::submit_schedule(Self, S) -> RenderFrameSchedule
+pub fn[S : Surface] RenderFrame::submit_schedule_by_policy(Self, S, RenderFrameSubmitPolicy) -> RenderFrameSchedule
 pub fn[S : Surface] RenderFrame::submit_scheduled_to(Self, S, RenderFrameSchedule) -> Result[RenderFrameSubmitResult, PresentError]
+pub fn[S : Surface] RenderFrame::submit_to_by_policy(Self, S, RenderFrameSubmitPolicy) -> Result[RenderFrameSubmitResult, PresentError]
 
 pub struct RenderFrameLayerClearRequest {
   layer_index : Int
@@ -623,6 +625,12 @@ pub fn RenderFrameSubmitPlan::needs_present(Self) -> Bool
 pub fn RenderFrameSubmitPlan::saves_full_present_pixels(Self) -> Bool
 pub fn RenderFrameSubmitPlan::uses_bounds_fallback(Self) -> Bool
 pub fn RenderFrameSubmitPlan::was_clipped_away(Self) -> Bool
+
+pub(all) enum RenderFrameSubmitPolicy {
+  DirtyOnly
+  CachedRedraw
+  FullRedraw
+} derive(Eq, @debug.Debug)
 
 pub struct RenderFrameSubmitResult {
   submit_plan : RenderFrameSubmitPlan

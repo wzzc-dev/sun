@@ -33,6 +33,15 @@ pub(all) enum RenderFrameScheduleAction {
 } derive(Eq, Debug)
 
 ///|
+/// Event-loop-facing submit policy for choosing between dirty-only work,
+/// cached repaint requests, and unconditional full redraws.
+pub(all) enum RenderFrameSubmitPolicy {
+  DirtyOnly
+  CachedRedraw
+  FullRedraw
+} derive(Eq, Debug)
+
+///|
 /// Dry-run scheduling decision for submitting a RenderFrame to a Surface.
 pub struct RenderFrameSchedule {
   submit_plan : RenderFrameSubmitPlan
@@ -456,6 +465,27 @@ fn render_frame_full_present_plan(
 }
 
 ///|
+fn render_frame_full_present_schedule(
+  dirty_submit_plan : DirtySubmitPlan,
+  frame_width : Int,
+  frame_height : Int,
+  surface_width : Int,
+  surface_height : Int,
+) -> RenderFrameSchedule {
+  let submit_plan = render_frame_full_present_plan(
+    dirty_submit_plan, frame_width, frame_height, surface_width, surface_height,
+  )
+  if submit_plan.get_present_rect_count() > 0 {
+    render_frame_schedule_with_action(
+      submit_plan,
+      RenderFrameScheduleAction::Present,
+    )
+  } else {
+    render_frame_schedule(submit_plan)
+  }
+}
+
+///|
 pub fn RenderFrame::new(width : Int, height : Int) -> RenderFrame {
   {
     canvas: Canvas::new(width, height),
@@ -790,21 +820,42 @@ pub fn[S : Surface] RenderFrame::redraw_schedule(
   self : RenderFrame,
   surface : S,
 ) -> RenderFrameSchedule {
-  let schedule = self.submit_schedule(surface)
-  guard schedule.get_action() == RenderFrameScheduleAction::Skip else {
-    return schedule
+  self.submit_schedule_by_policy(surface, RenderFrameSubmitPolicy::CachedRedraw)
+}
+
+///|
+pub fn[S : Surface] RenderFrame::submit_schedule_by_policy(
+  self : RenderFrame,
+  surface : S,
+  policy : RenderFrameSubmitPolicy,
+) -> RenderFrameSchedule {
+  match policy {
+    RenderFrameSubmitPolicy::DirtyOnly => self.submit_schedule(surface)
+    RenderFrameSubmitPolicy::CachedRedraw => {
+      let schedule = self.submit_schedule(surface)
+      guard schedule.get_action() == RenderFrameScheduleAction::Skip else {
+        return schedule
+      }
+      guard !schedule.has_dirty() else { return schedule }
+      render_frame_full_present_schedule(
+        schedule.get_submit_plan().get_dirty_submit_plan(),
+        self.get_width(),
+        self.get_height(),
+        surface.get_width(),
+        surface.get_height(),
+      )
+    }
+    RenderFrameSubmitPolicy::FullRedraw => {
+      let dirty_plan = self.dirty_submit_plan(surface)
+      render_frame_full_present_schedule(
+        dirty_plan,
+        self.get_width(),
+        self.get_height(),
+        surface.get_width(),
+        surface.get_height(),
+      )
+    }
   }
-  guard !schedule.has_dirty() else { return schedule }
-  render_frame_schedule_with_action(
-    render_frame_full_present_plan(
-      schedule.get_submit_plan().get_dirty_submit_plan(),
-      self.get_width(),
-      self.get_height(),
-      surface.get_width(),
-      surface.get_height(),
-    ),
-    RenderFrameScheduleAction::Present,
-  )
 }
 
 ///|
@@ -862,7 +913,19 @@ pub fn[S : Surface] RenderFrame::submit_redraw_to(
   self : RenderFrame,
   surface : S,
 ) -> Result[RenderFrameSubmitResult, PresentError] {
-  self.submit_scheduled_to(surface, self.redraw_schedule(surface))
+  self.submit_to_by_policy(surface, RenderFrameSubmitPolicy::CachedRedraw)
+}
+
+///|
+pub fn[S : Surface] RenderFrame::submit_to_by_policy(
+  self : RenderFrame,
+  surface : S,
+  policy : RenderFrameSubmitPolicy,
+) -> Result[RenderFrameSubmitResult, PresentError] {
+  self.submit_scheduled_to(
+    surface,
+    self.submit_schedule_by_policy(surface, policy),
+  )
 }
 
 ///|
