@@ -268,6 +268,54 @@ pub fn Pixmap::blend_mask(
 }
 
 ///|
+/// Composite a source rectangle from a grayscale coverage mask over this pixmap.
+pub fn Pixmap::blend_mask_rect(
+  self : Pixmap,
+  x : Int,
+  y : Int,
+  mask_width : Int,
+  mask_height : Int,
+  mask : FixedArray[Byte],
+  src_rect : PixelRect,
+  color : Color,
+) -> Unit {
+  guard mask_width > 0 &&
+    mask_height > 0 &&
+    mask.length() >= mask_width * mask_height else {
+    return
+  }
+  let mask_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=mask_width,
+    height=mask_height,
+  )
+  match src_rect.clip_to(mask_bounds) {
+    Some(clipped_src) => {
+      let dst_x = x + clipped_src.x - src_rect.x
+      let dst_y = y + clipped_src.y - src_rect.y
+      let x_start = dst_x.max(0)
+      let y_start = dst_y.max(0)
+      let x_end = (dst_x + clipped_src.width).min(self.width)
+      let y_end = (dst_y + clipped_src.height).min(self.height)
+      guard x_start < x_end && y_start < y_end else { return }
+      for py in y_start..<y_end {
+        for px in x_start..<x_end {
+          let mask_x = clipped_src.x + px - dst_x
+          let mask_y = clipped_src.y + py - dst_y
+          let coverage = mask[mask_y * mask_width + mask_x].to_int()
+          if coverage > 0 {
+            let alpha = (color.a.to_int() * coverage + 127) / 255
+            self.blend_pixel(px, py, color.with_alpha(clamp_byte(alpha)))
+          }
+        }
+      }
+    }
+    None => ()
+  }
+}
+
+///|
 /// Composite another pixmap over this pixmap at the given destination position.
 pub fn Pixmap::blend_pixmap(
   self : Pixmap,

@@ -29,6 +29,7 @@ pub fn Canvas::concat_transform(Self, Transform) -> Unit
 pub fn[S : Surface] Canvas::dirty_present_batch(Self, S, Int) -> Result[PresentBatch, PresentError]
 pub fn[S : Surface] Canvas::dirty_present_plan(Self, S, Int) -> DirtyPresentPlan
 pub fn Canvas::draw_mask(Self, Int, Int, Int, Int, FixedArray[Byte], Paint) -> Unit
+pub fn Canvas::draw_mask_rect(Self, Int, Int, Int, Int, FixedArray[Byte], PixelRect, Paint) -> Unit
 pub fn Canvas::draw_nine_patch_pixmap(Self, Pixmap, Int, Int, Int, Int, NinePatchInsets, Paint, ImageSampling) -> Unit
 pub fn Canvas::draw_pixel(Self, Int, Int, Color) -> Unit
 pub fn Canvas::draw_pixmap(Self, Pixmap, Int, Int, Paint) -> Unit
@@ -380,6 +381,7 @@ pub struct Pixmap {
   pixels : FixedArray[Byte]
 } derive(@debug.Debug)
 pub fn Pixmap::blend_mask(Self, Int, Int, Int, Int, FixedArray[Byte], Color) -> Unit
+pub fn Pixmap::blend_mask_rect(Self, Int, Int, Int, Int, FixedArray[Byte], PixelRect, Color) -> Unit
 pub fn Pixmap::blend_nine_patch_pixmap(Self, Int, Int, Int, Int, Self, NinePatchInsets, Double, ImageSampling) -> Unit
 pub fn Pixmap::blend_pixel(Self, Int, Int, Color) -> Unit
 pub fn Pixmap::blend_pixmap(Self, Int, Int, Self, Double) -> Unit

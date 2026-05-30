@@ -83,7 +83,9 @@ wzzc-dev/
 - `Canvas::draw_placeholder_text` for debug text boxes; real text drawing lives in `renderer`
 - Canvas save/restore state stack, transform-aware rect/path drawing, transform helpers, and intersecting clip scopes for nested GUI drawing
 - `Surface` trait, `MemorySurface` with present-operation records and aggregate present telemetry, full/rect present helpers, and dirty-present batch dry-runs for `Canvas`, `LayerTree`, `RenderFrame`, and `Pixmap`
-- Pixmap blitting, source-rect atlas drawing, tiled Pixmap fills, explicit nearest/bilinear sampling modes, and straight-alpha composition for image and layer caching
+- Pixmap blitting, source-rect atlas drawing, source-rect coverage-mask drawing,
+  tiled Pixmap fills, explicit nearest/bilinear sampling modes, and
+  straight-alpha composition for image, glyph atlas, and layer caching
 - `PixmapCache` for keyed reuse of image/layer pixmaps with copy-isolated cache entries
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition
 - `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present/dirty-submit plans, scheduler states, and `Canvas` bounded dirty-present helpers
@@ -122,6 +124,8 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
 - `Renderer::draw_text` for `Font -> layout -> glyph raster -> Canvas` drawing
 - `Renderer::draw_text_face` for checked `FontFace -> TextLayout -> Canvas` drawing
 - `Renderer::draw_coverage_mask` for testing and low-level mask composition
+- `Renderer::draw_glyph_atlas_entry` for compositing one glyph placement from a
+  `GlyphMaskAtlas` coverage snapshot
 - End-to-end regression from a parsed TTF printable ASCII fixture to rendered `Pixmap` pixels
 - Keeps `graphics` independent from font parsing and text layout
 

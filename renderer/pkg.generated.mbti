@@ -10,6 +10,8 @@ import {
 // Values
 pub fn draw_coverage_mask(@graphics.Canvas, @text.CoverageMask, @graphics.Paint) -> Unit
 
+pub fn draw_glyph_atlas_entry(@graphics.Canvas, @text.CoverageMask, @text.GlyphAtlasEntry, Int, Int, @graphics.Paint) -> Unit
+
 pub fn draw_text(@graphics.Canvas, @text.Font, String, Double, Double, Int, Int, @text.LayoutConfig, @graphics.Paint) -> Unit
 
 pub fn draw_text_face(@graphics.Canvas, @text.FontFace, String, Double, Double, Int, Int, @text.LayoutConfig, @graphics.Paint) -> Unit
@@ -21,6 +23,7 @@ pub struct Renderer {
   canvas : @graphics.Canvas
 } derive(@debug.Debug)
 pub fn Renderer::draw_coverage_mask(Self, @text.CoverageMask, @graphics.Paint) -> Unit
+pub fn Renderer::draw_glyph_atlas_entry(Self, @text.CoverageMask, @text.GlyphAtlasEntry, Int, Int, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text(Self, @text.Font, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::get_canvas(Self) -> @graphics.Canvas

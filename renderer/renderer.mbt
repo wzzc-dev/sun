@@ -77,6 +77,19 @@ pub fn Renderer::draw_coverage_mask(
 }
 
 ///|
+/// Draw one glyph entry from a coverage-mask atlas snapshot.
+pub fn Renderer::draw_glyph_atlas_entry(
+  self : Renderer,
+  atlas_mask : @text.CoverageMask,
+  entry : @text.GlyphAtlasEntry,
+  x : Int,
+  y : Int,
+  paint : @graphics.Paint,
+) -> Unit {
+  draw_glyph_atlas_entry(self.canvas, atlas_mask, entry, x, y, paint)
+}
+
+///|
 /// Rasterize text through the text package and composite it on a canvas.
 pub fn draw_text(
   canvas : @graphics.Canvas,
@@ -125,6 +138,32 @@ pub fn draw_coverage_mask(
     mask.get_width(),
     mask.get_height(),
     mask.get_pixels(),
+    paint,
+  )
+}
+
+///|
+/// Composite one glyph entry from a coverage-mask atlas snapshot on a canvas.
+pub fn draw_glyph_atlas_entry(
+  canvas : @graphics.Canvas,
+  atlas_mask : @text.CoverageMask,
+  entry : @text.GlyphAtlasEntry,
+  x : Int,
+  y : Int,
+  paint : @graphics.Paint,
+) -> Unit {
+  canvas.draw_mask_rect(
+    x,
+    y,
+    atlas_mask.get_width(),
+    atlas_mask.get_height(),
+    atlas_mask.get_pixels(),
+    @graphics.PixelRect::new(
+      x=entry.get_x(),
+      y=entry.get_y(),
+      width=entry.get_width(),
+      height=entry.get_height(),
+    ),
     paint,
   )
 }

@@ -574,6 +574,60 @@ pub fn Canvas::draw_mask(
 }
 
 ///|
+/// Draw a source rectangle from a grayscale coverage mask with the given paint.
+pub fn Canvas::draw_mask_rect(
+  self : Canvas,
+  x : Int,
+  y : Int,
+  mask_width : Int,
+  mask_height : Int,
+  mask : FixedArray[Byte],
+  src_rect : PixelRect,
+  paint : Paint,
+) -> Unit {
+  guard paint.style is PaintStyle::Fill else { return }
+  guard mask_width > 0 &&
+    mask_height > 0 &&
+    mask.length() >= mask_width * mask_height else {
+    return
+  }
+  let mask_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=mask_width,
+    height=mask_height,
+  )
+  match src_rect.clip_to(mask_bounds) {
+    Some(clipped_src) => {
+      let dst_x = x + clipped_src.x - src_rect.x
+      let dst_y = y + clipped_src.y - src_rect.y
+      let (x_start, y_start, x_end, y_end) = clipped_int_bounds(
+        self,
+        dst_x,
+        dst_y,
+        dst_x + clipped_src.width,
+        dst_y + clipped_src.height,
+      )
+      guard x_start < x_end && y_start < y_end else { return }
+      let color = paint.color.scale_alpha(paint.opacity)
+      for py in y_start..<y_end {
+        for px in x_start..<x_end {
+          let mask_x = clipped_src.x + px - dst_x
+          let mask_y = clipped_src.y + py - dst_y
+          let coverage = mask[mask_y * mask_width + mask_x].to_int()
+          if coverage > 0 {
+            let alpha = (color.a.to_int() * coverage + 127) / 255
+            self.pixmap.blend_pixel(px, py, color.with_alpha(clamp_byte(alpha)))
+            self.mark_dirty_bounds(px, py, px + 1, py + 1)
+          }
+        }
+      }
+    }
+    None => ()
+  }
+}
+
+///|
 /// Draw a source pixmap at the given destination position.
 pub fn Canvas::draw_pixmap(
   self : Canvas,

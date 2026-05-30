@@ -140,6 +140,55 @@ test "Pixmap::blend_mask composites grayscale coverage" {
 }
 
 ///|
+test "Pixmap::blend_mask_rect composites source rect" {
+  let pixmap = Pixmap::new(3, 2)
+  pixmap.clear(Color::white())
+  let mask : FixedArray[Byte] = FixedArray::make(6, 0)
+  mask[0] = 255
+  mask[1] = 64
+  mask[2] = 0
+  mask[3] = 128
+  mask[4] = 255
+  mask[5] = 0
+  pixmap.blend_mask_rect(
+    1,
+    0,
+    3,
+    2,
+    mask,
+    PixelRect::new(x=1, y=0, width=2, height=2),
+    Color::black(),
+  )
+  assert_eq(pixmap.get_pixel(0, 0), Color::white())
+  assert_eq(pixmap.get_pixel(1, 0), Color::new(r=191, g=191, b=191, a=255))
+  assert_eq(pixmap.get_pixel(2, 0), Color::white())
+  assert_eq(pixmap.get_pixel(1, 1), Color::black())
+  assert_eq(pixmap.get_pixel(2, 1), Color::white())
+}
+
+///|
+test "Pixmap::blend_mask_rect clips source and destination" {
+  let pixmap = Pixmap::new(2, 1)
+  pixmap.clear(Color::white())
+  let mask : FixedArray[Byte] = FixedArray::make(4, 0)
+  mask[0] = 255
+  mask[1] = 128
+  mask[2] = 64
+  mask[3] = 32
+  pixmap.blend_mask_rect(
+    -1,
+    0,
+    2,
+    2,
+    mask,
+    PixelRect::new(x=0, y=0, width=3, height=1),
+    Color::black(),
+  )
+  assert_eq(pixmap.get_pixel(0, 0), Color::new(r=127, g=127, b=127, a=255))
+  assert_eq(pixmap.get_pixel(1, 0), Color::white())
+}
+
+///|
 test "Pixmap::blend_pixmap composites source alpha" {
   let dst = Pixmap::new(2, 1)
   dst.clear(Color::white())

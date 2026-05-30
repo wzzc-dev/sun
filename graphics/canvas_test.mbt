@@ -17,6 +17,39 @@ test "Canvas::draw_mask composites coverage with paint opacity" {
 }
 
 ///|
+test "Canvas::draw_mask_rect composites atlas source rect" {
+  let canvas = Canvas::new(3, 2)
+  canvas.clear(Color::white())
+  canvas.clear_dirty_region()
+  let mask : FixedArray[Byte] = FixedArray::make(6, 0)
+  mask[0] = 255
+  mask[1] = 128
+  mask[2] = 0
+  mask[3] = 64
+  mask[4] = 255
+  mask[5] = 0
+  canvas.draw_mask_rect(
+    1,
+    0,
+    3,
+    2,
+    mask,
+    PixelRect::new(x=1, y=0, width=2, height=2),
+    Paint::new().set_color(Color::black()),
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::white())
+  assert_eq(pixmap.get_pixel(1, 0), Color::new(r=127, g=127, b=127, a=255))
+  assert_eq(pixmap.get_pixel(2, 0), Color::white())
+  assert_eq(pixmap.get_pixel(1, 1), Color::black())
+  assert_eq(pixmap.get_pixel(2, 1), Color::white())
+  assert_true(
+    canvas.get_dirty_region().bounds() ==
+    Some(PixelRect::new(x=1, y=0, width=1, height=2)),
+  )
+}
+
+///|
 test "Canvas tracks dirty region for clear and clipped rect" {
   let canvas = Canvas::new(3, 2)
   assert_true(canvas.get_dirty_region().is_empty())
