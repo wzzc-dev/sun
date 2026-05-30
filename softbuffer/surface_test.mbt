@@ -1013,6 +1013,98 @@ test "NativeSurface submits frame by explicit policy" {
 }
 
 ///|
+test "NativeSurface submit requests preserve policy and schedule decisions" {
+  let count = Ref(0)
+  let frame = @graphics.RenderFrame::new(4, 1)
+  frame.get_canvas().draw_pixel(1, 0, @graphics.Color::red())
+  let surface = NativeSurface::from_frame(42, frame).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+
+  let request = surface.frame_submit_request_by_policy(
+    frame,
+    NativeFrameSubmitPolicy::FullRedraw,
+  )
+  assert_true(request.get_policy() == NativeFrameSubmitPolicy::FullRedraw)
+  assert_true(request.get_action() == NativeFrameScheduleAction::Present)
+  assert_true(request.should_submit())
+  assert_true(request.needs_present())
+  assert_true(request.has_dirty())
+  assert_true(!request.was_clipped_away())
+  assert_true(!request.uses_bounds_fallback())
+  assert_true(
+    request.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_true(request.get_state() == @graphics.DirtySubmitState::Present)
+  assert_true(
+    request.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
+  assert_true(
+    request.to_render_frame_submit_request().get_policy() ==
+    @graphics.RenderFrameSubmitPolicy::FullRedraw,
+  )
+  assert_true(
+    request.get_schedule().get_submit_plan().get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_eq(request.get_present_rect_count(), 1)
+  assert_eq(request.get_present_pixel_count(), 4)
+  assert_eq(request.get_present_byte_count(), 16)
+  assert_true(!request.saves_full_present_pixels())
+  assert_eq(count.val, 0)
+  assert_true(frame.has_dirty())
+
+  match surface.submit_frame_request(frame, request) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+      )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
+      assert_true(result.did_present())
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 4)
+      assert_eq(result.get_present_byte_count(), 16)
+    }
+    Err(_) => abort("expected native submit request result")
+  }
+  assert_eq(count.val, 1)
+  assert_true(!frame.has_dirty())
+
+  let clean_frame = @graphics.RenderFrame::new(2, 1)
+  let clean_surface = NativeSurface::from_frame(42, clean_frame).with_pre_present_hook(fn() {
+      count.val = count.val + 1
+    },
+  )
+  let clean_schedule = clean_surface.frame_schedule_by_policy(
+    clean_frame,
+    NativeFrameSubmitPolicy::DirtyOnly,
+  )
+  let clean_request = NativeFrameSubmitRequest::new(
+    NativeFrameSubmitPolicy::DirtyOnly,
+    clean_schedule,
+  )
+  assert_true(clean_request.get_policy() == NativeFrameSubmitPolicy::DirtyOnly)
+  assert_true(clean_request.get_action() == NativeFrameScheduleAction::Skip)
+  assert_true(!clean_request.should_submit())
+  assert_true(!clean_request.needs_present())
+  assert_true(!clean_request.has_dirty())
+  assert_true(clean_request.get_dirty_bounds() == None)
+  match clean_surface.submit_frame_request(clean_frame, clean_request) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Skip,
+      )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Clean)
+      assert_true(!result.did_present())
+      assert_eq(result.get_presented_rect_count(), 0)
+    }
+    Err(_) => abort("expected clean native submit request result")
+  }
+  assert_eq(count.val, 1)
+}
+
+///|
 test "NativeSurface dirty submit skips clipped-away presents" {
   let count = Ref(0)
   let frame = @graphics.RenderFrame::new(4, 1)
@@ -1178,6 +1270,43 @@ test "render frame policy helpers construct NativeSurface internally" {
       assert_eq(result.get_present_byte_count(), 16)
     }
     Err(_) => abort("expected constructed policy submit result")
+  }
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "render frame submit request helpers construct NativeSurface internally" {
+  let frame = @graphics.RenderFrame::new(4, 1)
+  frame.get_canvas().draw_pixel(1, 0, @graphics.Color::red())
+
+  let request = render_frame_submit_request_by_policy(
+    42,
+    frame,
+    NativeFrameSubmitPolicy::FullRedraw,
+  )
+  assert_true(request.get_policy() == NativeFrameSubmitPolicy::FullRedraw)
+  assert_true(request.get_action() == NativeFrameScheduleAction::Present)
+  assert_true(
+    request.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_true(request.get_state() == @graphics.DirtySubmitState::Present)
+  assert_true(request.has_dirty())
+  assert_eq(request.get_present_pixel_count(), 4)
+  assert_eq(request.get_present_byte_count(), 16)
+  assert_true(frame.has_dirty())
+
+  match submit_render_frame_request(42, frame, request) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+      )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
+      assert_true(result.did_present())
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 4)
+      assert_eq(result.get_present_byte_count(), 16)
+    }
+    Err(_) => abort("expected constructed submit request result")
   }
   assert_true(!frame.has_dirty())
 }

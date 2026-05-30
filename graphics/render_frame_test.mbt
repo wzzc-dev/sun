@@ -858,6 +858,83 @@ test "RenderFrame::submit_to_by_policy executes requested policy" {
 }
 
 ///|
+test "RenderFrame submit requests preserve policy and schedule decisions" {
+  let frame = RenderFrame::new(4, 1)
+  frame.get_canvas().draw_pixel(1, 0, Color::red())
+  let surface = MemorySurface::new(4, 1)
+
+  let request = frame.submit_request_by_policy(
+    surface,
+    RenderFrameSubmitPolicy::FullRedraw,
+  )
+  assert_true(request.get_policy() == RenderFrameSubmitPolicy::FullRedraw)
+  assert_true(request.get_action() == RenderFrameScheduleAction::Present)
+  assert_true(request.should_submit())
+  assert_true(request.needs_present())
+  assert_true(request.has_dirty())
+  assert_true(!request.was_clipped_away())
+  assert_true(!request.uses_bounds_fallback())
+  assert_true(request.get_present_strategy() == DirtyPresentStrategy::Full)
+  assert_true(request.get_state() == DirtySubmitState::Present)
+  assert_true(
+    request.get_dirty_bounds() ==
+    Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
+  assert_true(
+    request.get_schedule().get_submit_plan().get_present_strategy() ==
+    DirtyPresentStrategy::Full,
+  )
+  assert_eq(request.get_present_rect_count(), 1)
+  assert_eq(request.get_present_pixel_count(), 4)
+  assert_eq(request.get_present_byte_count(), 16)
+  assert_true(!request.saves_full_present_pixels())
+  assert_eq(surface.get_present_count(), 0)
+  assert_true(frame.has_dirty())
+
+  match frame.submit_request_to(surface, request) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Full)
+      assert_true(result.get_state() == DirtySubmitState::Present)
+      assert_true(result.did_present())
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 4)
+      assert_eq(result.get_present_byte_count(), 16)
+    }
+    Err(_) => abort("expected submit request result")
+  }
+  assert_eq(surface.get_present_count(), 1)
+  assert_eq(surface.get_pixel(1, 0), Color::red())
+  assert_true(!frame.has_dirty())
+
+  let clean_frame = RenderFrame::new(2, 1)
+  let clean_surface = MemorySurface::new(2, 1)
+  let clean_schedule = clean_frame.submit_schedule_by_policy(
+    clean_surface,
+    RenderFrameSubmitPolicy::DirtyOnly,
+  )
+  let clean_request = RenderFrameSubmitRequest::new(
+    RenderFrameSubmitPolicy::DirtyOnly,
+    clean_schedule,
+  )
+  assert_true(clean_request.get_policy() == RenderFrameSubmitPolicy::DirtyOnly)
+  assert_true(clean_request.get_action() == RenderFrameScheduleAction::Skip)
+  assert_true(!clean_request.should_submit())
+  assert_true(!clean_request.needs_present())
+  assert_true(!clean_request.has_dirty())
+  assert_true(clean_request.get_dirty_bounds() == None)
+  match clean_frame.submit_request_to(clean_surface, clean_request) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Skip)
+      assert_true(result.get_state() == DirtySubmitState::Clean)
+      assert_true(!result.did_present())
+      assert_eq(result.get_presented_rect_count(), 0)
+    }
+    Err(_) => abort("expected clean submit request result")
+  }
+  assert_eq(clean_surface.get_present_count(), 0)
+}
+
+///|
 test "RenderFrame dirty helpers cover canvas and layer tree dirtiness" {
   let frame = RenderFrame::new(4, 2)
   assert_true(!frame.has_dirty())

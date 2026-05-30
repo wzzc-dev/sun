@@ -49,6 +49,15 @@ pub struct RenderFrameSchedule {
 } derive(Debug)
 
 ///|
+/// Policy intent paired with the dry-run schedule selected for one frame
+/// submit. Event loops can inspect this request, then execute the same
+/// precomputed decision without recomputing scheduling state.
+pub struct RenderFrameSubmitRequest {
+  policy : RenderFrameSubmitPolicy
+  schedule : RenderFrameSchedule
+} derive(Debug)
+
+///|
 /// Request to resize one frame-owned layer cache and clear it to a color.
 pub struct RenderFrameLayerClearRequest {
   layer_index : Int
@@ -385,6 +394,126 @@ pub fn RenderFrameSchedule::saves_full_present_pixels(
 }
 
 ///|
+pub fn RenderFrameSubmitRequest::get_policy(
+  self : RenderFrameSubmitRequest,
+) -> RenderFrameSubmitPolicy {
+  self.policy
+}
+
+///|
+pub fn RenderFrameSubmitRequest::new(
+  policy : RenderFrameSubmitPolicy,
+  schedule : RenderFrameSchedule,
+) -> RenderFrameSubmitRequest {
+  { policy, schedule }
+}
+
+///|
+pub fn RenderFrameSubmitRequest::get_schedule(
+  self : RenderFrameSubmitRequest,
+) -> RenderFrameSchedule {
+  self.schedule
+}
+
+///|
+pub fn RenderFrameSubmitRequest::get_submit_plan(
+  self : RenderFrameSubmitRequest,
+) -> RenderFrameSubmitPlan {
+  self.schedule.get_submit_plan()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::get_action(
+  self : RenderFrameSubmitRequest,
+) -> RenderFrameScheduleAction {
+  self.schedule.get_action()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::get_present_strategy(
+  self : RenderFrameSubmitRequest,
+) -> DirtyPresentStrategy {
+  self.schedule.get_present_strategy()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::get_state(
+  self : RenderFrameSubmitRequest,
+) -> DirtySubmitState {
+  self.schedule.get_state()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::get_dirty_bounds(
+  self : RenderFrameSubmitRequest,
+) -> PixelRect? {
+  self.schedule.get_dirty_bounds()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::has_dirty(
+  self : RenderFrameSubmitRequest,
+) -> Bool {
+  self.schedule.has_dirty()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::needs_present(
+  self : RenderFrameSubmitRequest,
+) -> Bool {
+  self.schedule.needs_present()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::should_submit(
+  self : RenderFrameSubmitRequest,
+) -> Bool {
+  self.schedule.should_submit()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::was_clipped_away(
+  self : RenderFrameSubmitRequest,
+) -> Bool {
+  self.schedule.was_clipped_away()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::uses_bounds_fallback(
+  self : RenderFrameSubmitRequest,
+) -> Bool {
+  self.schedule.uses_bounds_fallback()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::get_present_rect_count(
+  self : RenderFrameSubmitRequest,
+) -> Int {
+  self.schedule.get_present_rect_count()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::get_present_pixel_count(
+  self : RenderFrameSubmitRequest,
+) -> Int {
+  self.schedule.get_present_pixel_count()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::get_present_byte_count(
+  self : RenderFrameSubmitRequest,
+) -> Int {
+  self.schedule.get_present_byte_count()
+}
+
+///|
+pub fn RenderFrameSubmitRequest::saves_full_present_pixels(
+  self : RenderFrameSubmitRequest,
+) -> Bool {
+  self.schedule.saves_full_present_pixels()
+}
+
+///|
 fn render_frame_submit_plan(
   dirty_submit_plan : DirtySubmitPlan,
   strategy : DirtyPresentStrategy,
@@ -428,6 +557,14 @@ fn render_frame_schedule_with_action(
   action : RenderFrameScheduleAction,
 ) -> RenderFrameSchedule {
   { submit_plan, action }
+}
+
+///|
+fn render_frame_submit_request(
+  policy : RenderFrameSubmitPolicy,
+  schedule : RenderFrameSchedule,
+) -> RenderFrameSubmitRequest {
+  RenderFrameSubmitRequest::new(policy, schedule)
 }
 
 ///|
@@ -859,6 +996,18 @@ pub fn[S : Surface] RenderFrame::submit_schedule_by_policy(
 }
 
 ///|
+pub fn[S : Surface] RenderFrame::submit_request_by_policy(
+  self : RenderFrame,
+  surface : S,
+  policy : RenderFrameSubmitPolicy,
+) -> RenderFrameSubmitRequest {
+  render_frame_submit_request(
+    policy,
+    self.submit_schedule_by_policy(surface, policy),
+  )
+}
+
+///|
 pub fn[S : Surface] RenderFrame::submit_scheduled_to(
   self : RenderFrame,
   surface : S,
@@ -926,6 +1075,15 @@ pub fn[S : Surface] RenderFrame::submit_to_by_policy(
     surface,
     self.submit_schedule_by_policy(surface, policy),
   )
+}
+
+///|
+pub fn[S : Surface] RenderFrame::submit_request_to(
+  self : RenderFrame,
+  surface : S,
+  request : RenderFrameSubmitRequest,
+) -> Result[RenderFrameSubmitResult, PresentError] {
+  self.submit_scheduled_to(surface, request.get_schedule())
 }
 
 ///|

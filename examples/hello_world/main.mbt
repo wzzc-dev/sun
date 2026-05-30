@@ -248,8 +248,11 @@ fn present_frame(
   frame : @graphics.RenderFrame,
 ) -> Unit {
   let surface = frame_native_surface(window, frame)
-  let schedule = surface.frame_schedule(frame)
-  match surface.submit_frame_schedule(frame, schedule) {
+  let request = surface.frame_submit_request_by_policy(
+    frame,
+    @softbuffer.NativeFrameSubmitPolicy::DirtyOnly,
+  )
+  match surface.submit_frame_request(frame, request) {
     Ok(result) => handle_frame_submit_result(result)
     Err(_) => println("Present failed")
   }
@@ -313,11 +316,11 @@ fn present_cached_frame(
   frame : @graphics.RenderFrame,
 ) -> Unit {
   let surface = frame_native_surface(window, frame)
-  match
-    surface.submit_frame_by_policy(
-      frame,
-      @softbuffer.NativeFrameSubmitPolicy::CachedRedraw,
-    ) {
+  let request = surface.frame_submit_request_by_policy(
+    frame,
+    @softbuffer.NativeFrameSubmitPolicy::CachedRedraw,
+  )
+  match surface.submit_frame_request(frame, request) {
     Ok(result) => handle_frame_submit_result(result)
     Err(_) => println("Present failed")
   }

@@ -98,7 +98,7 @@ wzzc-dev/
 - `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present/dirty-submit plans, scheduler states, and `Canvas` bounded dirty-present helpers
 - `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`
 - `LayerTree` z-order composition with dirty rectangle propagation, layer resize/remove/replace/reorder lifecycle, property-change invalidation, dirty-present planning/batch dry-runs, and partial present submission
-- `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, single/batched layer resize/clear and replacement/redraw helpers, dirty queries/marking, dirty-submit planning/results, event-loop schedule snapshots, explicit DirtyOnly/CachedRedraw/FullRedraw submit policies, cached redraw schedule execution, precomputed schedule submit execution, result-level scheduler, did-present, planned rect/cost telemetry, dirty batch dry-runs, Skip/Partial/Full present strategy planning, and strategy-aware submit helpers for backend event-loop integration
+- `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, single/batched layer resize/clear and replacement/redraw helpers, dirty queries/marking, dirty-submit planning/results, event-loop schedule snapshots, explicit DirtyOnly/CachedRedraw/FullRedraw submit policies, policy-aware submit requests, cached redraw schedule execution, precomputed schedule submit execution, result-level scheduler, did-present, planned rect/cost telemetry, dirty batch dry-runs, Skip/Partial/Full present strategy planning, and strategy-aware submit helpers for backend event-loop integration
 
 ### text
 Text processing library (font parsing, shaping, layout).
@@ -158,7 +158,7 @@ Pixel display library.
 - Window creation (Win32 API)
 - Pixel buffer presentation through `graphics.Surface`
 - `NativeSurface` adapter for external native window handles
-- `RenderFrame -> NativeSurface` dirty/full present helpers plus dry-run packed present batches, event-loop schedule snapshots, explicit native submit policies, cached redraw submit helpers, precomputed schedule submit helpers, and adapters for graphics-core strategy-aware submit/query/plan results with dirty bounds, fallback state, planned rect/cost, and full-present savings telemetry for window integration
+- `RenderFrame -> NativeSurface` dirty/full present helpers plus dry-run packed present batches, event-loop schedule snapshots, explicit native submit policies, policy-aware submit requests, cached redraw submit helpers, precomputed schedule submit helpers, and adapters for graphics-core strategy-aware submit/query/plan results with dirty bounds, fallback state, planned rect/cost, and full-present savings telemetry for window integration
 - Optional `NativeSurface` pre-present hook for window lifecycle notifications before validated native presents
 - Native full-frame and rectangle present entry points for dirty redraw plumbing
 - Event loop
@@ -171,7 +171,7 @@ Small build-checked programs that exercise the public packages together.
 - `render_bench` runs a deterministic CPU render workload covering fill rect,
   path fill, stroke, glyph raster/mask composition, Pixmap blit, and full
   present-copy telemetry
-- `hello_world` uses `graphics.RenderFrame`, `LayerTree`, frame-level resize/clear/replacement redraw helpers, and `softbuffer` schedule-aware frame-submit helpers as a minimal window submit path with resize/redraw lifecycle reuse
+- `hello_world` uses `graphics.RenderFrame`, `LayerTree`, frame-level resize/clear/replacement redraw helpers, and `softbuffer` policy-aware submit requests as a minimal window submit path with resize/redraw lifecycle reuse
 - `font_demo` renders real TTF text through the `renderer` package
 - `triangle_window` keeps a simple native pixel-output smoke test
 

@@ -62,6 +62,14 @@ pub struct NativeFrameSchedule {
 } derive(Debug)
 
 ///|
+/// Native submit policy paired with the precomputed frame schedule selected for
+/// one event-loop submit decision.
+pub struct NativeFrameSubmitRequest {
+  policy : NativeFrameSubmitPolicy
+  schedule : NativeFrameSchedule
+} derive(Debug)
+
+///|
 pub fn NativeFrameSubmitPlan::get_present_strategy(
   self : NativeFrameSubmitPlan,
 ) -> @graphics.DirtyPresentStrategy {
@@ -335,6 +343,136 @@ pub fn NativeFrameSchedule::saves_full_present_pixels(
 }
 
 ///|
+pub fn NativeFrameSubmitRequest::get_policy(
+  self : NativeFrameSubmitRequest,
+) -> NativeFrameSubmitPolicy {
+  self.policy
+}
+
+///|
+pub fn NativeFrameSubmitRequest::new(
+  policy : NativeFrameSubmitPolicy,
+  schedule : NativeFrameSchedule,
+) -> NativeFrameSubmitRequest {
+  { policy, schedule }
+}
+
+///|
+pub fn NativeFrameSubmitRequest::get_schedule(
+  self : NativeFrameSubmitRequest,
+) -> NativeFrameSchedule {
+  self.schedule
+}
+
+///|
+pub fn NativeFrameSubmitRequest::to_render_frame_submit_request(
+  self : NativeFrameSubmitRequest,
+) -> @graphics.RenderFrameSubmitRequest {
+  @graphics.RenderFrameSubmitRequest::new(
+    native_frame_submit_policy_to_graphics(self.policy),
+    self.schedule.to_render_frame_schedule(),
+  )
+}
+
+///|
+pub fn NativeFrameSubmitRequest::get_submit_plan(
+  self : NativeFrameSubmitRequest,
+) -> NativeFrameSubmitPlan {
+  self.schedule.get_submit_plan()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::get_action(
+  self : NativeFrameSubmitRequest,
+) -> NativeFrameScheduleAction {
+  self.schedule.get_action()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::get_present_strategy(
+  self : NativeFrameSubmitRequest,
+) -> @graphics.DirtyPresentStrategy {
+  self.schedule.get_present_strategy()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::get_state(
+  self : NativeFrameSubmitRequest,
+) -> @graphics.DirtySubmitState {
+  self.schedule.get_state()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::get_dirty_bounds(
+  self : NativeFrameSubmitRequest,
+) -> @graphics.PixelRect? {
+  self.schedule.get_dirty_bounds()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::has_dirty(
+  self : NativeFrameSubmitRequest,
+) -> Bool {
+  self.schedule.has_dirty()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::needs_present(
+  self : NativeFrameSubmitRequest,
+) -> Bool {
+  self.schedule.needs_present()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::should_submit(
+  self : NativeFrameSubmitRequest,
+) -> Bool {
+  self.schedule.should_submit()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::was_clipped_away(
+  self : NativeFrameSubmitRequest,
+) -> Bool {
+  self.schedule.was_clipped_away()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::uses_bounds_fallback(
+  self : NativeFrameSubmitRequest,
+) -> Bool {
+  self.schedule.uses_bounds_fallback()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::get_present_rect_count(
+  self : NativeFrameSubmitRequest,
+) -> Int {
+  self.schedule.get_present_rect_count()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::get_present_pixel_count(
+  self : NativeFrameSubmitRequest,
+) -> Int {
+  self.schedule.get_present_pixel_count()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::get_present_byte_count(
+  self : NativeFrameSubmitRequest,
+) -> Int {
+  self.schedule.get_present_byte_count()
+}
+
+///|
+pub fn NativeFrameSubmitRequest::saves_full_present_pixels(
+  self : NativeFrameSubmitRequest,
+) -> Bool {
+  self.schedule.saves_full_present_pixels()
+}
+
+///|
 fn native_frame_submit_plan(
   strategy : @graphics.DirtyPresentStrategy,
   state : @graphics.DirtySubmitState,
@@ -411,6 +549,14 @@ fn native_frame_schedule_from_frame(
       NativeFrameScheduleAction::Present
   }
   { render_frame_schedule, submit_plan, action }
+}
+
+///|
+fn native_frame_submit_request(
+  policy : NativeFrameSubmitPolicy,
+  schedule : NativeFrameSchedule,
+) -> NativeFrameSubmitRequest {
+  NativeFrameSubmitRequest::new(policy, schedule)
 }
 
 ///|
@@ -781,6 +927,18 @@ pub fn NativeSurface::frame_schedule_by_policy(
 }
 
 ///|
+pub fn NativeSurface::frame_submit_request_by_policy(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+  policy : NativeFrameSubmitPolicy,
+) -> NativeFrameSubmitRequest {
+  native_frame_submit_request(
+    policy,
+    self.frame_schedule_by_policy(frame, policy),
+  )
+}
+
+///|
 pub fn NativeSurface::submit_frame_schedule(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
@@ -821,6 +979,25 @@ pub fn NativeSurface::submit_frame_by_policy(
       native_frame_submit_policy_to_graphics(policy),
     ) {
     Ok(result) => Ok(native_frame_submit_result_from_frame(result))
+    Err(error) => Err(error)
+  }
+}
+
+///|
+pub fn NativeSurface::submit_frame_request(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+  request : NativeFrameSubmitRequest,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  match
+    frame.submit_request_to(self, request.to_render_frame_submit_request()) {
+    Ok(result) =>
+      Ok(
+        native_frame_submit_result_from_schedule(
+          request.get_schedule(),
+          result.get_presented_rect_count(),
+        ),
+      )
     Err(error) => Err(error)
   }
 }
@@ -922,6 +1099,17 @@ pub fn render_frame_schedule_by_policy(
 }
 
 ///|
+pub fn render_frame_submit_request_by_policy(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+  policy : NativeFrameSubmitPolicy,
+) -> NativeFrameSubmitRequest {
+  NativeSurface::from_frame(handle, frame).frame_submit_request_by_policy(
+    frame, policy,
+  )
+}
+
+///|
 pub fn submit_render_frame_schedule(
   handle : UInt64,
   frame : @graphics.RenderFrame,
@@ -947,6 +1135,15 @@ pub fn submit_render_frame_by_policy(
   policy : NativeFrameSubmitPolicy,
 ) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
   NativeSurface::from_frame(handle, frame).submit_frame_by_policy(frame, policy)
+}
+
+///|
+pub fn submit_render_frame_request(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+  request : NativeFrameSubmitRequest,
+) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
+  NativeSurface::from_frame(handle, frame).submit_frame_request(frame, request)
 }
 
 ///|

@@ -371,6 +371,7 @@ Application / GUI
 - [x] `RenderFrame` 提供 precomputed schedule submit executor，让任意 `Surface` 先 query 调度快照再按同一决策提交
 - [x] `RenderFrame` 提供 cached redraw schedule/submit 入口，把 clean OS redraw 的 full repaint 策略从示例下沉到 graphics 核心层
 - [x] `RenderFrame` 暴露 DirtyOnly/CachedRedraw/FullRedraw submit policy，把事件循环 present 意图显式化为可测试调度 API
+- [x] `RenderFrame` 暴露 policy-aware submit request，将 submit policy 与 dry-run schedule 绑定，事件循环可先 inspect 再按同一决策执行
 - [x] softbuffer 暴露 `RenderFrame` present strategy 查询，让窗口后端无需拆 dirty-submit plan 就能调度 present
 - [x] softbuffer 暴露 `RenderFrame` dirty present batch dry-run，让窗口后端可检查 packed payload 且不触发 hook、不清 dirty
 - [x] softbuffer 暴露 strategy-aware frame submit helper，让窗口后端复用统一 Skip/Partial/Full 分派和提交结果
@@ -399,6 +400,7 @@ Application / GUI
 - [x] `hello_world` 示例消费 `NativeFrameSchedule` 并通过 precomputed schedule submit helper 处理 redraw/resize 提交，保留 clean OS redraw 的 cached full repaint
 - [x] `hello_world` 示例改为调用 softbuffer cached redraw submit helper，避免窗口循环自行判断 clean redraw/full repaint 分支
 - [x] `hello_world` 示例改为消费 softbuffer submit policy，后续窗口循环可在 dirty-only、cached redraw 与 full redraw 之间显式选择
+- [x] `hello_world` 示例改为消费 policy-aware submit request，让窗口循环保留 submit intent 与 precomputed schedule 后再执行
 - [x] `RenderFrame::resize_and_clear_layer` 抽出背景 layer resize/clear lifecycle helper，让 GUI resize 代码复用统一 dirty 语义
 - [x] `RenderFrame::resize_and_clear_layers` 支持批量验证并 resize/clear 多个 frame layer cache，让 GUI resize 可用一个调用处理背景、overlay 等多层 lifecycle
 - [x] `RenderFrame::replace_layer`/`replace_layers` 支持 frame 级 layer replacement lifecycle，批量预校验后复用 LayerTree 旧/新 bounds invalidation，减少 GUI 直接操作 LayerTree
@@ -427,6 +429,7 @@ Application / GUI
 - [x] softbuffer 的 precomputed schedule submit 复用 graphics-core executor，减少 native 后端重复分派逻辑
 - [x] softbuffer 提供 cached redraw schedule/submit helper，让窗口后端复用 clean redraw full repaint 策略
 - [x] softbuffer 暴露 NativeFrameSubmitPolicy，并桥接到 graphics-core policy schedule/submit helper
+- [x] softbuffer 暴露 NativeFrameSubmitRequest，并桥接到 graphics-core submit request helper
 - [x] `NativeSurface` 增加 pre-present hook，校验通过后、native present 前触发窗口生命周期通知
 - [ ] Windows 支持（Win32）从 demo 后端升级为稳定后端
 - [ ] Linux 支持（Wayland，X11 作为后续选项）

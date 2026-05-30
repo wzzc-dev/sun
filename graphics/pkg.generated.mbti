@@ -560,6 +560,8 @@ pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(Self, S) -> RenderFrame
 pub fn[S : Surface] RenderFrame::submit_by_strategy_to(Self, S) -> Result[RenderFrameSubmitResult, PresentError]
 pub fn[S : Surface] RenderFrame::submit_dirty_to(Self, S) -> Result[DirtySubmitResult, PresentError]
 pub fn[S : Surface] RenderFrame::submit_redraw_to(Self, S) -> Result[RenderFrameSubmitResult, PresentError]
+pub fn[S : Surface] RenderFrame::submit_request_by_policy(Self, S, RenderFrameSubmitPolicy) -> RenderFrameSubmitRequest
+pub fn[S : Surface] RenderFrame::submit_request_to(Self, S, RenderFrameSubmitRequest) -> Result[RenderFrameSubmitResult, PresentError]
 pub fn[S : Surface] RenderFrame::submit_schedule(Self, S) -> RenderFrameSchedule
 pub fn[S : Surface] RenderFrame::submit_schedule_by_policy(Self, S, RenderFrameSubmitPolicy) -> RenderFrameSchedule
 pub fn[S : Surface] RenderFrame::submit_scheduled_to(Self, S, RenderFrameSchedule) -> Result[RenderFrameSubmitResult, PresentError]
@@ -631,6 +633,28 @@ pub(all) enum RenderFrameSubmitPolicy {
   CachedRedraw
   FullRedraw
 } derive(Eq, @debug.Debug)
+
+pub struct RenderFrameSubmitRequest {
+  policy : RenderFrameSubmitPolicy
+  schedule : RenderFrameSchedule
+} derive(@debug.Debug)
+pub fn RenderFrameSubmitRequest::get_action(Self) -> RenderFrameScheduleAction
+pub fn RenderFrameSubmitRequest::get_dirty_bounds(Self) -> PixelRect?
+pub fn RenderFrameSubmitRequest::get_policy(Self) -> RenderFrameSubmitPolicy
+pub fn RenderFrameSubmitRequest::get_present_byte_count(Self) -> Int
+pub fn RenderFrameSubmitRequest::get_present_pixel_count(Self) -> Int
+pub fn RenderFrameSubmitRequest::get_present_rect_count(Self) -> Int
+pub fn RenderFrameSubmitRequest::get_present_strategy(Self) -> DirtyPresentStrategy
+pub fn RenderFrameSubmitRequest::get_schedule(Self) -> RenderFrameSchedule
+pub fn RenderFrameSubmitRequest::get_state(Self) -> DirtySubmitState
+pub fn RenderFrameSubmitRequest::get_submit_plan(Self) -> RenderFrameSubmitPlan
+pub fn RenderFrameSubmitRequest::has_dirty(Self) -> Bool
+pub fn RenderFrameSubmitRequest::needs_present(Self) -> Bool
+pub fn RenderFrameSubmitRequest::new(RenderFrameSubmitPolicy, RenderFrameSchedule) -> Self
+pub fn RenderFrameSubmitRequest::saves_full_present_pixels(Self) -> Bool
+pub fn RenderFrameSubmitRequest::should_submit(Self) -> Bool
+pub fn RenderFrameSubmitRequest::uses_bounds_fallback(Self) -> Bool
+pub fn RenderFrameSubmitRequest::was_clipped_away(Self) -> Bool
 
 pub struct RenderFrameSubmitResult {
   submit_plan : RenderFrameSubmitPlan
