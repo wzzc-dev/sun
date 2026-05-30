@@ -96,6 +96,33 @@ test "PixmapCache::get_or_insert reuses cached pixmaps" {
 }
 
 ///|
+test "PixmapCache::get_or_insert_result reports cache hits" {
+  let cache = PixmapCache::new()
+  let red = Pixmap::new(1, 1)
+  red.set_pixel(0, 0, Color::red())
+  let first = cache.get_or_insert_result("icon", red)
+  assert_true(first.did_insert())
+  assert_true(!first.did_hit_cache())
+  assert_eq(first.get_pixmap().get_pixel(0, 0), Color::red())
+  assert_eq(cache.len(), 1)
+
+  let first_pixmap = first.get_pixmap()
+  first_pixmap.set_pixel(0, 0, Color::green())
+  match cache.get("icon") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), Color::red())
+    None => abort("expected cached pixmap")
+  }
+
+  let blue = Pixmap::new(1, 1)
+  blue.set_pixel(0, 0, Color::blue())
+  let second = cache.get_or_insert_result("icon", blue)
+  assert_true(!second.did_insert())
+  assert_true(second.did_hit_cache())
+  assert_eq(second.get_pixmap().get_pixel(0, 0), Color::red())
+  assert_eq(cache.len(), 1)
+}
+
+///|
 test "Pixmap::clear fills all pixels" {
   let pixmap = Pixmap::new(10, 10)
   let color = Color::new(r=0, g=255, b=0)

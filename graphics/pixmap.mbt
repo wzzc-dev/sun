@@ -82,9 +82,40 @@ pub struct PixmapCache {
 } derive(Debug)
 
 ///|
+/// Result of reading a pixmap from cache or inserting it on miss.
+pub struct PixmapCacheInsertResult {
+  pixmap : Pixmap
+  did_insert : Bool
+} derive(Debug)
+
+///|
 /// Create an empty pixmap cache.
 pub fn PixmapCache::new() -> PixmapCache {
   { pixmaps: {} }
+}
+
+///|
+/// Get the resulting pixmap.
+pub fn PixmapCacheInsertResult::get_pixmap(
+  self : PixmapCacheInsertResult,
+) -> Pixmap {
+  self.pixmap
+}
+
+///|
+/// Return whether this lookup inserted a new pixmap instead of hitting cache.
+pub fn PixmapCacheInsertResult::did_insert(
+  self : PixmapCacheInsertResult,
+) -> Bool {
+  self.did_insert
+}
+
+///|
+/// Return whether this lookup reused a cached pixmap.
+pub fn PixmapCacheInsertResult::did_hit_cache(
+  self : PixmapCacheInsertResult,
+) -> Bool {
+  !self.did_insert
 }
 
 ///|
@@ -127,9 +158,19 @@ pub fn PixmapCache::get_or_insert(
   key : String,
   pixmap : Pixmap,
 ) -> Pixmap {
+  self.get_or_insert_result(key, pixmap).get_pixmap()
+}
+
+///|
+/// Return a cached pixmap or insert this fallback pixmap, reporting cache hits.
+pub fn PixmapCache::get_or_insert_result(
+  self : PixmapCache,
+  key : String,
+  pixmap : Pixmap,
+) -> PixmapCacheInsertResult {
   match self.get(key) {
-    Some(cached) => cached
-    None => self.insert(key, pixmap)
+    Some(cached) => { pixmap: cached, did_insert: false }
+    None => { pixmap: self.insert(key, pixmap), did_insert: true }
   }
 }
 

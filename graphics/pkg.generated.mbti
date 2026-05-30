@@ -414,11 +414,20 @@ pub struct PixmapCache {
 pub fn PixmapCache::clear(Self) -> Unit
 pub fn PixmapCache::get(Self, String) -> Pixmap?
 pub fn PixmapCache::get_or_insert(Self, String, Pixmap) -> Pixmap
+pub fn PixmapCache::get_or_insert_result(Self, String, Pixmap) -> PixmapCacheInsertResult
 pub fn PixmapCache::insert(Self, String, Pixmap) -> Pixmap
 pub fn PixmapCache::is_empty(Self) -> Bool
 pub fn PixmapCache::len(Self) -> Int
 pub fn PixmapCache::new() -> Self
 pub fn PixmapCache::remove(Self, String) -> Unit
+
+pub struct PixmapCacheInsertResult {
+  pixmap : Pixmap
+  did_insert : Bool
+} derive(@debug.Debug)
+pub fn PixmapCacheInsertResult::did_hit_cache(Self) -> Bool
+pub fn PixmapCacheInsertResult::did_insert(Self) -> Bool
+pub fn PixmapCacheInsertResult::get_pixmap(Self) -> Pixmap
 
 pub struct Point {
   x : Double

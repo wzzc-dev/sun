@@ -154,7 +154,7 @@ Application / GUI
 - RGBA alpha 合成与灰度 coverage mask 合成原语
 - Pixmap blit、source-rect atlas drawing、source-rect coverage-mask drawing、tiled Pixmap fills、nearest-neighbor/bilinear scaled blit、Layer cache、LayerTree 与 straight-alpha 图层合成原语
 - Nine-patch Pixmap 缩放合成，作为 GUI 面板、边框和背景图的基础图像缩放能力
-- `PixmapCache` 支持按 key 复用 image/layer pixmap，并通过像素拷贝隔离缓存内容，作为 GUI 图像资源缓存基础
+- `PixmapCache` 支持按 key 复用 image/layer pixmap，并通过像素拷贝隔离缓存内容，同时提供 hit/insert telemetry，作为 GUI 图像资源缓存基础
 - Layer 支持 resize 时保留重叠像素并标记新 cache dirty
 - LayerTree 支持位置、尺寸、可见性、opacity、移除、替换和重排触发的旧/新 bounds invalidation
 - LayerTree 可将 dirty 合成到 frame canvas 并提交到 `Surface` partial present
@@ -330,7 +330,7 @@ Application / GUI
 - [x] 增加 `ImageSampling` 采样模式 API，统一 nearest/bilinear 缩放入口
 - [x] 增加 nine-patch Pixmap/Canvas 缩放绘制入口，覆盖角保持、边/中心拉伸、裁剪、opacity 与 dirty region 回归
 - [x] 增加 source-rect Pixmap atlas 缩放和平铺绘制入口，覆盖子图采样、越界裁剪、opacity、clip 与 dirty region 回归
-- [x] 增加 `PixmapCache`，让 GUI/resource 代码可按 key 复用 image/layer pixmap 并隔离 raw pixel mutation
+- [x] 增加 `PixmapCache`，让 GUI/resource 代码可按 key 复用 image/layer pixmap、隔离 raw pixel mutation，并报告 cache hit/insert telemetry
 - [ ] 更高质量图像采样与任意变换
 - [ ] 图像与图形混合
 
@@ -429,7 +429,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有最小 `FontFaceCache`，glyph/text mask cache 已有最小 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有最小 `PixmapCache`，后续补 eviction 和 renderer 集成策略
+- [ ] 设计资源缓存：font cache 已有最小 `FontFaceCache`，glyph/text mask cache 已有最小 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有最小 `PixmapCache` 与 hit/insert telemetry，后续补 eviction 和 renderer 集成策略
 
 ---
 

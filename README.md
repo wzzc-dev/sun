@@ -86,7 +86,8 @@ wzzc-dev/
 - Pixmap blitting, source-rect atlas drawing, source-rect coverage-mask drawing,
   tiled Pixmap fills, explicit nearest/bilinear sampling modes, and
   straight-alpha composition for image, glyph atlas, and layer caching
-- `PixmapCache` for keyed reuse of image/layer pixmaps with copy-isolated cache entries
+- `PixmapCache` for keyed reuse of image/layer pixmaps with copy-isolated cache
+  entries and optional hit/insert telemetry
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition
 - `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present/dirty-submit plans, scheduler states, and `Canvas` bounded dirty-present helpers
 - `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`
