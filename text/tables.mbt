@@ -144,6 +144,12 @@ pub fn Font::char_to_glyph(self : Font, char_code : Int) -> Int {
 }
 
 ///|
+/// Return whether this font maps a Unicode codepoint to a drawable glyph.
+pub fn Font::has_glyph_for_char(self : Font, char_code : Int) -> Bool {
+  self.char_to_glyph(char_code) > 0
+}
+
+///|
 /// Get glyph data, resolving composite glyphs
 pub fn Font::get_glyph(self : Font, glyph_id : Int) -> GlyphData {
   guard glyph_id >= 0 && glyph_id < self.glyph_count else {

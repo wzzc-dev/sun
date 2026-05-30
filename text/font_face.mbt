@@ -235,6 +235,12 @@ pub fn FontFace::char_to_glyph(self : FontFace, char_code : Int) -> Int {
 }
 
 ///|
+/// Return whether this face maps a Unicode codepoint to a drawable glyph.
+pub fn FontFace::has_glyph_for_char(self : FontFace, char_code : Int) -> Bool {
+  self.font.has_glyph_for_char(char_code)
+}
+
+///|
 /// Get resolved glyph data for a glyph id.
 pub fn FontFace::get_glyph(self : FontFace, glyph_id : Int) -> GlyphData {
   self.font.get_glyph(glyph_id)

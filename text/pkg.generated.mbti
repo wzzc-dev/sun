@@ -84,6 +84,7 @@ pub fn Font::get_h_metrics(Self, Int) -> (Int, Int)
 pub fn Font::get_kerning(Self, Int, Int) -> Int
 pub fn Font::get_metrics(Self) -> (Int, Int, Int)
 pub fn Font::get_units_per_em(Self) -> Int
+pub fn Font::has_glyph_for_char(Self, Int) -> Bool
 
 pub struct FontData {
   data : Bytes
@@ -106,6 +107,7 @@ pub fn FontFace::get_h_metrics(Self, Int) -> (Int, Int)
 pub fn FontFace::get_kerning(Self, Int, Int) -> Int
 pub fn FontFace::get_metrics(Self) -> FontMetrics
 pub fn FontFace::get_units_per_em(Self) -> Int
+pub fn FontFace::has_glyph_for_char(Self, Int) -> Bool
 
 pub struct FontFaceCache {
   mut faces : Map[String, FontFace]

@@ -176,6 +176,7 @@ Application / GUI
 - Renderer 提供 `draw_text_face_cached`，让调用方传入 `TextMaskCache` 直接绘制 repeated label/text run，并返回 text-mask cache hit/render telemetry
 - Renderer 提供 `RendererTextResources`，让 GUI/resource 代码以单个对象复用 bounded text mask cache、glyph mask cache 与 glyph atlas 状态
 - `examples/render_bench` 提供确定性的 CPU render microbenchmark smoke，覆盖 fill_rect、path fill、stroke、glyph raster/mask composition、Pixmap blit 与 present copy telemetry
+- `Font`/`FontFace` 暴露 glyph coverage 查询，供后续 fallback/resource 调度在绘制前判断 missing glyph
 - `TextLayout` 支持基于现有 Unicode line-break class 的无空格 CJK/Hangul 软换行，作为基础 CJK GUI 文本块换行能力
 - `FontFace`/`TextLayout` 覆盖 TTF format-12 cmap 的 supplementary-plane codepoint 映射，保证 U+FFFF 以上字符能进入 glyph run
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
@@ -288,6 +289,7 @@ Application / GUI
 #### 3.1 Unicode 支持
 - [ ] 完整 Unicode 字符映射
 - [x] 支持 Unicode 码点 > U+FFFF 从 TTF format-12 cmap 经 `FontFace::char_to_glyph` 进入 `TextLayout` glyph run
+- [x] `Font`/`FontFace` 暴露 codepoint glyph coverage 查询，覆盖 BMP、CJK、missing glyph 与 supplementary-plane cmap
 - [x] 扩展基础 Unicode line-break class 映射，覆盖数字、组合符、Hangul cluster、ZWJ/word joiner、emoji modifier 和非法码点兜底
 - [ ] 实现 Unicode 段落与行分割算法（UAX #14, #9）
 - [ ] 双向文本支持（BiDi，UAX #9）

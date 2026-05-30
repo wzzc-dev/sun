@@ -232,6 +232,11 @@ test "FontFace and TextLayout expose stable text API" {
   assert_eq(metrics.units_per_em, 10)
   assert_eq(metrics.line_height(), 10)
   assert_eq(face.char_to_glyph('A'.to_int()), 1)
+  assert_true(face.has_glyph_for_char('A'.to_int()))
+  assert_true(face.has_glyph_for_char(0x4E00))
+  assert_true(face.get_font().has_glyph_for_char(0x4E8C))
+  assert_true(!face.has_glyph_for_char('Z'.to_int()))
+  assert_true(!face.has_glyph_for_char(-1))
 
   let config = LayoutConfig::new(
     max_width=20.0,

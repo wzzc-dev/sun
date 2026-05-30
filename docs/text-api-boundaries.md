@@ -11,6 +11,9 @@ the facade types below.
 - `FontFace` is a checked parsed font face. Construct it with
   `FontFace::from_bytes`, `FontFace::from_data`, or `FontData::parse` so parse
   failures stay in `Result` instead of aborting.
+- `FontFace::has_glyph_for_char` reports whether a Unicode codepoint maps to a
+  non-`.notdef` glyph. Use it before fallback selection or resource scheduling
+  when missing glyphs should be handled outside the primary face.
 - `FontFaceCache` is a small keyed cache for checked parsed faces. GUI and
   resource-loading code can use `get_or_parse` to avoid reparsing the same font
   bytes while preserving checked `FontParseError` results for cache misses, or

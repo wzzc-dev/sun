@@ -273,6 +273,9 @@ test "parse_font_result maps supplementary Unicode cmap format 12 groups" {
     Ok(face) => {
       assert_eq(face.char_to_glyph(0x1F600), 1)
       assert_eq(face.char_to_glyph(0x1F601), 0)
+      assert_true(face.has_glyph_for_char(0x1F600))
+      assert_true(face.get_font().has_glyph_for_char(0x1F600))
+      assert_true(!face.has_glyph_for_char(0x1F601))
       let text = string_from_codepoints([0x1F600])
       let layout = TextLayout::layout(
         face,
