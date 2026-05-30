@@ -153,6 +153,7 @@ Application / GUI
 - 2D 图形渲染（Canvas, Path, Pixmap）
 - RGBA alpha 合成与灰度 coverage mask 合成原语
 - Pixmap blit、source-rect atlas drawing、source-rect coverage-mask drawing、tiled Pixmap fills、nearest-neighbor/bilinear scaled blit、fast/balanced/high quality strategy、transform-aware sampled Pixmap drawing、`Paint` blend modes、Layer cache、LayerTree 与 straight-alpha 图层合成原语
+- `Pixmap::to_ppm_bytes` 提供无依赖的确定性 PPM(P6) 导出，`headless_render` 示例校验导出字节，作为后续离屏 fixture 输出基础
 - Nine-patch Pixmap 缩放合成，作为 GUI 面板、边框和背景图的基础图像缩放能力
 - `PixmapCache` 支持按 key 复用 image/layer pixmap，并通过像素拷贝隔离缓存内容，同时提供 hit/insert telemetry，作为 GUI 图像资源缓存基础
 - Layer 支持 resize 时保留重叠像素并标记新 cache dirty
@@ -344,6 +345,7 @@ Application / GUI
 - [x] 增加 bicubic 图像采样，覆盖 Pixmap/Canvas 缩放、source-rect atlas、premultiplied alpha 和 transform-aware sampled Pixmap 回归
 - [x] 增加 `ImageQuality`（fast/balanced/high）图像质量策略 API，统一 Pixmap/Canvas 缩放、source-rect、nine-patch 与 transform-aware image drawing 的采样选择
 - [x] 增加 `Paint` blend mode（source-over/multiply/screen/add），覆盖 vector、mask、Pixmap blit、scaled image 与 transform-aware sampled image composition 回归
+- [x] 增加 `Pixmap::to_ppm_bytes` 确定性 PPM(P6) 导出，覆盖 header、RGB 顺序、alpha 丢弃、空尺寸与 headless 示例输出路径
 
 #### 4.3 渲染优化
 - [x] `PixelRect`/`DirtyRegion` 数据结构与 Canvas dirty tracking
@@ -503,7 +505,7 @@ Application / GUI
 3. **第 6-8 周：Canvas 与图像层**
    在现有 layer tree 与 RenderFrame resize lifecycle 基础上补 dirty rect 调度、更高质量采样和更多 path/stroke 回归。
 4. **第 9-12 周：后端与示例**
-   标准化 `Surface` lifecycle，完善 window resize/present 示例，补一个 headless PNG/fixture 输出方向，
+   标准化 `Surface` lifecycle，完善 window resize/present 示例，基于已加入的 PPM fixture 输出继续评估 headless PNG 方向，
    开始 benchmark 和文档化。
 
 ---

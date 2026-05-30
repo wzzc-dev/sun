@@ -136,6 +136,36 @@ fn assert_pixel(
 }
 
 ///|
+fn assert_headless_ppm(surface : @graphics.MemorySurface) -> Unit {
+  let pixmap = @graphics.Pixmap::new(surface.get_width(), surface.get_height())
+  let src = surface.get_pixels()
+  let dst = pixmap.get_pixels()
+  for i in 0..<src.length() {
+    dst[i] = src[i]
+  }
+  let ppm = pixmap.to_ppm_bytes()
+  let expected_len = 13 + surface.get_width() * surface.get_height() * 3
+  guard ppm.length() == expected_len else {
+    abort("unexpected headless ppm byte length")
+  }
+  guard ppm[0] == 80 && ppm[1] == 54 && ppm[2] == 10 else {
+    abort("headless ppm should start with P6 header")
+  }
+  guard ppm[3] == 54 && ppm[4] == 52 && ppm[5] == 32 else {
+    abort("headless ppm header should include frame dimensions")
+  }
+  guard ppm[6] == 52 && ppm[7] == 56 && ppm[8] == 10 else {
+    abort("headless ppm header should include frame dimensions")
+  }
+  guard ppm[9] == 50 && ppm[10] == 53 && ppm[11] == 53 && ppm[12] == 10 else {
+    abort("headless ppm header should include max channel value")
+  }
+  guard ppm[13] == 245 && ppm[14] == 247 && ppm[15] == 250 else {
+    abort("headless ppm should contain rendered first pixel RGB")
+  }
+}
+
+///|
 fn main {
   let frame = render_frame()
   let surface = present_headless(frame)
@@ -147,6 +177,7 @@ fn main {
     abort("surface was not presented")
   }
   guard !frame.has_dirty() else { abort("dirty regions should be clear") }
+  assert_headless_ppm(surface)
 
   println("headless render ok")
 }

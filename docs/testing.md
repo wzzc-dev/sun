@@ -29,6 +29,12 @@ The `renderer` package includes the integration regressions that cross package
 boundaries, including parsed TTF bytes through text layout, glyph rasterization,
 coverage-mask composition, and final `Pixmap` pixels.
 
+For headless pixel fixtures, `graphics.Pixmap::to_ppm_bytes` provides a
+deterministic binary PPM(P6) export path without adding filesystem or image
+codec dependencies to the graphics core. The `headless_render` example checks
+the exported header, byte length, and first rendered RGB pixel as an executable
+smoke test for off-screen output.
+
 The `softbuffer` package implements the `graphics.Surface` present contract for
 native windows. Its tests cover validation and trait dispatch without requiring
 a live platform window; the example build checks make sure Canvas/Pixmap pixels

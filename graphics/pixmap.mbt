@@ -96,6 +96,24 @@ pub fn Pixmap::copy(self : Pixmap) -> Pixmap {
 }
 
 ///|
+/// Encode this pixmap as a binary PPM (P6) image, dropping the alpha channel.
+/// The result is a deterministic, dependency-free fixture format for headless
+/// render tests and simple CPU-rendered pixel dumps.
+pub fn Pixmap::to_ppm_bytes(self : Pixmap) -> Bytes {
+  let out : Array[Byte] = []
+  append_ppm_header(out, self.width, self.height)
+  for y in 0..<self.height {
+    for x in 0..<self.width {
+      let offset = (y * self.width + x) * 4
+      out.push(self.pixels[offset])
+      out.push(self.pixels[offset + 1])
+      out.push(self.pixels[offset + 2])
+    }
+  }
+  Bytes::from_array(out)
+}
+
+///|
 /// Small keyed cache for reusable pixmap resources.
 pub struct PixmapCache {
   mut pixmaps : Map[String, Pixmap]
@@ -285,6 +303,47 @@ fn copy_pixmap_pixels(pixmap : Pixmap) -> FixedArray[Byte] {
     dst[i] = src[i]
   }
   dst
+}
+
+///|
+fn append_ppm_header(out : Array[Byte], width : Int, height : Int) -> Unit {
+  append_ppm_byte(out, 80) // P
+  append_ppm_byte(out, 54) // 6
+  append_ppm_byte(out, 10)
+  append_ppm_decimal(out, width)
+  append_ppm_byte(out, 32)
+  append_ppm_decimal(out, height)
+  append_ppm_byte(out, 10)
+  append_ppm_byte(out, 50) // 2
+  append_ppm_byte(out, 53) // 5
+  append_ppm_byte(out, 53) // 5
+  append_ppm_byte(out, 10)
+}
+
+///|
+fn append_ppm_decimal(out : Array[Byte], value : Int) -> Unit {
+  let mut n = value
+  if n == 0 {
+    append_ppm_byte(out, 48)
+  } else {
+    if n < 0 {
+      append_ppm_byte(out, 45)
+      n = 0 - n
+    }
+    let digits : Array[Byte] = []
+    while n > 0 {
+      digits.push((48 + n % 10).to_byte())
+      n = n / 10
+    }
+    for i in 0..<digits.length() {
+      out.push(digits[digits.length() - 1 - i])
+    }
+  }
+}
+
+///|
+fn append_ppm_byte(out : Array[Byte], value : Int) -> Unit {
+  out.push(value.land(0xFF).to_byte())
 }
 
 ///|

@@ -91,7 +91,8 @@ wzzc-dev/
   tiled Pixmap fills, explicit nearest/bilinear/bicubic sampling modes,
   quality strategies for fast/balanced/high image drawing, transform-aware
   sampled Pixmap drawing, Paint blend modes (source-over/multiply/screen/add),
-  and straight-alpha composition for image, glyph atlas, and layer caching
+  deterministic PPM(P6) export for headless pixel fixtures, and straight-alpha
+  composition for image, glyph atlas, and layer caching
 - `PixmapCache` for keyed reuse of image/layer pixmaps with copy-isolated cache
   entries, optional hit/insert telemetry, and opt-in LRU entry limits
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition
@@ -167,7 +168,10 @@ Pixel display library.
 Small build-checked programs that exercise the public packages together.
 
 **Features:**
-- `headless_render` renders a GUI-style frame through `RenderFrame`, `LayerTree`, and `MemorySurface`, then self-checks graphics-core strategy-aware submit planning/results without creating a window
+- `headless_render` renders a GUI-style frame through `RenderFrame`,
+  `LayerTree`, and `MemorySurface`, then self-checks graphics-core
+  strategy-aware submit planning/results and PPM fixture bytes without creating
+  a window
 - `render_bench` runs a deterministic CPU render workload covering fill rect,
   path fill, stroke, glyph raster/mask composition, Pixmap blit, and full
   present-copy telemetry

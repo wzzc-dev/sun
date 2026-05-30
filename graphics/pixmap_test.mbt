@@ -29,6 +29,25 @@ test "Pixmap::copy duplicates raw pixel storage" {
 }
 
 ///|
+test "Pixmap::to_ppm_bytes encodes deterministic P6 RGB output" {
+  let pixmap = Pixmap::new(2, 1)
+  pixmap.set_pixel(0, 0, Color::new(r=1, g=2, b=3, a=4))
+  pixmap.set_pixel(1, 0, Color::new(r=250, g=251, b=252, a=253))
+  let ppm = pixmap.to_ppm_bytes()
+  let expected : Array[Byte] = [
+    80, 54, 10, 50, 32, 49, 10, 50, 53, 53, 10, 1, 2, 3, 250, 251, 252,
+  ]
+  assert_eq(ppm, Bytes::from_array(expected))
+}
+
+///|
+test "Pixmap::to_ppm_bytes encodes empty dimensions" {
+  let pixmap = Pixmap::new(0, 0)
+  let expected : Array[Byte] = [80, 54, 10, 48, 32, 48, 10, 50, 53, 53, 10]
+  assert_eq(pixmap.to_ppm_bytes(), Bytes::from_array(expected))
+}
+
+///|
 test "PixmapCache stores copies and manages entries" {
   let cache = PixmapCache::new()
   assert_true(cache.is_empty())
