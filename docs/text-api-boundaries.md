@@ -52,6 +52,9 @@ the facade types below.
 - Trailing ASCII spaces are preserved in layout width and glyph runs, but a
   space token by itself does not start a wrapped line; the following visible
   text is wrapped instead.
+- Unspaced CJK and Hangul text is split at the package's Unicode line-break
+  opportunities before width wrapping, so GUI text blocks can wrap common CJK
+  runs without requiring ASCII spaces between glyphs.
 
 The renderer package should accept `FontFace`/`TextLayout` level concepts first.
 Legacy functions that accept `Font` or `LayoutResult` may remain for tests and

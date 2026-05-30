@@ -377,6 +377,15 @@ fn split_layout_tokens(text : String) -> Array[LayoutToken] {
             tokens.push(LayoutToken::Text(" "))
           }
         } else {
+          let curr_class = get_line_break_class(c.to_int())
+          match previous_layout_word_class(current_word) {
+            Some(prev_class) =>
+              if should_split_unspaced_layout_token(prev_class, curr_class) {
+                tokens.push(LayoutToken::Text(current_word))
+                current_word = ""
+              }
+            None => ()
+          }
           current_word = current_word + c.to_string()
         }
       None => ignore(0)
@@ -390,6 +399,54 @@ fn split_layout_tokens(text : String) -> Array[LayoutToken] {
   }
 
   tokens
+}
+
+///|
+fn previous_layout_word_class(word : String) -> LineBreakClass? {
+  guard word.length() > 0 else { return None }
+  match word.get_char(word.length() - 1) {
+    Some(ch) => Some(get_line_break_class(ch.to_int()))
+    None => None
+  }
+}
+
+///|
+fn should_split_unspaced_layout_token(
+  prev_class : LineBreakClass,
+  curr_class : LineBreakClass,
+) -> Bool {
+  is_line_break_allowed(prev_class, curr_class) &&
+  can_start_unspaced_layout_token(curr_class) &&
+  (
+    is_unspaced_layout_break_class(prev_class) ||
+    is_unspaced_layout_break_class(curr_class)
+  )
+}
+
+///|
+fn can_start_unspaced_layout_token(class : LineBreakClass) -> Bool {
+  match class {
+    LineBreakClass::CL => false
+    LineBreakClass::CP => false
+    LineBreakClass::EX => false
+    LineBreakClass::IS => false
+    LineBreakClass::SY => false
+    LineBreakClass::NS => false
+    _ => true
+  }
+}
+
+///|
+fn is_unspaced_layout_break_class(class : LineBreakClass) -> Bool {
+  match class {
+    LineBreakClass::ID => true
+    LineBreakClass::H2 => true
+    LineBreakClass::H3 => true
+    LineBreakClass::JL => true
+    LineBreakClass::JV => true
+    LineBreakClass::JT => true
+    _ => false
+  }
 }
 
 ///|

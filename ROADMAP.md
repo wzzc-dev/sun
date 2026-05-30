@@ -176,6 +176,7 @@ Application / GUI
 - Renderer 提供 `draw_text_face_cached`，让调用方传入 `TextMaskCache` 直接绘制 repeated label/text run，并返回 text-mask cache hit/render telemetry
 - Renderer 提供 `RendererTextResources`，让 GUI/resource 代码以单个对象复用 bounded text mask cache、glyph mask cache 与 glyph atlas 状态
 - `examples/render_bench` 提供确定性的 CPU render microbenchmark smoke，覆盖 fill_rect、path fill、stroke、glyph raster/mask composition、Pixmap blit 与 present copy telemetry
+- `TextLayout` 支持基于现有 Unicode line-break class 的无空格 CJK/Hangul 软换行，作为基础 CJK GUI 文本块换行能力
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
 - Canvas 路径描边（Butt/Round/Square cap，Miter/Round/Bevel join，dash/dotted）
 - 基础 clip rect 与 intersect clip，覆盖 rect/path/stroke/mask/pixel/pixmap 绘制入口
@@ -296,6 +297,7 @@ Application / GUI
 - [x] 支持字间距调整（tracking）并覆盖 layout、mask 和 renderer 像素回归
 - [x] 支持词间距调整（word spacing）并纳入 layout 测量与 glyph advance
 - [x] 保留尾随 ASCII 空格的宽度与 glyph run，并避免空格 token 独立开启换行
+- [x] `TextLayout` 支持无空格 CJK/Hangul run 按 Unicode line-break opportunity 软分段并参与宽度换行
 - [ ] 完善更复杂段落场景的对齐语义（CJK、fallback run）
 - [ ] 连字支持（ligatures）
 

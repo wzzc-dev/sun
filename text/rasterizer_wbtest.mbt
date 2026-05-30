@@ -73,6 +73,9 @@ fn make_box_font() -> Font {
   cmap['A'.to_int()] = 1
   cmap['B'.to_int()] = 1
   cmap[' '.to_int()] = 2
+  cmap[0x4E00] = 1
+  cmap[0x4E8C] = 1
+  cmap[0x4E09] = 1
   {
     head: { units_per_em: 10, index_to_loc_format: 0 },
     hhea: { ascent: 10, descent: 0, line_gap: 0, num_h_metrics: 3 },
@@ -187,6 +190,15 @@ fn coverage_char(value : Int) -> Char {
   } else {
     '#'
   }
+}
+
+///|
+fn string_from_codepoints(codepoints : Array[Int]) -> String {
+  let out = StringBuilder(size_hint=codepoints.length())
+  for codepoint in codepoints {
+    out.write_char(codepoint.unsafe_to_char())
+  }
+  out.to_string()
 }
 
 ///|
@@ -682,6 +694,25 @@ test "TextLayout keeps explicit trailing spaces" {
   assert_eq(glyphs.length(), 2)
   assert_eq(glyphs[1].x, 10.0)
   assert_eq(glyphs[1].advance_width, 5.0)
+}
+
+///|
+test "TextLayout wraps unspaced CJK at Unicode line break opportunities" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    string_from_codepoints([0x4E00, 0x4E8C, 0x4E09]),
+    LayoutConfig::new(max_width=20.0, font_size=10.0, line_height=10.0),
+  )
+  assert_eq(layout.run_count(), 2)
+  assert_eq(layout.get_width(), 20.0)
+  assert_eq(layout.get_height(), 20.0)
+  let runs = layout.get_runs()
+  assert_eq(runs[0].glyph_count(), 2)
+  assert_eq(runs[0].get_width(), 20.0)
+  assert_eq(runs[1].glyph_count(), 1)
+  assert_eq(runs[1].get_width(), 10.0)
+  assert_eq(runs[1].get_baseline_y(), 20.0)
 }
 
 ///|
