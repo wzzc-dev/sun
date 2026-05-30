@@ -730,6 +730,46 @@ test "Canvas::fill_rect respects and clears clip rect" {
 }
 
 ///|
+test "Canvas::fill_rect applies transform helpers" {
+  let canvas = Canvas::new(5, 2)
+  canvas.clear(Color::white())
+  canvas.clear_dirty_region()
+  canvas.translate(tx=1.0, ty=0.0)
+  canvas.scale(sx=2.0, sy=1.0)
+  canvas.fill_rect(0.0, 0.0, 1.0, 1.0, Paint::new().set_color(Color::black()))
+
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::white())
+  assert_eq(pixmap.get_pixel(1, 0), Color::black())
+  assert_eq(pixmap.get_pixel(2, 0), Color::black())
+  assert_eq(pixmap.get_pixel(3, 0), Color::white())
+  assert_true(
+    canvas.get_dirty_region().bounds() ==
+    Some(PixelRect::new(x=1, y=0, width=2, height=1)),
+  )
+}
+
+///|
+test "Canvas::fill_rect clips transformed rectangles in device space" {
+  let canvas = Canvas::new(5, 1)
+  canvas.clear(Color::white())
+  canvas.clear_dirty_region()
+  canvas.set_clip_rect(Rect::new(x=2.0, y=0.0, width=1.0, height=1.0))
+  canvas.translate(tx=1.0, ty=0.0)
+  canvas.scale(sx=3.0, sy=1.0)
+  canvas.fill_rect(0.0, 0.0, 1.0, 1.0, Paint::new().set_color(Color::black()))
+
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(1, 0), Color::white())
+  assert_eq(pixmap.get_pixel(2, 0), Color::black())
+  assert_eq(pixmap.get_pixel(3, 0), Color::white())
+  assert_true(
+    canvas.get_dirty_region().bounds() ==
+    Some(PixelRect::new(x=2, y=0, width=1, height=1)),
+  )
+}
+
+///|
 test "Canvas::draw_pixel respects clip rect" {
   let canvas = Canvas::new(3, 1)
   canvas.clear(Color::white())

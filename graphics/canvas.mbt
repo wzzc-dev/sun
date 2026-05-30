@@ -166,6 +166,12 @@ pub fn Canvas::fill_rect(
   paint : Paint,
 ) -> Unit {
   guard paint.style is PaintStyle::Fill else { return }
+  guard w > 0.0 && h > 0.0 else { return }
+
+  if self.transform != Transform::identity() {
+    self.fill_path(Path::new().add_rect(x, y, w, h), paint)
+    return
+  }
 
   let ix = x.to_int()
   let iy = y.to_int()

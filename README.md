@@ -76,7 +76,7 @@ wzzc-dev/
 - Bresenham line drawing
 - Bezier curve rendering
 - `Canvas::draw_placeholder_text` for debug text boxes; real text drawing lives in `renderer`
-- Canvas save/restore state stack, transform helpers, and intersecting clip scopes for nested GUI drawing
+- Canvas save/restore state stack, transform-aware rect/path drawing, transform helpers, and intersecting clip scopes for nested GUI drawing
 - `Surface` trait, `MemorySurface`, and full/rect present helpers for `Canvas` and `Pixmap`
 - Pixmap blitting, source-rect atlas drawing, tiled Pixmap fills, explicit nearest/bilinear sampling modes, and straight-alpha composition for image and layer caching
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition
