@@ -77,7 +77,7 @@ wzzc-dev/
 - Bezier curve rendering
 - `Canvas::draw_placeholder_text` for debug text boxes; real text drawing lives in `renderer`
 - `Surface` trait, `MemorySurface`, and full/rect present helpers for `Canvas` and `Pixmap`
-- Pixmap blitting, explicit nearest/bilinear sampling modes, and straight-alpha composition for image and layer caching
+- Pixmap blitting, source-rect atlas drawing, tiled Pixmap fills, explicit nearest/bilinear sampling modes, and straight-alpha composition for image and layer caching
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition
 - `PixelRect` / `DirtyRegion` tracking with merge and bounded dirty-present helpers
 - `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`

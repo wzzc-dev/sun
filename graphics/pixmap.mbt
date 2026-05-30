@@ -327,7 +327,14 @@ pub fn Pixmap::blend_scaled_pixmap_rect(
   opacity : Double,
 ) -> Unit {
   self.blend_sampled_pixmap_rect(
-    x, y, width, height, src, src_rect, opacity, ImageSampling::Nearest,
+    x,
+    y,
+    width,
+    height,
+    src,
+    src_rect,
+    opacity,
+    ImageSampling::Nearest,
   )
 }
 
@@ -344,7 +351,14 @@ pub fn Pixmap::blend_scaled_pixmap_rect_bilinear(
   opacity : Double,
 ) -> Unit {
   self.blend_sampled_pixmap_rect(
-    x, y, width, height, src, src_rect, opacity, ImageSampling::Bilinear,
+    x,
+    y,
+    width,
+    height,
+    src,
+    src_rect,
+    opacity,
+    ImageSampling::Bilinear,
   )
 }
 
@@ -379,6 +393,42 @@ pub fn Pixmap::blend_sampled_pixmap_rect(
       blend_sampled_pixmap_rect_region(
         self, x, y, width, height, src, clipped_src, opacity, sampling, x_start,
         y_start, x_end, y_end,
+      )
+    }
+    None => ()
+  }
+}
+
+///|
+/// Composite a source pixmap rectangle repeatedly into the destination area.
+pub fn Pixmap::blend_tiled_pixmap_rect(
+  self : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  src : Pixmap,
+  src_rect : PixelRect,
+  opacity : Double,
+) -> Unit {
+  guard width > 0 && height > 0 else { return }
+  guard src.get_width() > 0 && src.get_height() > 0 else { return }
+  let src_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=src.get_width(),
+    height=src.get_height(),
+  )
+  match src_rect.clip_to(src_bounds) {
+    Some(clipped_src) => {
+      let x_start = x.max(0)
+      let y_start = y.max(0)
+      let x_end = (x + width).min(self.width)
+      let y_end = (y + height).min(self.height)
+      guard x_start < x_end && y_start < y_end else { return }
+      blend_tiled_pixmap_rect_region(
+        self, x, y, width, height, src, clipped_src, opacity, x_start, y_start, x_end,
+        y_end,
       )
     }
     None => ()
@@ -735,6 +785,35 @@ fn blend_sampled_pixmap_rect_region(
 }
 
 ///|
+fn blend_tiled_pixmap_rect_region(
+  dst : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  src : Pixmap,
+  src_rect : PixelRect,
+  opacity : Double,
+  x_start : Int,
+  y_start : Int,
+  x_end : Int,
+  y_end : Int,
+) -> Unit {
+  guard width > 0 && height > 0 else { return }
+  guard src_rect.width > 0 && src_rect.height > 0 else { return }
+  for py in y_start..<y_end {
+    let src_y = src_rect.y + positive_mod(py - y, src_rect.height)
+    for px in x_start..<x_end {
+      let src_x = src_rect.x + positive_mod(px - x, src_rect.width)
+      let src_color = src.get_pixel(src_x, src_y).scale_alpha(opacity)
+      if src_color.a.to_int() > 0 {
+        dst.blend_pixel(px, py, src_color)
+      }
+    }
+  }
+}
+
+///|
 fn blend_scaled_pixmap_rect_region(
   dst : Pixmap,
   x : Int,
@@ -1006,6 +1085,16 @@ fn floor_to_int(value : Double) -> Int {
   } else {
     truncated
   }
+}
+
+///|
+fn positive_mod(value : Int, modulus : Int) -> Int {
+  guard modulus > 0 else { return 0 }
+  let mut result = value % modulus
+  if result < 0 {
+    result = result + modulus
+  }
+  result
 }
 
 ///|

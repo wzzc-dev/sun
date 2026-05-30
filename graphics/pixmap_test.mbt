@@ -216,7 +216,7 @@ test "Pixmap::blend_scaled_pixmap_rect scales a source atlas region" {
 }
 
 ///|
-test "Pixmap::blend_scaled_pixmap_rect clips source and destination with opacity" {
+test "Pixmap::blend_scaled_pixmap_rect clips destination bounds and opacity" {
   let dst = Pixmap::new(2, 1)
   dst.clear(Color::white())
   let src = Pixmap::new(4, 1)
@@ -230,11 +230,34 @@ test "Pixmap::blend_scaled_pixmap_rect clips source and destination with opacity
     4,
     1,
     src,
-    PixelRect::new(x=1, y=0, width=4, height=1),
+    PixelRect::new(x=0, y=0, width=4, height=1),
     0.5,
   )
   assert_eq(dst.get_pixel(0, 0), Color::new(r=127, g=255, b=127, a=255))
   assert_eq(dst.get_pixel(1, 0), Color::new(r=127, g=127, b=255, a=255))
+}
+
+///|
+test "Pixmap::blend_scaled_pixmap_rect clips source rect to pixmap bounds" {
+  let dst = Pixmap::new(3, 1)
+  dst.clear(Color::white())
+  let src = Pixmap::new(4, 1)
+  src.set_pixel(0, 0, Color::red())
+  src.set_pixel(1, 0, Color::green())
+  src.set_pixel(2, 0, Color::blue())
+  src.set_pixel(3, 0, Color::black())
+  dst.blend_scaled_pixmap_rect(
+    0,
+    0,
+    3,
+    1,
+    src,
+    PixelRect::new(x=2, y=0, width=4, height=1),
+    1.0,
+  )
+  assert_eq(dst.get_pixel(0, 0), Color::blue())
+  assert_eq(dst.get_pixel(1, 0), Color::black())
+  assert_eq(dst.get_pixel(2, 0), Color::black())
 }
 
 ///|
@@ -270,13 +293,72 @@ test "Pixmap::blend_sampled_pixmap_rect dispatches sampling modes" {
   let bilinear = Pixmap::new(3, 1)
   let rect = PixelRect::new(x=1, y=0, width=2, height=1)
   nearest.blend_sampled_pixmap_rect(
-    0, 0, 3, 1, src, rect, 1.0, ImageSampling::Nearest,
+    0,
+    0,
+    3,
+    1,
+    src,
+    rect,
+    1.0,
+    ImageSampling::Nearest,
   )
   bilinear.blend_sampled_pixmap_rect(
-    0, 0, 3, 1, src, rect, 1.0, ImageSampling::Bilinear,
+    0,
+    0,
+    3,
+    1,
+    src,
+    rect,
+    1.0,
+    ImageSampling::Bilinear,
   )
   assert_eq(nearest.get_pixel(1, 0), Color::blue())
   assert_eq(bilinear.get_pixel(1, 0), Color::new(r=128, g=0, b=128, a=255))
+}
+
+///|
+test "Pixmap::blend_tiled_pixmap_rect repeats source atlas region" {
+  let dst = Pixmap::new(5, 2)
+  let src = Pixmap::new(4, 1)
+  src.set_pixel(0, 0, Color::white())
+  src.set_pixel(1, 0, Color::red())
+  src.set_pixel(2, 0, Color::blue())
+  src.set_pixel(3, 0, Color::green())
+  dst.blend_tiled_pixmap_rect(
+    0,
+    0,
+    5,
+    2,
+    src,
+    PixelRect::new(x=1, y=0, width=2, height=1),
+    1.0,
+  )
+  assert_eq(dst.get_pixel(0, 0), Color::red())
+  assert_eq(dst.get_pixel(1, 0), Color::blue())
+  assert_eq(dst.get_pixel(2, 0), Color::red())
+  assert_eq(dst.get_pixel(3, 1), Color::blue())
+  assert_eq(dst.get_pixel(4, 1), Color::red())
+}
+
+///|
+test "Pixmap::blend_tiled_pixmap_rect clips destination and applies opacity" {
+  let dst = Pixmap::new(3, 1)
+  dst.clear(Color::white())
+  let src = Pixmap::new(2, 1)
+  src.set_pixel(0, 0, Color::red())
+  src.set_pixel(1, 0, Color::blue())
+  dst.blend_tiled_pixmap_rect(
+    -1,
+    0,
+    4,
+    1,
+    src,
+    PixelRect::new(x=0, y=0, width=2, height=1),
+    0.5,
+  )
+  assert_eq(dst.get_pixel(0, 0), Color::new(r=127, g=127, b=255, a=255))
+  assert_eq(dst.get_pixel(1, 0), Color::new(r=255, g=127, b=127, a=255))
+  assert_eq(dst.get_pixel(2, 0), Color::new(r=127, g=127, b=255, a=255))
 }
 
 ///|

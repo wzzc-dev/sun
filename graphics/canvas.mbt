@@ -450,7 +450,14 @@ pub fn Canvas::draw_scaled_pixmap_rect(
   paint : Paint,
 ) -> Unit {
   self.draw_sampled_pixmap_rect(
-    src, src_rect, x, y, width, height, paint, ImageSampling::Nearest,
+    src,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    paint,
+    ImageSampling::Nearest,
   )
 }
 
@@ -467,7 +474,14 @@ pub fn Canvas::draw_scaled_pixmap_rect_bilinear(
   paint : Paint,
 ) -> Unit {
   self.draw_sampled_pixmap_rect(
-    src, src_rect, x, y, width, height, paint, ImageSampling::Bilinear,
+    src,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    paint,
+    ImageSampling::Bilinear,
   )
 }
 
@@ -513,6 +527,57 @@ pub fn Canvas::draw_sampled_pixmap_rect(
         clipped_src,
         paint.opacity,
         sampling,
+        x_start,
+        y_start,
+        x_end,
+        y_end,
+      )
+      self.mark_dirty_bounds(x_start, y_start, x_end, y_end)
+    }
+    None => ()
+  }
+}
+
+///|
+/// Draw a source pixmap rectangle repeatedly into the destination rectangle.
+pub fn Canvas::draw_tiled_pixmap_rect(
+  self : Canvas,
+  src : Pixmap,
+  src_rect : PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  paint : Paint,
+) -> Unit {
+  guard paint.style is PaintStyle::Fill else { return }
+  guard width > 0 && height > 0 else { return }
+  guard src.get_width() > 0 && src.get_height() > 0 else { return }
+  let src_bounds = PixelRect::new(
+    x=0,
+    y=0,
+    width=src.get_width(),
+    height=src.get_height(),
+  )
+  match src_rect.clip_to(src_bounds) {
+    Some(clipped_src) => {
+      let (x_start, y_start, x_end, y_end) = clipped_int_bounds(
+        self,
+        x,
+        y,
+        x + width,
+        y + height,
+      )
+      guard x_start < x_end && y_start < y_end else { return }
+      blend_tiled_pixmap_rect_region(
+        self.pixmap,
+        x,
+        y,
+        width,
+        height,
+        src,
+        clipped_src,
+        paint.opacity,
         x_start,
         y_start,
         x_end,

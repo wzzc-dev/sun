@@ -91,7 +91,7 @@ Application / GUI
 |--------|---------------|---------------|-----------------|
 | Text | TTF -> layout -> glyph mask -> Canvas，Latin/ASCII 回归，`TextLayout` 基础对齐、显式换行、尾随空格和 spacing | 明确 `FontFace`/`GlyphRun`/`TextLayout` API，基础 CJK、kerning、fallback 轮廓 | Unicode 分段、BiDi 初版、字体缓存、更多 OpenType 表 |
 | Vector | rect/path fill、stroke、cap/join/dash、clip、transform、4x4 coverage | 更稳定的 fill rule、miter/dash 行为、路径简化和基础 boolean 可评估 | 文档化 Canvas API、复杂路径回归、性能基准 |
-| Image/Layer | Pixmap blit、nearest/bilinear sampling modes、nine-patch GUI image scaling、dirty region 合并、mask/alpha composition、Layer cache、LayerTree、属性变化 invalidation、LayerTree partial present、RenderFrame resize、rect present API | 更高质量采样、GUI event-loop 调度与 layer lifecycle 策略 | PNG 基础解码、GUI 集成 |
+| Image/Layer | Pixmap blit、source-rect atlas drawing、tiled Pixmap fills、nearest/bilinear sampling modes、nine-patch GUI image scaling、dirty region 合并、mask/alpha composition、Layer cache、LayerTree、属性变化 invalidation、LayerTree partial present、RenderFrame resize、rect present API | 更高质量采样、GUI event-loop 调度与 layer lifecycle 策略 | PNG 基础解码、GUI 集成 |
 | Surface | `MemorySurface`、`NativeSurface`、`Canvas/Pixmap::present_to`、`RenderFrame -> NativeSurface` helpers、`present_pixels_rect` | dirty rect 调度、row stride、错误传播和 pre-present hook 标准化 | Win32/macOS/Linux/WASM 后端都有 build 或运行验证 |
 | Tooling | `scripts/check_ci.sh`、`.mbti`、核心单测 | warning baseline 可审查、覆盖率/benchmark 初版 | release checklist、示例矩阵、性能趋势 |
 
@@ -119,7 +119,7 @@ Application / GUI
 - 基础反锯齿（glyph 与 path 使用确定性的覆盖率采样）
 - 2D 图形渲染（Canvas, Path, Pixmap）
 - RGBA alpha 合成与灰度 coverage mask 合成原语
-- Pixmap blit、nearest-neighbor/bilinear scaled blit、Layer cache、LayerTree 与 straight-alpha 图层合成原语
+- Pixmap blit、source-rect atlas drawing、tiled Pixmap fills、nearest-neighbor/bilinear scaled blit、Layer cache、LayerTree 与 straight-alpha 图层合成原语
 - Nine-patch Pixmap 缩放合成，作为 GUI 面板、边框和背景图的基础图像缩放能力
 - Layer 支持 resize 时保留重叠像素并标记新 cache dirty
 - LayerTree 支持位置、尺寸、可见性、opacity、移除、替换和重排触发的旧/新 bounds invalidation
@@ -265,6 +265,7 @@ Application / GUI
 - [x] 增加 bilinear scaled blit，并通过像素回归覆盖透明、裁剪、缩小和放大
 - [x] 增加 `ImageSampling` 采样模式 API，统一 nearest/bilinear 缩放入口
 - [x] 增加 nine-patch Pixmap/Canvas 缩放绘制入口，覆盖角保持、边/中心拉伸、裁剪、opacity 与 dirty region 回归
+- [x] 增加 source-rect Pixmap atlas 缩放和平铺绘制入口，覆盖子图采样、越界裁剪、opacity、clip 与 dirty region 回归
 - [ ] 更高质量图像采样与任意变换
 - [ ] 图像与图形混合
 

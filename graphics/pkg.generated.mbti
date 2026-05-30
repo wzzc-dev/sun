@@ -29,10 +29,14 @@ pub fn Canvas::draw_pixmap(Self, Pixmap, Int, Int, Paint) -> Unit
 pub fn Canvas::draw_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Paint) -> Unit
 pub fn Canvas::draw_placeholder_text(Self, String, Double, Double, Double, Color) -> Unit
 pub fn Canvas::draw_sampled_pixmap(Self, Pixmap, Int, Int, Int, Int, Paint, ImageSampling) -> Unit
+pub fn Canvas::draw_sampled_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint, ImageSampling) -> Unit
 pub fn Canvas::draw_scaled_pixmap(Self, Pixmap, Int, Int, Int, Int, Paint) -> Unit
 pub fn Canvas::draw_scaled_pixmap_bilinear(Self, Pixmap, Int, Int, Int, Int, Paint) -> Unit
+pub fn Canvas::draw_scaled_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint) -> Unit
+pub fn Canvas::draw_scaled_pixmap_rect_bilinear(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint) -> Unit
 #deprecated
 pub fn Canvas::draw_text(Self, String, Double, Double, Double, Color) -> Unit
+pub fn Canvas::draw_tiled_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint) -> Unit
 pub fn Canvas::fill_path(Self, Path, Paint) -> Unit
 pub fn Canvas::fill_rect(Self, Double, Double, Double, Double, Paint) -> Unit
 pub fn Canvas::get_clip_rect(Self) -> Rect?
@@ -257,8 +261,12 @@ pub fn Pixmap::blend_pixmap(Self, Int, Int, Self, Double) -> Unit
 pub fn Pixmap::blend_pixmap_rect(Self, Int, Int, Self, PixelRect, Double) -> Unit
 pub fn Pixmap::blend_rect(Self, Int, Int, Int, Int, Color) -> Unit
 pub fn Pixmap::blend_sampled_pixmap(Self, Int, Int, Int, Int, Self, Double, ImageSampling) -> Unit
+pub fn Pixmap::blend_sampled_pixmap_rect(Self, Int, Int, Int, Int, Self, PixelRect, Double, ImageSampling) -> Unit
 pub fn Pixmap::blend_scaled_pixmap(Self, Int, Int, Int, Int, Self, Double) -> Unit
 pub fn Pixmap::blend_scaled_pixmap_bilinear(Self, Int, Int, Int, Int, Self, Double) -> Unit
+pub fn Pixmap::blend_scaled_pixmap_rect(Self, Int, Int, Int, Int, Self, PixelRect, Double) -> Unit
+pub fn Pixmap::blend_scaled_pixmap_rect_bilinear(Self, Int, Int, Int, Int, Self, PixelRect, Double) -> Unit
+pub fn Pixmap::blend_tiled_pixmap_rect(Self, Int, Int, Int, Int, Self, PixelRect, Double) -> Unit
 pub fn Pixmap::clear(Self, Color) -> Unit
 pub fn Pixmap::fill_rect(Self, Int, Int, Int, Int, Color) -> Unit
 pub fn Pixmap::get_height(Self) -> Int

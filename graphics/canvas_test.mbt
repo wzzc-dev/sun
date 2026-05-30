@@ -354,10 +354,24 @@ test "Canvas::draw_sampled_pixmap_rect dispatches sampling modes" {
   let bilinear = Canvas::new(3, 1)
   let rect = PixelRect::new(x=1, y=0, width=2, height=1)
   nearest.draw_sampled_pixmap_rect(
-    src, rect, 0, 0, 3, 1, Paint::new(), ImageSampling::Nearest,
+    src,
+    rect,
+    0,
+    0,
+    3,
+    1,
+    Paint::new(),
+    ImageSampling::Nearest,
   )
   bilinear.draw_sampled_pixmap_rect(
-    src, rect, 0, 0, 3, 1, Paint::new(), ImageSampling::Bilinear,
+    src,
+    rect,
+    0,
+    0,
+    3,
+    1,
+    Paint::new(),
+    ImageSampling::Bilinear,
   )
   assert_eq(nearest.get_pixmap().get_pixel(1, 0), Color::blue())
   assert_eq(
@@ -384,8 +398,65 @@ test "Canvas::draw_sampled_pixmap_rect ignores stroke paint and invalid size" {
     ImageSampling::Nearest,
   )
   canvas.draw_sampled_pixmap_rect(
-    src, rect, 0, 0, 0, 1, Paint::new(), ImageSampling::Nearest,
+    src,
+    rect,
+    0,
+    0,
+    0,
+    1,
+    Paint::new(),
+    ImageSampling::Nearest,
   )
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), Color::white())
+}
+
+///|
+test "Canvas::draw_tiled_pixmap_rect respects clip opacity and dirty region" {
+  let canvas = Canvas::new(5, 1)
+  canvas.clear(Color::white())
+  canvas.clear_dirty_region()
+  canvas.set_clip_rect(Rect::new(x=1.0, y=0.0, width=3.0, height=1.0))
+  let src = Pixmap::new(2, 1)
+  src.set_pixel(0, 0, Color::red())
+  src.set_pixel(1, 0, Color::blue())
+  canvas.draw_tiled_pixmap_rect(
+    src,
+    PixelRect::new(x=0, y=0, width=2, height=1),
+    0,
+    0,
+    5,
+    1,
+    Paint::new().set_opacity(0.5),
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::white())
+  assert_eq(pixmap.get_pixel(1, 0), Color::new(r=127, g=127, b=255, a=255))
+  assert_eq(pixmap.get_pixel(2, 0), Color::new(r=255, g=127, b=127, a=255))
+  assert_eq(pixmap.get_pixel(3, 0), Color::new(r=127, g=127, b=255, a=255))
+  assert_eq(pixmap.get_pixel(4, 0), Color::white())
+  assert_true(
+    canvas.get_dirty_region().bounds() ==
+    Some(PixelRect::new(x=1, y=0, width=3, height=1)),
+  )
+}
+
+///|
+test "Canvas::draw_tiled_pixmap_rect ignores stroke paint and invalid size" {
+  let canvas = Canvas::new(1, 1)
+  canvas.clear(Color::white())
+  let src = Pixmap::new(1, 1)
+  src.set_pixel(0, 0, Color::black())
+  let rect = PixelRect::new(x=0, y=0, width=1, height=1)
+  canvas.draw_tiled_pixmap_rect(
+    src,
+    rect,
+    0,
+    0,
+    1,
+    1,
+    Paint::new().set_style(PaintStyle::Stroke),
+  )
+  canvas.draw_tiled_pixmap_rect(src, rect, 0, 0, 0, 1, Paint::new())
   assert_eq(canvas.get_pixmap().get_pixel(0, 0), Color::white())
 }
 
