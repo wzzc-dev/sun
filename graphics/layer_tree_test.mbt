@@ -497,6 +497,23 @@ test "LayerTree::present_dirty_to_with_limit consumes exposed dirty present plan
 }
 
 ///|
+test "LayerTree::present_dirty_to consumes surface-clipped layer dirty" {
+  let target = Canvas::new(4, 1)
+  let layer = Layer::new(1, 1).set_position(3, 0)
+  layer.get_canvas().draw_pixel(0, 0, Color::blue())
+  let tree = LayerTree::new()
+  ignore(tree.add_layer(layer))
+
+  let surface = MemorySurface::new(2, 1)
+  let submit_plan = tree.dirty_submit_plan(target, surface, 4)
+  assert_true(submit_plan.get_state() == DirtySubmitState::DirtyClippedAway)
+  assert_true(tree.present_dirty_to_with_limit(target, surface, 4) == Ok(0))
+  assert_eq(surface.get_present_count(), 0)
+  assert_true(target.get_dirty_region().is_empty())
+  assert_true(tree.dirty_bounds() == None)
+}
+
+///|
 test "LayerTree::present_dirty_to preserves dirty state on surface error" {
   let target = Canvas::new(2, 1)
   let surface = FailingSurface::new(2, 1)

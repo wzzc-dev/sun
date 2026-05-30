@@ -298,6 +298,14 @@ pub fn NativeSurface::present_frame_dirty(
 }
 
 ///|
+pub fn NativeSurface::submit_frame_dirty(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+) -> Result[@graphics.DirtySubmitResult, @graphics.PresentError] {
+  frame.submit_dirty_to(self)
+}
+
+///|
 pub fn NativeSurface::dirty_frame_submit_plan(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
@@ -319,6 +327,14 @@ pub fn present_render_frame_dirty(
   frame : @graphics.RenderFrame,
 ) -> Result[Int, @graphics.PresentError] {
   NativeSurface::from_frame(handle, frame).present_frame_dirty(frame)
+}
+
+///|
+pub fn submit_render_frame_dirty(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+) -> Result[@graphics.DirtySubmitResult, @graphics.PresentError] {
+  NativeSurface::from_frame(handle, frame).submit_frame_dirty(frame)
 }
 
 ///|

@@ -88,7 +88,7 @@ wzzc-dev/
 - `PixelRect` / `DirtyRegion` tracking with merge, explicit dirty-present/dirty-submit plans, scheduler states, and `Canvas` bounded dirty-present helpers
 - `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`
 - `LayerTree` z-order composition with dirty rectangle propagation, layer resize/remove/replace/reorder lifecycle, property-change invalidation, dirty-present planning, and partial present submission
-- `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, dirty queries/marking, dirty-submit planning, and dirty/full present helpers for future event-loop integration
+- `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, dirty queries/marking, dirty-submit planning/results, and dirty/full present helpers for future event-loop integration
 
 ### text
 Text processing library (font parsing, shaping, layout).
@@ -124,7 +124,7 @@ Pixel display library.
 - Window creation (Win32 API)
 - Pixel buffer presentation through `graphics.Surface`
 - `NativeSurface` adapter for external native window handles
-- `RenderFrame -> NativeSurface` dirty/full present helpers and dirty-submit plan queries for window integration
+- `RenderFrame -> NativeSurface` dirty/full present helpers plus dirty-submit plan/result queries for window integration
 - Optional `NativeSurface` pre-present hook for window lifecycle notifications before validated native presents
 - Native full-frame and rectangle present entry points for dirty redraw plumbing
 - Event loop

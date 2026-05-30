@@ -118,8 +118,10 @@ Application / GUI
 - `LayerTree` 与 `RenderFrame` 暴露 dirty present plan 查询，合并 canvas 与 layer dirty 区域后再按统一计划提交
 - `DirtySubmitPlan` 将逻辑 dirty bounds 与裁剪后的 present plan 合成可测试快照，供事件循环区分 dirty、present 与 clipped-away dirty 状态
 - `DirtySubmitState` 将 Clean/Present/DirtyClippedAway 调度状态显式化，减少事件循环侧组合判断
+- `DirtySubmitResult` 与 `RenderFrame::submit_dirty_to` 将调度状态和实际 present rect 数合成提交结果，供事件循环直接消费
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty-submit plan 查询，让窗口后端调度能复用 graphics 的统一 dirty snapshot
+- softbuffer 的 `NativeSurface` 暴露 state-aware dirty submit helper，返回 Clean/Present/DirtyClippedAway 与实际提交数量
 - `NativeSurface` 支持可选 pre-present hook，让窗口生命周期通知进入统一 present helper，而不是散落在示例事件处理器里
 - `hello_world` 示例走 `RenderFrame + LayerTree + softbuffer frame-present helpers`，并在 resize/redraw 中复用 frame 与 layer lifecycle，作为事件循环 dirty submit 的最小真实用例
 - TTF 字体解析（head, hhea, hmtx, cmap, glyf, kern 表）
@@ -305,6 +307,7 @@ Application / GUI
 - [x] `LayerTree`/`RenderFrame` 提供 dirty present plan 查询，并让 layer-tree submit 消费同一份计划以覆盖 canvas 与 layer 脏区
 - [x] `DirtySubmitPlan` 暴露 dirty bounds 与 clipped present plan 快照，作为事件循环 dirty submit 调度的可测试中间层
 - [x] `DirtySubmitState` 暴露 Clean/Present/DirtyClippedAway 状态，让事件循环和后端调度不再手写 dirty/present 组合判断
+- [x] `DirtySubmitResult` 与 `RenderFrame::submit_dirty_to` 返回调度状态和实际提交 rect 数，打通 plan 查询到可消费 submit 结果
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation
 - [x] `Layer::resize` 保留重叠像素并标记新 bounds dirty
@@ -332,6 +335,7 @@ Application / GUI
 - [x] 为 `MemorySurface` 和 softbuffer native adapter 增加 rect present 路径，支持 dirty rect 提交验证
 - [x] softbuffer 提供 `RenderFrame -> NativeSurface` dirty/full present helper，并覆盖 frame submit 回归
 - [x] softbuffer 提供 `RenderFrame -> NativeSurface` dirty-submit plan 查询，并验证查询不会触发 pre-present hook
+- [x] softbuffer 提供 state-aware dirty submit helper，并覆盖 Clean/Present/DirtyClippedAway 的 pre-present 行为
 - [x] `NativeSurface` 增加 pre-present hook，校验通过后、native present 前触发窗口生命周期通知
 - [ ] Windows 支持（Win32）从 demo 后端升级为稳定后端
 - [ ] Linux 支持（Wayland，X11 作为后续选项）

@@ -332,7 +332,7 @@ pub fn[S : Surface] LayerTree::present_dirty_to_with_limit(
   ignore(self.composite_rects_to(target, rects))
   guard !plan.is_empty() else {
     target.clear_dirty_region()
-    self.clear_composited_dirty_regions()
+    self.clear_dirty_regions()
     return Ok(0)
   }
   match target.present_dirty_plan_to(surface, plan) {

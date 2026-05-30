@@ -140,6 +140,57 @@ test "RenderFrame::dirty_submit_plan keeps clipped-away dirty visible to schedul
 }
 
 ///|
+test "RenderFrame::submit_dirty_to reports scheduler result" {
+  let frame = RenderFrame::new(2, 1)
+  let layer = Layer::new(1, 1).set_position(1, 0)
+  layer.get_canvas().draw_pixel(0, 0, Color::red())
+  ignore(frame.get_layer_tree().add_layer(layer))
+
+  let result = frame.submit_dirty_to(MemorySurface::new(2, 1))
+  match result {
+    Ok(submit_result) => {
+      assert_true(submit_result.get_state() == DirtySubmitState::Present)
+      assert_eq(submit_result.get_presented_rect_count(), 1)
+      assert_true(submit_result.get_submit_plan().needs_present())
+    }
+    Err(_) => abort("expected dirty submit result")
+  }
+  assert_true(!frame.has_dirty())
+
+  let clean = frame.submit_dirty_to(MemorySurface::new(2, 1))
+  match clean {
+    Ok(submit_result) => {
+      assert_true(submit_result.get_state() == DirtySubmitState::Clean)
+      assert_eq(submit_result.get_presented_rect_count(), 0)
+      assert_true(!submit_result.get_submit_plan().has_dirty())
+    }
+    Err(_) => abort("expected clean submit result")
+  }
+}
+
+///|
+test "RenderFrame::submit_dirty_to consumes surface-clipped dirty" {
+  let frame = RenderFrame::new(4, 1)
+  let layer = Layer::new(1, 1).set_position(3, 0)
+  layer.get_canvas().draw_pixel(0, 0, Color::blue())
+  ignore(frame.get_layer_tree().add_layer(layer))
+
+  let result = frame.submit_dirty_to(MemorySurface::new(2, 1))
+  match result {
+    Ok(submit_result) => {
+      assert_true(
+        submit_result.get_state() == DirtySubmitState::DirtyClippedAway,
+      )
+      assert_eq(submit_result.get_presented_rect_count(), 0)
+      assert_true(submit_result.get_submit_plan().has_dirty())
+      assert_true(!submit_result.get_submit_plan().needs_present())
+    }
+    Err(_) => abort("expected clipped-away submit result")
+  }
+  assert_true(!frame.has_dirty())
+}
+
+///|
 test "RenderFrame dirty helpers cover canvas and layer tree dirtiness" {
   let frame = RenderFrame::new(4, 2)
   assert_true(!frame.has_dirty())

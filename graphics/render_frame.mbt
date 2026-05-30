@@ -147,6 +147,18 @@ pub fn[S : Surface] RenderFrame::present_dirty_to(
 }
 
 ///|
+pub fn[S : Surface] RenderFrame::submit_dirty_to(
+  self : RenderFrame,
+  surface : S,
+) -> Result[DirtySubmitResult, PresentError] {
+  let submit_plan = self.dirty_submit_plan(surface)
+  match self.present_dirty_to(surface) {
+    Ok(presented) => Ok({ submit_plan, presented_rect_count: presented })
+    Err(error) => Err(error)
+  }
+}
+
+///|
 pub fn[S : Surface] RenderFrame::present_all_to(
   self : RenderFrame,
   surface : S,

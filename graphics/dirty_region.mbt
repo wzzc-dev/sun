@@ -40,6 +40,14 @@ pub struct DirtySubmitPlan {
 } derive(Debug)
 
 ///|
+/// Result of submitting a dirty frame: the scheduler-visible plan snapshot plus
+/// the number of rectangles actually presented to the surface.
+pub struct DirtySubmitResult {
+  submit_plan : DirtySubmitPlan
+  presented_rect_count : Int
+} derive(Debug)
+
+///|
 pub fn DirtyPresentPlan::get_mode(
   self : DirtyPresentPlan,
 ) -> DirtyPresentPlanMode {
@@ -110,6 +118,27 @@ pub fn DirtySubmitPlan::get_present_rect_count(self : DirtySubmitPlan) -> Int {
 ///|
 pub fn DirtySubmitPlan::uses_bounds_fallback(self : DirtySubmitPlan) -> Bool {
   self.present_plan.uses_bounds_fallback()
+}
+
+///|
+pub fn DirtySubmitResult::get_submit_plan(
+  self : DirtySubmitResult,
+) -> DirtySubmitPlan {
+  self.submit_plan
+}
+
+///|
+pub fn DirtySubmitResult::get_state(
+  self : DirtySubmitResult,
+) -> DirtySubmitState {
+  self.submit_plan.get_state()
+}
+
+///|
+pub fn DirtySubmitResult::get_presented_rect_count(
+  self : DirtySubmitResult,
+) -> Int {
+  self.presented_rect_count
 }
 
 ///|

@@ -167,6 +167,62 @@ test "NativeSurface dirty submit plan preserves clipped-away dirty without prese
 }
 
 ///|
+test "NativeSurface submits dirty frames with scheduler result" {
+  let count = Ref(0)
+  let frame = @graphics.RenderFrame::new(2, 1)
+  let layer = @graphics.Layer::new(1, 1).set_position(1, 0)
+  layer.get_canvas().draw_pixel(0, 0, @graphics.Color::red())
+  ignore(frame.get_layer_tree().add_layer(layer))
+  let surface = NativeSurface::from_frame(42, frame).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+
+  match surface.submit_frame_dirty(frame) {
+    Ok(result) => {
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_true(result.get_submit_plan().needs_present())
+    }
+    Err(_) => abort("expected dirty submit result")
+  }
+  assert_eq(count.val, 1)
+  assert_true(!frame.has_dirty())
+
+  match surface.submit_frame_dirty(frame) {
+    Ok(result) => {
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Clean)
+      assert_eq(result.get_presented_rect_count(), 0)
+    }
+    Err(_) => abort("expected clean submit result")
+  }
+  assert_eq(count.val, 1)
+}
+
+///|
+test "NativeSurface dirty submit skips clipped-away presents" {
+  let count = Ref(0)
+  let frame = @graphics.RenderFrame::new(4, 1)
+  frame.mark_dirty_rect(@graphics.PixelRect::new(x=3, y=0, width=1, height=1))
+  let surface = NativeSurface::new(42, 2, 1).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+
+  match surface.submit_frame_dirty(frame) {
+    Ok(result) => {
+      assert_true(
+        result.get_state() == @graphics.DirtySubmitState::DirtyClippedAway,
+      )
+      assert_eq(result.get_presented_rect_count(), 0)
+      assert_true(result.get_submit_plan().has_dirty())
+      assert_true(!result.get_submit_plan().needs_present())
+    }
+    Err(_) => abort("expected clipped-away submit result")
+  }
+  assert_eq(count.val, 0)
+  assert_true(!frame.has_dirty())
+}
+
+///|
 test "render frame present helpers construct NativeSurface internally" {
   let frame = @graphics.RenderFrame::new(2, 1)
   let layer = @graphics.Layer::new(1, 1).set_position(1, 0)
@@ -177,4 +233,21 @@ test "render frame present helpers construct NativeSurface internally" {
   assert_true(!frame.has_dirty())
   assert_true(present_render_frame_dirty(42, frame) == Ok(0))
   assert_true(present_render_frame_all(42, frame) == Ok(1))
+}
+
+///|
+test "render frame submit helper constructs NativeSurface internally" {
+  let frame = @graphics.RenderFrame::new(2, 1)
+  let layer = @graphics.Layer::new(1, 1).set_position(1, 0)
+  layer.get_canvas().draw_pixel(0, 0, @graphics.Color::red())
+  ignore(frame.get_layer_tree().add_layer(layer))
+
+  match submit_render_frame_dirty(42, frame) {
+    Ok(result) => {
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
+      assert_eq(result.get_presented_rect_count(), 1)
+    }
+    Err(_) => abort("expected constructed dirty submit result")
+  }
+  assert_true(!frame.has_dirty())
 }
