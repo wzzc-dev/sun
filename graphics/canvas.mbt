@@ -872,6 +872,29 @@ pub fn Canvas::draw_sampled_pixmap(
 }
 
 ///|
+/// Draw a source pixmap scaled with a quality strategy.
+pub fn Canvas::draw_quality_pixmap(
+  self : Canvas,
+  src : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  paint : Paint,
+  quality : ImageQuality,
+) -> Unit {
+  self.draw_sampled_pixmap(
+    src,
+    x,
+    y,
+    width,
+    height,
+    paint,
+    quality.to_sampling(),
+  )
+}
+
+///|
 /// Draw a source pixmap rectangle scaled to the given destination rectangle.
 pub fn Canvas::draw_scaled_pixmap_rect(
   self : Canvas,
@@ -998,6 +1021,31 @@ pub fn Canvas::draw_sampled_pixmap_rect(
 }
 
 ///|
+/// Draw a source pixmap rectangle scaled with a quality strategy.
+pub fn Canvas::draw_quality_pixmap_rect(
+  self : Canvas,
+  src : Pixmap,
+  src_rect : PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  paint : Paint,
+  quality : ImageQuality,
+) -> Unit {
+  self.draw_sampled_pixmap_rect(
+    src,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    paint,
+    quality.to_sampling(),
+  )
+}
+
+///|
 /// Draw a source pixmap transformed by the current canvas transform.
 pub fn Canvas::draw_transformed_sampled_pixmap(
   self : Canvas,
@@ -1018,6 +1066,30 @@ pub fn Canvas::draw_transformed_sampled_pixmap(
     height,
     paint,
     sampling,
+  )
+}
+
+///|
+/// Draw a source pixmap transformed by the current transform using a quality
+/// strategy.
+pub fn Canvas::draw_transformed_quality_pixmap(
+  self : Canvas,
+  src : Pixmap,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  paint : Paint,
+  quality : ImageQuality,
+) -> Unit {
+  self.draw_transformed_sampled_pixmap(
+    src,
+    x,
+    y,
+    width,
+    height,
+    paint,
+    quality.to_sampling(),
   )
 }
 
@@ -1092,6 +1164,32 @@ pub fn Canvas::draw_transformed_sampled_pixmap_rect(
     }
     _ => ()
   }
+}
+
+///|
+/// Draw a source pixmap rectangle transformed by the current transform using a
+/// quality strategy.
+pub fn Canvas::draw_transformed_quality_pixmap_rect(
+  self : Canvas,
+  src : Pixmap,
+  src_rect : PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  paint : Paint,
+  quality : ImageQuality,
+) -> Unit {
+  self.draw_transformed_sampled_pixmap_rect(
+    src,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    paint,
+    quality.to_sampling(),
+  )
 }
 
 ///|
@@ -1187,6 +1285,31 @@ pub fn Canvas::draw_nine_patch_pixmap(
     y_end,
   )
   self.mark_dirty_bounds(x_start, y_start, x_end, y_end)
+}
+
+///|
+/// Draw a source pixmap using nine-patch scaling and a quality strategy.
+pub fn Canvas::draw_quality_nine_patch_pixmap(
+  self : Canvas,
+  src : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : NinePatchInsets,
+  paint : Paint,
+  quality : ImageQuality,
+) -> Unit {
+  self.draw_nine_patch_pixmap(
+    src,
+    x,
+    y,
+    width,
+    height,
+    insets,
+    paint,
+    quality.to_sampling(),
+  )
 }
 
 ///|

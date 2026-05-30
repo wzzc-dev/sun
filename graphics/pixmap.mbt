@@ -15,6 +15,25 @@ pub(all) enum ImageSampling {
 } derive(Eq, Debug)
 
 ///|
+/// Image quality strategy for callers that prefer intent over a concrete
+/// sampling algorithm.
+pub(all) enum ImageQuality {
+  Fast
+  Balanced
+  High
+} derive(Eq, Debug)
+
+///|
+/// Return the concrete sampling mode selected by this quality strategy.
+pub fn ImageQuality::to_sampling(self : ImageQuality) -> ImageSampling {
+  match self {
+    ImageQuality::Fast => ImageSampling::Nearest
+    ImageQuality::Balanced => ImageSampling::Bilinear
+    ImageQuality::High => ImageSampling::Bicubic
+  }
+}
+
+///|
 /// Insets used for nine-patch image scaling.
 pub struct NinePatchInsets {
   left : Int
@@ -633,6 +652,29 @@ pub fn Pixmap::blend_sampled_pixmap(
 }
 
 ///|
+/// Composite another pixmap scaled with a quality strategy.
+pub fn Pixmap::blend_quality_pixmap(
+  self : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  src : Pixmap,
+  opacity : Double,
+  quality : ImageQuality,
+) -> Unit {
+  self.blend_sampled_pixmap(
+    x,
+    y,
+    width,
+    height,
+    src,
+    opacity,
+    quality.to_sampling(),
+  )
+}
+
+///|
 /// Composite a source pixmap rectangle scaled to the given destination size.
 pub fn Pixmap::blend_scaled_pixmap_rect(
   self : Pixmap,
@@ -754,6 +796,31 @@ pub fn Pixmap::blend_sampled_pixmap_rect(
 }
 
 ///|
+/// Composite a source pixmap rectangle scaled with a quality strategy.
+pub fn Pixmap::blend_quality_pixmap_rect(
+  self : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  src : Pixmap,
+  src_rect : PixelRect,
+  opacity : Double,
+  quality : ImageQuality,
+) -> Unit {
+  self.blend_sampled_pixmap_rect(
+    x,
+    y,
+    width,
+    height,
+    src,
+    src_rect,
+    opacity,
+    quality.to_sampling(),
+  )
+}
+
+///|
 /// Composite a source pixmap rectangle repeatedly into the destination area.
 pub fn Pixmap::blend_tiled_pixmap_rect(
   self : Pixmap,
@@ -835,6 +902,31 @@ pub fn Pixmap::blend_nine_patch_pixmap(
     y_start,
     x_end,
     y_end,
+  )
+}
+
+///|
+/// Composite a source pixmap using nine-patch scaling and a quality strategy.
+pub fn Pixmap::blend_quality_nine_patch_pixmap(
+  self : Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  src : Pixmap,
+  insets : NinePatchInsets,
+  opacity : Double,
+  quality : ImageQuality,
+) -> Unit {
+  self.blend_nine_patch_pixmap(
+    x,
+    y,
+    width,
+    height,
+    src,
+    insets,
+    opacity,
+    quality.to_sampling(),
   )
 }
 

@@ -531,6 +531,34 @@ test "Canvas::draw_sampled_pixmap dispatches sampling modes" {
 }
 
 ///|
+test "Canvas::draw_quality_pixmap dispatches quality strategies" {
+  let src = make_canvas_test_bicubic_source()
+  let fast = Canvas::new(3, 1)
+  let balanced = Canvas::new(3, 1)
+  let high = Canvas::new(3, 1)
+  fast.draw_quality_pixmap(src, 0, 0, 3, 1, Paint::new(), ImageQuality::Fast)
+  balanced.draw_quality_pixmap(
+    src,
+    0,
+    0,
+    3,
+    1,
+    Paint::new(),
+    ImageQuality::Balanced,
+  )
+  high.draw_quality_pixmap(src, 0, 0, 3, 1, Paint::new(), ImageQuality::High)
+  assert_eq(fast.get_pixmap().get_pixel(1, 0), Color::black())
+  assert_eq(
+    balanced.get_pixmap().get_pixel(1, 0),
+    Color::new(r=128, g=0, b=0, a=255),
+  )
+  assert_eq(
+    high.get_pixmap().get_pixel(0, 0),
+    Color::new(r=34, g=0, b=0, a=255),
+  )
+}
+
+///|
 test "Canvas::draw_scaled_pixmap_rect scales atlas region" {
   let canvas = Canvas::new(4, 2)
   canvas.clear(Color::white())
@@ -672,6 +700,54 @@ test "Canvas::draw_sampled_pixmap_rect dispatches sampling modes" {
   )
   assert_eq(
     bicubic.get_pixmap().get_pixel(0, 0),
+    Color::new(r=34, g=0, b=0, a=255),
+  )
+}
+
+///|
+test "Canvas::draw_quality_pixmap_rect dispatches quality strategies" {
+  let src = make_canvas_test_bicubic_rect_source()
+  let fast = Canvas::new(3, 1)
+  let balanced = Canvas::new(3, 1)
+  let high = Canvas::new(3, 1)
+  let rect = PixelRect::new(x=1, y=0, width=4, height=1)
+  fast.draw_quality_pixmap_rect(
+    src,
+    rect,
+    0,
+    0,
+    3,
+    1,
+    Paint::new(),
+    ImageQuality::Fast,
+  )
+  balanced.draw_quality_pixmap_rect(
+    src,
+    rect,
+    0,
+    0,
+    3,
+    1,
+    Paint::new(),
+    ImageQuality::Balanced,
+  )
+  high.draw_quality_pixmap_rect(
+    src,
+    rect,
+    0,
+    0,
+    3,
+    1,
+    Paint::new(),
+    ImageQuality::High,
+  )
+  assert_eq(fast.get_pixmap().get_pixel(1, 0), Color::black())
+  assert_eq(
+    balanced.get_pixmap().get_pixel(1, 0),
+    Color::new(r=128, g=0, b=0, a=255),
+  )
+  assert_eq(
+    high.get_pixmap().get_pixel(0, 0),
     Color::new(r=34, g=0, b=0, a=255),
   )
 }
@@ -819,6 +895,60 @@ test "Canvas::draw_transformed_sampled_pixmap_rect supports bicubic sampling" {
   assert_eq(pixmap.get_pixel(1, 0), Color::new(r=34, g=0, b=0, a=255))
   assert_eq(pixmap.get_pixel(2, 0), Color::new(r=128, g=0, b=0, a=255))
   assert_eq(pixmap.get_pixel(3, 0), Color::new(r=221, g=0, b=0, a=255))
+}
+
+///|
+test "Canvas::draw_transformed_quality_pixmap_rect dispatches quality strategies" {
+  let src = make_canvas_test_bicubic_source()
+  let fast = Canvas::new(5, 1)
+  let balanced = Canvas::new(5, 1)
+  let high = Canvas::new(5, 1)
+  fast.clear(Color::white())
+  balanced.clear(Color::white())
+  high.clear(Color::white())
+  fast.set_transform(Transform::translate(tx=1.0, ty=0.0))
+  balanced.set_transform(Transform::translate(tx=1.0, ty=0.0))
+  high.set_transform(Transform::translate(tx=1.0, ty=0.0))
+  let rect = PixelRect::new(x=0, y=0, width=4, height=1)
+  fast.draw_transformed_quality_pixmap_rect(
+    src,
+    rect,
+    0.0,
+    0.0,
+    3.0,
+    1.0,
+    Paint::new(),
+    ImageQuality::Fast,
+  )
+  balanced.draw_transformed_quality_pixmap_rect(
+    src,
+    rect,
+    0.0,
+    0.0,
+    3.0,
+    1.0,
+    Paint::new(),
+    ImageQuality::Balanced,
+  )
+  high.draw_transformed_quality_pixmap_rect(
+    src,
+    rect,
+    0.0,
+    0.0,
+    3.0,
+    1.0,
+    Paint::new(),
+    ImageQuality::High,
+  )
+  assert_eq(fast.get_pixmap().get_pixel(2, 0), Color::black())
+  assert_eq(
+    balanced.get_pixmap().get_pixel(2, 0),
+    Color::new(r=128, g=0, b=0, a=255),
+  )
+  assert_eq(
+    high.get_pixmap().get_pixel(1, 0),
+    Color::new(r=34, g=0, b=0, a=255),
+  )
 }
 
 ///|
@@ -975,6 +1105,27 @@ test "Canvas::draw_nine_patch_pixmap respects clip and dirty region" {
     canvas.get_dirty_region().bounds() ==
     Some(PixelRect::new(x=1, y=1, width=3, height=3)),
   )
+}
+
+///|
+test "Canvas::draw_quality_nine_patch_pixmap composes with quality strategy" {
+  let canvas = Canvas::new(5, 5)
+  canvas.clear(Color::white())
+  let src = make_canvas_test_nine_patch_source()
+  canvas.draw_quality_nine_patch_pixmap(
+    src,
+    0,
+    0,
+    5,
+    5,
+    NinePatchInsets::new(left=1, top=1, right=1, bottom=1),
+    Paint::new(),
+    ImageQuality::High,
+  )
+  let pixmap = canvas.get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), Color::new(r=10, g=0, b=0))
+  assert_eq(pixmap.get_pixel(2, 2), Color::new(r=50, g=0, b=0))
+  assert_eq(pixmap.get_pixel(4, 4), Color::new(r=90, g=0, b=0))
 }
 
 ///|

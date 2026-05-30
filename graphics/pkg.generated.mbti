@@ -42,6 +42,9 @@ pub fn Canvas::draw_pixel(Self, Int, Int, Color) -> Unit
 pub fn Canvas::draw_pixmap(Self, Pixmap, Int, Int, Paint) -> Unit
 pub fn Canvas::draw_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Paint) -> Unit
 pub fn Canvas::draw_placeholder_text(Self, String, Double, Double, Double, Color) -> Unit
+pub fn Canvas::draw_quality_nine_patch_pixmap(Self, Pixmap, Int, Int, Int, Int, NinePatchInsets, Paint, ImageQuality) -> Unit
+pub fn Canvas::draw_quality_pixmap(Self, Pixmap, Int, Int, Int, Int, Paint, ImageQuality) -> Unit
+pub fn Canvas::draw_quality_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint, ImageQuality) -> Unit
 pub fn Canvas::draw_sampled_pixmap(Self, Pixmap, Int, Int, Int, Int, Paint, ImageSampling) -> Unit
 pub fn Canvas::draw_sampled_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint, ImageSampling) -> Unit
 pub fn Canvas::draw_scaled_pixmap(Self, Pixmap, Int, Int, Int, Int, Paint) -> Unit
@@ -53,6 +56,8 @@ pub fn Canvas::draw_scaled_pixmap_rect_bilinear(Self, Pixmap, PixelRect, Int, In
 #deprecated
 pub fn Canvas::draw_text(Self, String, Double, Double, Double, Color) -> Unit
 pub fn Canvas::draw_tiled_pixmap_rect(Self, Pixmap, PixelRect, Int, Int, Int, Int, Paint) -> Unit
+pub fn Canvas::draw_transformed_quality_pixmap(Self, Pixmap, Double, Double, Double, Double, Paint, ImageQuality) -> Unit
+pub fn Canvas::draw_transformed_quality_pixmap_rect(Self, Pixmap, PixelRect, Double, Double, Double, Double, Paint, ImageQuality) -> Unit
 pub fn Canvas::draw_transformed_sampled_pixmap(Self, Pixmap, Double, Double, Double, Double, Paint, ImageSampling) -> Unit
 pub fn Canvas::draw_transformed_sampled_pixmap_rect(Self, Pixmap, PixelRect, Double, Double, Double, Double, Paint, ImageSampling) -> Unit
 pub fn Canvas::fill_circle(Self, Double, Double, Double, Paint) -> Unit
@@ -202,6 +207,13 @@ pub(all) enum FillRule {
   NonZero
   EvenOdd
 } derive(Eq, @debug.Debug)
+
+pub(all) enum ImageQuality {
+  Fast
+  Balanced
+  High
+} derive(Eq, @debug.Debug)
+pub fn ImageQuality::to_sampling(Self) -> ImageSampling
 
 pub(all) enum ImageSampling {
   Nearest
@@ -401,6 +413,9 @@ pub fn Pixmap::blend_nine_patch_pixmap(Self, Int, Int, Int, Int, Self, NinePatch
 pub fn Pixmap::blend_pixel(Self, Int, Int, Color) -> Unit
 pub fn Pixmap::blend_pixmap(Self, Int, Int, Self, Double) -> Unit
 pub fn Pixmap::blend_pixmap_rect(Self, Int, Int, Self, PixelRect, Double) -> Unit
+pub fn Pixmap::blend_quality_nine_patch_pixmap(Self, Int, Int, Int, Int, Self, NinePatchInsets, Double, ImageQuality) -> Unit
+pub fn Pixmap::blend_quality_pixmap(Self, Int, Int, Int, Int, Self, Double, ImageQuality) -> Unit
+pub fn Pixmap::blend_quality_pixmap_rect(Self, Int, Int, Int, Int, Self, PixelRect, Double, ImageQuality) -> Unit
 pub fn Pixmap::blend_rect(Self, Int, Int, Int, Int, Color) -> Unit
 pub fn Pixmap::blend_sampled_pixmap(Self, Int, Int, Int, Int, Self, Double, ImageSampling) -> Unit
 pub fn Pixmap::blend_sampled_pixmap_rect(Self, Int, Int, Int, Int, Self, PixelRect, Double, ImageSampling) -> Unit

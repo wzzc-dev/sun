@@ -85,9 +85,9 @@ wzzc-dev/
 - `Surface` trait, `MemorySurface` with present-operation records and aggregate present telemetry, full/rect present helpers, and dirty-present batch dry-runs for `Canvas`, `LayerTree`, `RenderFrame`, and `Pixmap`
 - Pixmap blitting, source-rect atlas drawing, source-rect coverage-mask drawing,
   tiled Pixmap fills, explicit nearest/bilinear/bicubic sampling modes,
-  transform-aware sampled Pixmap drawing, Paint blend modes
-  (source-over/multiply/screen/add), and straight-alpha composition for image,
-  glyph atlas, and layer caching
+  quality strategies for fast/balanced/high image drawing, transform-aware
+  sampled Pixmap drawing, Paint blend modes (source-over/multiply/screen/add),
+  and straight-alpha composition for image, glyph atlas, and layer caching
 - `PixmapCache` for keyed reuse of image/layer pixmaps with copy-isolated cache
   entries, optional hit/insert telemetry, and opt-in LRU entry limits
 - Nine-patch Pixmap scaling for reusable GUI panel/background image composition

@@ -417,6 +417,27 @@ test "Pixmap::blend_sampled_pixmap dispatches sampling modes" {
 }
 
 ///|
+test "ImageQuality maps to concrete sampling modes" {
+  assert_true(ImageQuality::Fast.to_sampling() == ImageSampling::Nearest)
+  assert_true(ImageQuality::Balanced.to_sampling() == ImageSampling::Bilinear)
+  assert_true(ImageQuality::High.to_sampling() == ImageSampling::Bicubic)
+}
+
+///|
+test "Pixmap::blend_quality_pixmap dispatches quality strategies" {
+  let src = make_pixmap_test_bicubic_source()
+  let fast = Pixmap::new(3, 1)
+  let balanced = Pixmap::new(3, 1)
+  let high = Pixmap::new(3, 1)
+  fast.blend_quality_pixmap(0, 0, 3, 1, src, 1.0, ImageQuality::Fast)
+  balanced.blend_quality_pixmap(0, 0, 3, 1, src, 1.0, ImageQuality::Balanced)
+  high.blend_quality_pixmap(0, 0, 3, 1, src, 1.0, ImageQuality::High)
+  assert_eq(fast.get_pixel(1, 0), Color::black())
+  assert_eq(balanced.get_pixel(1, 0), Color::new(r=128, g=0, b=0, a=255))
+  assert_eq(high.get_pixel(0, 0), Color::new(r=34, g=0, b=0, a=255))
+}
+
+///|
 test "Pixmap::blend_scaled_pixmap_rect scales a source atlas region" {
   let dst = Pixmap::new(4, 2)
   dst.clear(Color::white())
@@ -572,6 +593,30 @@ test "Pixmap::blend_sampled_pixmap_rect dispatches sampling modes" {
 }
 
 ///|
+test "Pixmap::blend_quality_pixmap_rect dispatches quality strategies" {
+  let src = make_pixmap_test_bicubic_rect_source()
+  let fast = Pixmap::new(3, 1)
+  let balanced = Pixmap::new(3, 1)
+  let high = Pixmap::new(3, 1)
+  let rect = PixelRect::new(x=1, y=0, width=4, height=1)
+  fast.blend_quality_pixmap_rect(0, 0, 3, 1, src, rect, 1.0, ImageQuality::Fast)
+  balanced.blend_quality_pixmap_rect(
+    0,
+    0,
+    3,
+    1,
+    src,
+    rect,
+    1.0,
+    ImageQuality::Balanced,
+  )
+  high.blend_quality_pixmap_rect(0, 0, 3, 1, src, rect, 1.0, ImageQuality::High)
+  assert_eq(fast.get_pixel(1, 0), Color::black())
+  assert_eq(balanced.get_pixel(1, 0), Color::new(r=128, g=0, b=0, a=255))
+  assert_eq(high.get_pixel(0, 0), Color::new(r=34, g=0, b=0, a=255))
+}
+
+///|
 test "Pixmap::blend_tiled_pixmap_rect repeats source atlas region" {
   let dst = Pixmap::new(5, 2)
   let src = Pixmap::new(4, 1)
@@ -658,6 +703,25 @@ test "Pixmap::blend_nine_patch_pixmap clips destination and applies opacity" {
   )
   assert_eq(dst.get_pixel(0, 0), Color::new(r=152, g=127, b=127, a=255))
   assert_eq(dst.get_pixel(1, 1), Color::new(r=152, g=127, b=127, a=255))
+}
+
+///|
+test "Pixmap::blend_quality_nine_patch_pixmap composes with quality strategy" {
+  let dst = Pixmap::new(5, 5)
+  let src = make_pixmap_test_nine_patch_source()
+  dst.blend_quality_nine_patch_pixmap(
+    0,
+    0,
+    5,
+    5,
+    src,
+    NinePatchInsets::new(left=1, top=1, right=1, bottom=1),
+    1.0,
+    ImageQuality::High,
+  )
+  assert_eq(dst.get_pixel(0, 0), Color::new(r=10, g=0, b=0))
+  assert_eq(dst.get_pixel(2, 2), Color::new(r=50, g=0, b=0))
+  assert_eq(dst.get_pixel(4, 4), Color::new(r=90, g=0, b=0))
 }
 
 ///|
