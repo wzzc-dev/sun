@@ -167,6 +167,74 @@ test "NativeSurface exposes RenderFrame dirty submit plans" {
 }
 
 ///|
+test "NativeSurface exposes RenderFrame dirty present batches" {
+  let count = Ref(0)
+  let frame = @graphics.RenderFrame::new(8, 1).set_dirty_rect_limit(2)
+  frame.get_canvas().draw_pixel(0, 0, @graphics.Color::red())
+
+  let middle = @graphics.Layer::new(1, 1).set_position(3, 0)
+  middle.get_canvas().draw_pixel(0, 0, @graphics.Color::green())
+  let right = @graphics.Layer::new(1, 1).set_position(6, 0)
+  right.get_canvas().draw_pixel(0, 0, @graphics.Color::blue())
+  ignore(frame.get_layer_tree().add_layer(middle))
+  ignore(frame.get_layer_tree().add_layer(right))
+
+  let surface = NativeSurface::from_frame(42, frame).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+  match surface.dirty_frame_present_batch(frame) {
+    Ok(batch) => {
+      assert_eq(batch.get_rect_count(), 1)
+      assert_eq(batch.get_present_pixel_count(), 7)
+      assert_eq(batch.get_present_byte_count(), 28)
+      let payloads = batch.get_payloads()
+      assert_true(
+        payloads[0].get_rect() ==
+        @graphics.PixelRect::new(x=0, y=0, width=7, height=1),
+      )
+      let pixels = payloads[0].get_pixels()
+      assert_eq(pixels.length(), 28)
+      assert_eq(pixels[0], @graphics.Color::red().r)
+      assert_eq(pixels[12], @graphics.Color::green().r)
+      assert_eq(pixels[24], @graphics.Color::blue().r)
+    }
+    Err(_) => abort("expected native dirty present batch")
+  }
+  assert_eq(count.val, 0)
+  assert_eq(
+    frame.get_canvas().get_pixmap().get_pixel(3, 0),
+    @graphics.Color::transparent(),
+  )
+  assert_true(frame.has_dirty())
+
+  assert_true(surface.present_frame_dirty(frame) == Ok(1))
+  assert_eq(count.val, 1)
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "NativeSurface dirty present batch preserves clipped-away dirty" {
+  let count = Ref(0)
+  let frame = @graphics.RenderFrame::new(4, 1)
+  frame.mark_dirty_rect(@graphics.PixelRect::new(x=3, y=0, width=1, height=1))
+  let surface = NativeSurface::new(42, 2, 1).with_pre_present_hook(fn() {
+    count.val = count.val + 1
+  })
+
+  match surface.dirty_frame_present_batch(frame) {
+    Ok(batch) => {
+      assert_true(batch.is_empty())
+      assert_eq(batch.get_rect_count(), 0)
+      assert_eq(batch.get_present_pixel_count(), 0)
+      assert_eq(batch.get_present_byte_count(), 0)
+    }
+    Err(_) => abort("expected clipped-away dirty present batch")
+  }
+  assert_eq(count.val, 0)
+  assert_true(frame.has_dirty())
+}
+
+///|
 test "NativeSurface dirty submit plan preserves clipped-away dirty without presenting" {
   let count = Ref(0)
   let frame = @graphics.RenderFrame::new(4, 1)
@@ -518,6 +586,32 @@ test "render frame strategy submit helper constructs NativeSurface internally" {
     Err(_) => abort("expected constructed strategy submit result")
   }
   assert_true(!frame.has_dirty())
+}
+
+///|
+test "render frame dirty batch helper constructs NativeSurface internally" {
+  let frame = @graphics.RenderFrame::new(2, 1)
+  let layer = @graphics.Layer::new(1, 1).set_position(1, 0)
+  layer.get_canvas().draw_pixel(0, 0, @graphics.Color::red())
+  ignore(frame.get_layer_tree().add_layer(layer))
+
+  match dirty_render_frame_present_batch(42, frame) {
+    Ok(batch) => {
+      assert_eq(batch.get_rect_count(), 1)
+      assert_eq(batch.get_present_pixel_count(), 1)
+      assert_eq(batch.get_present_byte_count(), 4)
+      let payloads = batch.get_payloads()
+      assert_true(
+        payloads[0].get_rect() ==
+        @graphics.PixelRect::new(x=1, y=0, width=1, height=1),
+      )
+      let pixels = payloads[0].get_pixels()
+      assert_eq(pixels.length(), 4)
+      assert_eq(pixels[0], @graphics.Color::red().r)
+    }
+    Err(_) => abort("expected constructed dirty present batch")
+  }
+  assert_true(frame.has_dirty())
 }
 
 ///|

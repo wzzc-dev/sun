@@ -131,6 +131,7 @@ Application / GUI
 - `RenderFrame` strategy-aware submit plan/result 暴露计划 present rect 数，让后端在提交前后都能复用同一份批量调度 telemetry
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty-submit plan 查询，让窗口后端调度能复用 graphics 的统一 dirty snapshot
+- softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty present batch dry-run，让窗口后端可检查 packed payload 且不触发 hook、不清 dirty
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` Skip/Partial/Full 策略查询，让窗口后端可直接消费统一 present 决策
 - softbuffer 的 `NativeSurface` 暴露 state-aware dirty submit helper，返回 Clean/Present/DirtyClippedAway 与实际提交数量
 - softbuffer 的 `NativeSurface` 暴露 strategy-aware frame submit helper，把 Skip/Partial/Full 分派收敛为后端可复用入口
@@ -338,6 +339,7 @@ Application / GUI
 - [x] `RenderFrame` 暴露通用 strategy-aware submit plan/result/helper，把 Skip/Partial/Full 调度从 softbuffer 下沉到 graphics 核心层
 - [x] `RenderFrame` strategy-aware submit plan/result 暴露计划 present rect 数，补齐 dry-run 与实际提交结果的批量调度 telemetry
 - [x] softbuffer 暴露 `RenderFrame` present strategy 查询，让窗口后端无需拆 dirty-submit plan 就能调度 present
+- [x] softbuffer 暴露 `RenderFrame` dirty present batch dry-run，让窗口后端可检查 packed payload 且不触发 hook、不清 dirty
 - [x] softbuffer 暴露 strategy-aware frame submit helper，让窗口后端复用统一 Skip/Partial/Full 分派和提交结果
 - [x] softbuffer strategy submit result 暴露 state、present rect 数和像素/字节成本，给窗口后端提供统一 telemetry
 - [x] softbuffer 暴露 strategy-aware frame submit plan，让窗口后端可在 present 前 dry-run Skip/Partial/Full 调度

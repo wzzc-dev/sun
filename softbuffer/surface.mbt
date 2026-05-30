@@ -526,6 +526,14 @@ pub fn NativeSurface::dirty_frame_submit_plan(
 }
 
 ///|
+pub fn NativeSurface::dirty_frame_present_batch(
+  self : NativeSurface,
+  frame : @graphics.RenderFrame,
+) -> Result[@graphics.PresentBatch, @graphics.PresentError] {
+  frame.dirty_present_batch(self)
+}
+
+///|
 pub fn NativeSurface::dirty_frame_present_strategy(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
@@ -584,6 +592,14 @@ pub fn dirty_render_frame_submit_plan(
   frame : @graphics.RenderFrame,
 ) -> @graphics.DirtySubmitPlan {
   NativeSurface::from_frame(handle, frame).dirty_frame_submit_plan(frame)
+}
+
+///|
+pub fn dirty_render_frame_present_batch(
+  handle : UInt64,
+  frame : @graphics.RenderFrame,
+) -> Result[@graphics.PresentBatch, @graphics.PresentError] {
+  NativeSurface::from_frame(handle, frame).dirty_frame_present_batch(frame)
 }
 
 ///|
