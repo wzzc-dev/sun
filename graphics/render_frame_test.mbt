@@ -151,7 +151,14 @@ test "RenderFrame::submit_dirty_to reports scheduler result" {
     Ok(submit_result) => {
       assert_true(submit_result.get_state() == DirtySubmitState::Present)
       assert_eq(submit_result.get_presented_rect_count(), 1)
-      assert_true(submit_result.get_submit_plan().needs_present())
+      assert_true(submit_result.has_dirty())
+      assert_true(submit_result.needs_present())
+      assert_true(!submit_result.was_clipped_away())
+      assert_true(!submit_result.uses_bounds_fallback())
+      assert_true(
+        submit_result.get_dirty_bounds() ==
+        Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+      )
     }
     Err(_) => abort("expected dirty submit result")
   }
@@ -162,7 +169,10 @@ test "RenderFrame::submit_dirty_to reports scheduler result" {
     Ok(submit_result) => {
       assert_true(submit_result.get_state() == DirtySubmitState::Clean)
       assert_eq(submit_result.get_presented_rect_count(), 0)
-      assert_true(!submit_result.get_submit_plan().has_dirty())
+      assert_true(!submit_result.has_dirty())
+      assert_true(!submit_result.needs_present())
+      assert_true(!submit_result.was_clipped_away())
+      assert_true(submit_result.get_dirty_bounds() == None)
     }
     Err(_) => abort("expected clean submit result")
   }
@@ -182,8 +192,13 @@ test "RenderFrame::submit_dirty_to consumes surface-clipped dirty" {
         submit_result.get_state() == DirtySubmitState::DirtyClippedAway,
       )
       assert_eq(submit_result.get_presented_rect_count(), 0)
-      assert_true(submit_result.get_submit_plan().has_dirty())
-      assert_true(!submit_result.get_submit_plan().needs_present())
+      assert_true(submit_result.has_dirty())
+      assert_true(!submit_result.needs_present())
+      assert_true(submit_result.was_clipped_away())
+      assert_true(
+        submit_result.get_dirty_bounds() ==
+        Some(PixelRect::new(x=3, y=0, width=1, height=1)),
+      )
     }
     Err(_) => abort("expected clipped-away submit result")
   }

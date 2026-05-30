@@ -128,10 +128,39 @@ pub fn DirtySubmitResult::get_submit_plan(
 }
 
 ///|
+pub fn DirtySubmitResult::get_dirty_bounds(
+  self : DirtySubmitResult,
+) -> PixelRect? {
+  self.submit_plan.get_dirty_bounds()
+}
+
+///|
 pub fn DirtySubmitResult::get_state(
   self : DirtySubmitResult,
 ) -> DirtySubmitState {
   self.submit_plan.get_state()
+}
+
+///|
+pub fn DirtySubmitResult::has_dirty(self : DirtySubmitResult) -> Bool {
+  self.submit_plan.has_dirty()
+}
+
+///|
+pub fn DirtySubmitResult::needs_present(self : DirtySubmitResult) -> Bool {
+  self.submit_plan.needs_present()
+}
+
+///|
+pub fn DirtySubmitResult::was_clipped_away(self : DirtySubmitResult) -> Bool {
+  self.get_state() == DirtySubmitState::DirtyClippedAway
+}
+
+///|
+pub fn DirtySubmitResult::uses_bounds_fallback(
+  self : DirtySubmitResult,
+) -> Bool {
+  self.submit_plan.uses_bounds_fallback()
 }
 
 ///|

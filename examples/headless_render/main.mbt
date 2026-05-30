@@ -74,6 +74,9 @@ fn present_headless(frame : @graphics.RenderFrame) -> @graphics.MemorySurface {
       guard result.get_state() == @graphics.DirtySubmitState::Present else {
         abort("expected dirty submit to present")
       }
+      guard result.needs_present() else {
+        abort("expected dirty submit to need present")
+      }
       guard result.get_presented_rect_count() > 0 else {
         abort("expected dirty rects to present")
       }

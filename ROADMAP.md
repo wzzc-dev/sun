@@ -119,6 +119,7 @@ Application / GUI
 - `DirtySubmitPlan` 将逻辑 dirty bounds 与裁剪后的 present plan 合成可测试快照，供事件循环区分 dirty、present 与 clipped-away dirty 状态
 - `DirtySubmitState` 将 Clean/Present/DirtyClippedAway 调度状态显式化，减少事件循环侧组合判断
 - `DirtySubmitResult` 与 `RenderFrame::submit_dirty_to` 将调度状态和实际 present rect 数合成提交结果，供事件循环直接消费
+- `DirtySubmitResult` 暴露 needs-present、clipped-away、dirty bounds 与 fallback 等直达查询，减少事件循环继续拆 plan
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty-submit plan 查询，让窗口后端调度能复用 graphics 的统一 dirty snapshot
 - softbuffer 的 `NativeSurface` 暴露 state-aware dirty submit helper，返回 Clean/Present/DirtyClippedAway 与实际提交数量
@@ -309,6 +310,7 @@ Application / GUI
 - [x] `DirtySubmitPlan` 暴露 dirty bounds 与 clipped present plan 快照，作为事件循环 dirty submit 调度的可测试中间层
 - [x] `DirtySubmitState` 暴露 Clean/Present/DirtyClippedAway 状态，让事件循环和后端调度不再手写 dirty/present 组合判断
 - [x] `DirtySubmitResult` 与 `RenderFrame::submit_dirty_to` 返回调度状态和实际提交 rect 数，打通 plan 查询到可消费 submit 结果
+- [x] `DirtySubmitResult` 提供 needs-present、clipped-away、dirty bounds 与 fallback 直达查询，让示例和后端少拆一层 plan
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation
 - [x] `Layer::resize` 保留重叠像素并标记新 bounds dirty

@@ -268,10 +268,11 @@ fn present_frame_dirty(
 
 ///|
 fn handle_dirty_submit_result(result : @graphics.DirtySubmitResult) -> Unit {
-  match result.get_state() {
-    @graphics.DirtySubmitState::Clean => ()
-    @graphics.DirtySubmitState::Present => ()
-    @graphics.DirtySubmitState::DirtyClippedAway => ()
+  if result.was_clipped_away() {
+    return ()
+  }
+  if result.needs_present() {
+    ignore(result.get_presented_rect_count())
   }
 }
 
