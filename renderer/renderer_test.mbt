@@ -227,22 +227,41 @@ test "RendererTextResources configures bounded text caches" {
 }
 
 ///|
-test "RendererResources configures bounded text and image caches" {
-  let resources = RendererResources::with_capacities(16, 16, 1, 2, 1)
+test "RendererResources configures bounded font text and image caches" {
+  let resources = RendererResources::with_font_capacity(16, 16, 1, 2, 3, 1)
+  let font_cache = resources.get_font_face_cache()
   let text_resources = resources.get_text_resources()
   let text_cache = resources.get_text_mask_cache()
   let glyph_cache = resources.get_glyph_mask_cache()
   let atlas = resources.get_glyph_mask_atlas()
   let image_cache = resources.get_image_cache()
+  assert_true(font_cache.is_capacity_bounded())
+  assert_eq(font_cache.capacity(), 1)
   assert_true(text_cache.is_capacity_bounded())
-  assert_eq(text_cache.capacity(), 1)
-  assert_eq(text_resources.get_text_mask_cache().capacity(), 1)
+  assert_eq(text_cache.capacity(), 2)
+  assert_eq(text_resources.get_text_mask_cache().capacity(), 2)
   assert_true(glyph_cache.is_capacity_bounded())
-  assert_eq(glyph_cache.capacity(), 2)
+  assert_eq(glyph_cache.capacity(), 3)
   assert_eq(atlas.get_width(), 16)
   assert_eq(atlas.get_height(), 16)
   assert_true(image_cache.is_capacity_bounded())
   assert_eq(image_cache.capacity(), 1)
+
+  ignore(
+    font_cache.insert(
+      "first",
+      unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf())),
+    ),
+  )
+  ignore(
+    font_cache.insert(
+      "second",
+      unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf())),
+    ),
+  )
+  assert_eq(font_cache.len(), 1)
+  assert_true(font_cache.get("first") is None)
+  assert_true(font_cache.get("second") is Some(_))
 
   let red = @graphics.Pixmap::new(1, 1)
   red.set_pixel(0, 0, @graphics.Color::red())
@@ -395,6 +414,161 @@ test "Renderer quality cached image path uses RendererResources" {
     Some(cached) => assert_eq(cached.get_pixel(0, 0), @graphics.Color::red())
     None => abort("expected cached accent pixmap")
   }
+}
+
+///|
+test "Renderer cached font bytes path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(12, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_font_capacity(16, 16, 1, 1, 2, 1)
+  let config = @text.LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+
+  let first = match
+    renderer.draw_font_bytes_cached_with_renderer_resources(
+      make_minimal_ttf(),
+      "A",
+      1.0,
+      1.0,
+      config,
+      resources,
+      "ui-font",
+      "label",
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected cached font text draw")
+  }
+  assert_true(first.did_parse_font())
+  assert_true(!first.did_hit_font_cache())
+  assert_true(first.did_render_mask())
+  assert_true(!first.did_hit_text_cache())
+  assert_true(first.get_text_result().did_render_mask())
+  assert_eq(resources.get_font_face_cache().len(), 1)
+  assert_eq(resources.get_text_mask_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 1), @graphics.Color::black())
+
+  canvas.clear(@graphics.Color::white())
+  let second = match
+    renderer.draw_font_bytes_cached_with_renderer_resources(
+      b"not a font",
+      "O",
+      1.0,
+      1.0,
+      config,
+      resources,
+      "ui-font",
+      "label",
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected cached font hit to skip invalid bytes")
+  }
+  assert_true(!second.did_parse_font())
+  assert_true(second.did_hit_font_cache())
+  assert_true(second.did_hit_text_cache())
+  assert_eq(resources.get_font_face_cache().len(), 1)
+  assert_eq(resources.get_text_mask_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 1), @graphics.Color::black())
+}
+
+///|
+test "Renderer cached font atlas path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(24, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_font_capacity(16, 16, 1, 4, 4, 1)
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+
+  let first = match
+    renderer.draw_font_bytes_atlas_with_renderer_resources(
+      make_minimal_ttf(),
+      "AA",
+      1.0,
+      1.0,
+      config,
+      resources,
+      "ui-font",
+      "fixture",
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected cached font atlas draw")
+  }
+  assert_true(first.did_parse_font())
+  assert_eq(first.get_glyph_count(), 2)
+  assert_eq(first.get_drawn_glyph_count(), 2)
+  assert_eq(first.get_skipped_glyph_count(), 0)
+  assert_eq(first.get_rasterized_glyph_count(), 1)
+  assert_eq(first.get_cache_hit_count(), 1)
+  assert_eq(first.get_atlas_inserted_count(), 1)
+  assert_eq(first.get_atlas_hit_count(), 1)
+  assert_true(!first.did_clear_atlas())
+  assert_eq(first.get_atlas_result().get_glyph_count(), 2)
+
+  canvas.clear(@graphics.Color::white())
+  let second = match
+    renderer.draw_font_bytes_atlas_with_renderer_resources(
+      b"not a font",
+      "AA",
+      1.0,
+      1.0,
+      config,
+      resources,
+      "ui-font",
+      "fixture",
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected cached font hit to skip invalid bytes")
+  }
+  assert_true(!second.did_parse_font())
+  assert_true(second.did_hit_font_cache())
+  assert_eq(second.get_rasterized_glyph_count(), 0)
+  assert_eq(second.get_cache_hit_count(), 2)
+  assert_eq(second.get_atlas_inserted_count(), 0)
+  assert_eq(second.get_atlas_hit_count(), 2)
+  assert_eq(resources.get_font_face_cache().len(), 1)
+  assert_eq(resources.get_glyph_mask_cache().len(), 1)
+  assert_eq(resources.get_glyph_mask_atlas().len(), 1)
+}
+
+///|
+test "Renderer cached font bytes path preserves parse errors" {
+  let canvas = @graphics.Canvas::new(12, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::new(16, 16)
+  let config = @text.LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  match
+    renderer.draw_font_bytes_cached_with_renderer_resources(
+      b"not a font",
+      "A",
+      1.0,
+      1.0,
+      config,
+      resources,
+      "bad-font",
+      "label",
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ) {
+    Err(@text.FontParseError::UnexpectedEndOfData(0, 12, 10)) => ()
+    _ => abort("expected checked parser error")
+  }
+  assert_true(resources.get_font_face_cache().is_empty())
+  assert_true(resources.get_text_mask_cache().is_empty())
 }
 
 ///|
@@ -638,8 +812,7 @@ test "RendererTextResources::clear drops all text draw resources" {
 }
 
 ///|
-test "RendererResources::clear drops text and image resources" {
-  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+test "RendererResources::clear drops font text and image resources" {
   let canvas = @graphics.Canvas::new(24, 12)
   canvas.clear(@graphics.Color::white())
   let renderer = Renderer::new(canvas)
@@ -653,35 +826,39 @@ test "RendererResources::clear drops text and image resources" {
   icon.set_pixel(0, 0, @graphics.Color::green())
   ignore(resources.get_image_cache().insert("icon", icon))
   ignore(
-    renderer.draw_text_face_cached_with_renderer_resources(
-      face,
+    renderer.draw_font_bytes_cached_with_renderer_resources(
+      make_minimal_ttf(),
       "A",
       1.0,
       1.0,
       config,
       resources,
+      "ui-font",
       "label",
       @graphics.Paint::new().set_color(@graphics.Color::black()),
     ),
   )
   ignore(
-    renderer.draw_text_face_atlas_with_renderer_resources(
-      face,
+    renderer.draw_font_bytes_atlas_with_renderer_resources(
+      b"not a font",
       "A",
       1.0,
       1.0,
       config,
       resources,
+      "ui-font",
       "fixture",
       @graphics.Paint::new().set_color(@graphics.Color::black()),
     ),
   )
+  assert_eq(resources.get_font_face_cache().len(), 1)
   assert_eq(resources.get_text_mask_cache().len(), 1)
   assert_eq(resources.get_glyph_mask_cache().len(), 1)
   assert_eq(resources.get_glyph_mask_atlas().len(), 1)
   assert_eq(resources.get_image_cache().len(), 1)
 
   resources.clear()
+  assert_true(resources.get_font_face_cache().is_empty())
   assert_true(resources.get_text_mask_cache().is_empty())
   assert_true(resources.get_glyph_mask_cache().is_empty())
   assert_true(resources.get_glyph_mask_atlas().is_empty())

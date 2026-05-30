@@ -256,7 +256,8 @@ Application / GUI
 - [x] 为 `GlyphMaskCache`/`TextMaskCache` 增加 opt-in LRU entry limit，覆盖最近访问刷新、最旧条目淘汰和非法容量 clamp 回归
 - [x] 增加最小 `GlyphMaskAtlas`，让 renderer/resource 代码可先获得确定性的 glyph mask 行打包 placement、占用 telemetry、hit/insert telemetry 与满载清空重插信号
 - [x] 增加 `RendererTextResources`，让 renderer 调用方复用 bounded text/glyph mask cache 与 glyph atlas，并覆盖 cached-mask/atlas draw path 与 clear lifecycle
-- [x] 增加 `RendererResources`，让 GUI/resource 代码用单个对象复用 text cache、glyph cache、glyph atlas 与 image `PixmapCache`
+- [x] 增加 `RendererResources`，让 GUI/resource 代码用单个对象复用 font cache、text cache、glyph cache、glyph atlas 与 image `PixmapCache`
+- [x] 将 `FontFaceCache` 接入 RendererResources draw path，提供 checked font-byte cached text/atlas drawing，覆盖 parse hit/miss、解析错误保留与 clear lifecycle
 
 #### 2.1 OpenType 支持
 - [ ] 解析 CFF/CFF2 表（PostScript 轮廓）
@@ -441,7 +442,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache`，renderer 已有 `RendererResources` 统一复用 text/glyph cache、atlas 与 image cache 状态，并接入 cached image draw path，后续补 image/font loader 集成策略
+- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache`，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态，并接入 checked font-byte text draw path 与 cached image draw path，后续补 image/font loader 集成策略
 
 ---
 

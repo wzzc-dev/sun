@@ -15,6 +15,7 @@ pub struct RendererTextResources {
 ///|
 /// Caller-owned renderer resources shared across GUI text and image draws.
 pub struct RendererResources {
+  font_cache : @text.FontFaceCache
   text : RendererTextResources
   image_cache : @graphics.PixmapCache
 } derive(Debug)
@@ -36,6 +37,21 @@ pub struct TextAtlasDrawResult {
 /// Result of drawing text through a caller-owned rendered text-mask cache.
 pub struct TextMaskDrawResult {
   did_render_mask : Bool
+} derive(Debug)
+
+///|
+/// Result of parsing font bytes through renderer resources and drawing text.
+pub struct CachedFontTextDrawResult {
+  did_parse_font : Bool
+  text_result : TextMaskDrawResult
+} derive(Debug)
+
+///|
+/// Result of parsing font bytes through renderer resources and drawing atlas
+/// text.
+pub struct CachedFontAtlasDrawResult {
+  did_parse_font : Bool
+  atlas_result : TextAtlasDrawResult
 } derive(Debug)
 
 ///|
@@ -89,12 +105,13 @@ pub fn RendererTextResources::with_capacities(
 }
 
 ///|
-/// Create renderer resources with unbounded text and image caches.
+/// Create renderer resources with unbounded font, text, and image caches.
 pub fn RendererResources::new(
   atlas_width : Int,
   atlas_height : Int,
 ) -> RendererResources {
   {
+    font_cache: @text.FontFaceCache::new(),
     text: RendererTextResources::new(atlas_width, atlas_height),
     image_cache: @graphics.PixmapCache::new(),
   }
@@ -110,6 +127,26 @@ pub fn RendererResources::with_capacities(
   image_capacity : Int,
 ) -> RendererResources {
   {
+    font_cache: @text.FontFaceCache::new(),
+    text: RendererTextResources::with_capacities(
+      atlas_width, atlas_height, text_mask_capacity, glyph_mask_capacity,
+    ),
+    image_cache: @graphics.PixmapCache::with_capacity(image_capacity),
+  }
+}
+
+///|
+/// Create renderer resources with bounded font, text, and image caches.
+pub fn RendererResources::with_font_capacity(
+  atlas_width : Int,
+  atlas_height : Int,
+  font_face_capacity : Int,
+  text_mask_capacity : Int,
+  glyph_mask_capacity : Int,
+  image_capacity : Int,
+) -> RendererResources {
+  {
+    font_cache: @text.FontFaceCache::with_capacity(font_face_capacity),
     text: RendererTextResources::with_capacities(
       atlas_width, atlas_height, text_mask_capacity, glyph_mask_capacity,
     ),
@@ -139,6 +176,14 @@ pub fn RendererTextResources::get_glyph_mask_atlas(
   self : RendererTextResources,
 ) -> @text.GlyphMaskAtlas {
   self.atlas
+}
+
+///|
+/// Get the reusable checked font-face cache.
+pub fn RendererResources::get_font_face_cache(
+  self : RendererResources,
+) -> @text.FontFaceCache {
+  self.font_cache
 }
 
 ///|
@@ -190,8 +235,10 @@ pub fn RendererTextResources::clear(self : RendererTextResources) -> Unit {
 }
 
 ///|
-/// Drop all cached text masks, glyph masks, atlas entries, and image pixmaps.
+/// Drop all cached font faces, text masks, glyph masks, atlas entries, and image
+/// pixmaps.
 pub fn RendererResources::clear(self : RendererResources) -> Unit {
+  self.font_cache.clear()
   self.text.clear()
   self.image_cache.clear()
 }
@@ -272,6 +319,134 @@ pub fn TextMaskDrawResult::did_render_mask(self : TextMaskDrawResult) -> Bool {
 /// Return whether this draw reused a rendered text mask from cache.
 pub fn TextMaskDrawResult::did_hit_cache(self : TextMaskDrawResult) -> Bool {
   !self.did_render_mask
+}
+
+///|
+/// Return whether this draw parsed font bytes instead of hitting cache.
+pub fn CachedFontTextDrawResult::did_parse_font(
+  self : CachedFontTextDrawResult,
+) -> Bool {
+  self.did_parse_font
+}
+
+///|
+/// Return whether this draw reused a checked font face from cache.
+pub fn CachedFontTextDrawResult::did_hit_font_cache(
+  self : CachedFontTextDrawResult,
+) -> Bool {
+  !self.did_parse_font
+}
+
+///|
+/// Return whether this draw rendered a new text mask instead of hitting cache.
+pub fn CachedFontTextDrawResult::did_render_mask(
+  self : CachedFontTextDrawResult,
+) -> Bool {
+  self.text_result.did_render_mask()
+}
+
+///|
+/// Return whether this draw reused a rendered text mask from cache.
+pub fn CachedFontTextDrawResult::did_hit_text_cache(
+  self : CachedFontTextDrawResult,
+) -> Bool {
+  self.text_result.did_hit_cache()
+}
+
+///|
+/// Return the underlying rendered text-mask draw result.
+pub fn CachedFontTextDrawResult::get_text_result(
+  self : CachedFontTextDrawResult,
+) -> TextMaskDrawResult {
+  self.text_result
+}
+
+///|
+/// Return whether this draw parsed font bytes instead of hitting cache.
+pub fn CachedFontAtlasDrawResult::did_parse_font(
+  self : CachedFontAtlasDrawResult,
+) -> Bool {
+  self.did_parse_font
+}
+
+///|
+/// Return whether this draw reused a checked font face from cache.
+pub fn CachedFontAtlasDrawResult::did_hit_font_cache(
+  self : CachedFontAtlasDrawResult,
+) -> Bool {
+  !self.did_parse_font
+}
+
+///|
+/// Return the underlying glyph-atlas draw result.
+pub fn CachedFontAtlasDrawResult::get_atlas_result(
+  self : CachedFontAtlasDrawResult,
+) -> TextAtlasDrawResult {
+  self.atlas_result
+}
+
+///|
+/// Return the number of layout glyphs visited by the atlas draw.
+pub fn CachedFontAtlasDrawResult::get_glyph_count(
+  self : CachedFontAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_glyph_count()
+}
+
+///|
+/// Return the number of glyphs composited from the atlas.
+pub fn CachedFontAtlasDrawResult::get_drawn_glyph_count(
+  self : CachedFontAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_drawn_glyph_count()
+}
+
+///|
+/// Return the number of layout glyphs that could not be drawn through the atlas.
+pub fn CachedFontAtlasDrawResult::get_skipped_glyph_count(
+  self : CachedFontAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_skipped_glyph_count()
+}
+
+///|
+/// Return the number of drawable glyphs reused from the glyph mask cache.
+pub fn CachedFontAtlasDrawResult::get_cache_hit_count(
+  self : CachedFontAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_cache_hit_count()
+}
+
+///|
+/// Return the number of glyph masks rasterized on cache miss.
+pub fn CachedFontAtlasDrawResult::get_rasterized_glyph_count(
+  self : CachedFontAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_rasterized_glyph_count()
+}
+
+///|
+/// Return the number of glyph placements reused from the atlas.
+pub fn CachedFontAtlasDrawResult::get_atlas_hit_count(
+  self : CachedFontAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_atlas_hit_count()
+}
+
+///|
+/// Return the number of glyph placements newly inserted into the atlas.
+pub fn CachedFontAtlasDrawResult::get_atlas_inserted_count(
+  self : CachedFontAtlasDrawResult,
+) -> Int {
+  self.atlas_result.get_atlas_inserted_count()
+}
+
+///|
+/// Return whether the atlas was cleared while drawing this text.
+pub fn CachedFontAtlasDrawResult::did_clear_atlas(
+  self : CachedFontAtlasDrawResult,
+) -> Bool {
+  self.atlas_result.did_clear_atlas()
 }
 
 ///|
@@ -420,6 +595,40 @@ pub fn Renderer::draw_text_face_cached_with_renderer_resources(
 }
 
 ///|
+/// Parse font bytes through renderer resources, then draw through the rendered
+/// text-mask cache.
+pub fn Renderer::draw_font_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  font_data : Bytes,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  font_key : String,
+  text_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedFontTextDrawResult, @text.FontParseError] {
+  match
+    resources.get_font_face_cache().get_or_parse_result(font_key, font_data) {
+    Ok(parse_result) => {
+      let text_result = self.draw_text_face_cached_with_renderer_resources(
+        parse_result.get_face(),
+        text,
+        x,
+        y,
+        config,
+        resources,
+        text_key,
+        paint,
+      )
+      Ok({ did_parse_font: parse_result.did_parse(), text_result })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
 /// Draw text through caller-owned glyph mask cache and glyph atlas resources.
 pub fn Renderer::draw_text_face_atlas(
   self : Renderer,
@@ -496,6 +705,40 @@ pub fn Renderer::draw_text_face_atlas_with_renderer_resources(
     glyph_key_prefix,
     paint,
   )
+}
+
+///|
+/// Parse font bytes through renderer resources, then draw through glyph cache
+/// and atlas resources.
+pub fn Renderer::draw_font_bytes_atlas_with_renderer_resources(
+  self : Renderer,
+  font_data : Bytes,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  font_key : String,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> Result[CachedFontAtlasDrawResult, @text.FontParseError] {
+  match
+    resources.get_font_face_cache().get_or_parse_result(font_key, font_data) {
+    Ok(parse_result) => {
+      let atlas_result = self.draw_text_face_atlas_with_renderer_resources(
+        parse_result.get_face(),
+        text,
+        x,
+        y,
+        config,
+        resources,
+        glyph_key_prefix,
+        paint,
+      )
+      Ok({ did_parse_font: parse_result.did_parse(), atlas_result })
+    }
+    Err(error) => Err(error)
+  }
 }
 
 ///|

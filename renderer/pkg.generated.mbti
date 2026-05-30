@@ -23,6 +23,32 @@ pub fn draw_text_face_cached(@graphics.Canvas, @text.FontFace, String, Double, D
 // Errors
 
 // Types and methods
+pub struct CachedFontAtlasDrawResult {
+  did_parse_font : Bool
+  atlas_result : TextAtlasDrawResult
+} derive(@debug.Debug)
+pub fn CachedFontAtlasDrawResult::did_clear_atlas(Self) -> Bool
+pub fn CachedFontAtlasDrawResult::did_hit_font_cache(Self) -> Bool
+pub fn CachedFontAtlasDrawResult::did_parse_font(Self) -> Bool
+pub fn CachedFontAtlasDrawResult::get_atlas_hit_count(Self) -> Int
+pub fn CachedFontAtlasDrawResult::get_atlas_inserted_count(Self) -> Int
+pub fn CachedFontAtlasDrawResult::get_atlas_result(Self) -> TextAtlasDrawResult
+pub fn CachedFontAtlasDrawResult::get_cache_hit_count(Self) -> Int
+pub fn CachedFontAtlasDrawResult::get_drawn_glyph_count(Self) -> Int
+pub fn CachedFontAtlasDrawResult::get_glyph_count(Self) -> Int
+pub fn CachedFontAtlasDrawResult::get_rasterized_glyph_count(Self) -> Int
+pub fn CachedFontAtlasDrawResult::get_skipped_glyph_count(Self) -> Int
+
+pub struct CachedFontTextDrawResult {
+  did_parse_font : Bool
+  text_result : TextMaskDrawResult
+} derive(@debug.Debug)
+pub fn CachedFontTextDrawResult::did_hit_font_cache(Self) -> Bool
+pub fn CachedFontTextDrawResult::did_hit_text_cache(Self) -> Bool
+pub fn CachedFontTextDrawResult::did_parse_font(Self) -> Bool
+pub fn CachedFontTextDrawResult::did_render_mask(Self) -> Bool
+pub fn CachedFontTextDrawResult::get_text_result(Self) -> TextMaskDrawResult
+
 pub struct CachedPixmapDrawResult {
   did_insert_pixmap : Bool
 } derive(@debug.Debug)
@@ -33,6 +59,8 @@ pub struct Renderer {
   canvas : @graphics.Canvas
 } derive(@debug.Debug)
 pub fn Renderer::draw_coverage_mask(Self, @text.CoverageMask, @graphics.Paint) -> Unit
+pub fn Renderer::draw_font_bytes_atlas_with_renderer_resources(Self, Bytes, String, Double, Double, @text.LayoutConfig, RendererResources, String, String, @graphics.Paint) -> Result[CachedFontAtlasDrawResult, @text.FontParseError]
+pub fn Renderer::draw_font_bytes_cached_with_renderer_resources(Self, Bytes, String, Double, Double, @text.LayoutConfig, RendererResources, String, String, @graphics.Paint) -> Result[CachedFontTextDrawResult, @text.FontParseError]
 pub fn Renderer::draw_glyph_atlas_entry(Self, @text.CoverageMask, @text.GlyphAtlasEntry, Int, Int, @graphics.Paint) -> Unit
 pub fn Renderer::draw_pixmap_cached(Self, @graphics.Pixmap, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::draw_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, RendererResources, String, @graphics.Paint) -> CachedPixmapDrawResult
@@ -50,10 +78,12 @@ pub fn Renderer::get_canvas(Self) -> @graphics.Canvas
 pub fn Renderer::new(@graphics.Canvas) -> Self
 
 pub struct RendererResources {
+  font_cache : @text.FontFaceCache
   text : RendererTextResources
   image_cache : @graphics.PixmapCache
 } derive(@debug.Debug)
 pub fn RendererResources::clear(Self) -> Unit
+pub fn RendererResources::get_font_face_cache(Self) -> @text.FontFaceCache
 pub fn RendererResources::get_glyph_mask_atlas(Self) -> @text.GlyphMaskAtlas
 pub fn RendererResources::get_glyph_mask_cache(Self) -> @text.GlyphMaskCache
 pub fn RendererResources::get_image_cache(Self) -> @graphics.PixmapCache
@@ -61,6 +91,7 @@ pub fn RendererResources::get_text_mask_cache(Self) -> @text.TextMaskCache
 pub fn RendererResources::get_text_resources(Self) -> RendererTextResources
 pub fn RendererResources::new(Int, Int) -> Self
 pub fn RendererResources::with_capacities(Int, Int, Int, Int, Int) -> Self
+pub fn RendererResources::with_font_capacity(Int, Int, Int, Int, Int, Int) -> Self
 
 pub struct RendererTextResources {
   text_cache : @text.TextMaskCache
