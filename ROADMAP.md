@@ -136,6 +136,7 @@ Application / GUI
 - softbuffer 的 `NativeSurface` 暴露 state-aware dirty submit helper，返回 Clean/Present/DirtyClippedAway 与实际提交数量
 - softbuffer 的 `NativeSurface` 暴露 strategy-aware frame submit helper，把 Skip/Partial/Full 分派收敛为后端可复用入口
 - softbuffer 的 strategy-aware submit result 暴露 state、present rect 数和像素/字节成本，方便窗口后端统一做 telemetry
+- softbuffer 的 strategy-aware submit plan/result 保留 dirty bounds 与 bounds-fallback 标记，让窗口后端能区分脏区形状和合并策略
 - softbuffer 的 strategy-aware submit plan 支持提交前 dry-run state/cost 查询，不触发 hook、不清 dirty
 - softbuffer 的 strategy-aware submit plan/result 暴露计划 present rect 数，方便窗口后端做批量 present 调度和成本统计
 - softbuffer 的 strategy-aware submit plan/result 暴露相对整帧 present 的 savings 查询，让窗口后端直接区分 partial/full 成本收益
@@ -344,6 +345,7 @@ Application / GUI
 - [x] softbuffer strategy submit result 暴露 state、present rect 数和像素/字节成本，给窗口后端提供统一 telemetry
 - [x] softbuffer 暴露 strategy-aware frame submit plan，让窗口后端可在 present 前 dry-run Skip/Partial/Full 调度
 - [x] softbuffer strategy submit plan/result 暴露计划 present rect 数，给窗口后端提供提交前批量调度 telemetry
+- [x] softbuffer strategy submit plan/result 保留 dirty bounds 与 bounds-fallback 标记，给窗口后端提供更完整的 invalidation telemetry
 - [x] softbuffer strategy submit plan/result 暴露 full-present savings 查询，减少窗口后端重复比较 partial/full 成本
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation

@@ -348,6 +348,11 @@ test "NativeSurface submits frames by present strategy" {
   assert_true(partial_plan.has_dirty())
   assert_true(partial_plan.needs_present())
   assert_true(!partial_plan.was_clipped_away())
+  assert_true(!partial_plan.uses_bounds_fallback())
+  assert_true(
+    partial_plan.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
   assert_eq(partial_plan.get_present_rect_count(), 1)
   assert_eq(partial_plan.get_present_pixel_count(), 1)
   assert_eq(partial_plan.get_present_byte_count(), 4)
@@ -368,6 +373,11 @@ test "NativeSurface submits frames by present strategy" {
       assert_true(result.has_dirty())
       assert_true(result.needs_present())
       assert_true(!result.was_clipped_away())
+      assert_true(!result.uses_bounds_fallback())
+      assert_true(
+        result.get_dirty_bounds() ==
+        Some(@graphics.PixelRect::new(x=1, y=0, width=1, height=1)),
+      )
       assert_true(result.did_present())
       assert_eq(result.get_present_rect_count(), 1)
       assert_eq(result.get_presented_rect_count(), 1)
@@ -396,6 +406,11 @@ test "NativeSurface submits frames by present strategy" {
   assert_true(full_plan.has_dirty())
   assert_true(full_plan.needs_present())
   assert_true(!full_plan.was_clipped_away())
+  assert_true(!full_plan.uses_bounds_fallback())
+  assert_true(
+    full_plan.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=2, height=1)),
+  )
   assert_eq(full_plan.get_present_rect_count(), 1)
   assert_eq(full_plan.get_present_pixel_count(), 2)
   assert_eq(full_plan.get_present_byte_count(), 8)
@@ -416,6 +431,11 @@ test "NativeSurface submits frames by present strategy" {
       assert_true(result.has_dirty())
       assert_true(result.needs_present())
       assert_true(!result.was_clipped_away())
+      assert_true(!result.uses_bounds_fallback())
+      assert_true(
+        result.get_dirty_bounds() ==
+        Some(@graphics.PixelRect::new(x=0, y=0, width=2, height=1)),
+      )
       assert_true(result.did_present())
       assert_eq(result.get_present_rect_count(), 1)
       assert_eq(result.get_presented_rect_count(), 1)
@@ -427,6 +447,75 @@ test "NativeSurface submits frames by present strategy" {
   }
   assert_eq(full_count.val, 1)
   assert_true(!full_frame.has_dirty())
+
+  let bounds_count = Ref(0)
+  let bounds_frame = @graphics.RenderFrame::new(8, 1).set_dirty_rect_limit(2)
+  bounds_frame.mark_dirty_rect(
+    @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+  )
+  bounds_frame.mark_dirty_rect(
+    @graphics.PixelRect::new(x=3, y=0, width=1, height=1),
+  )
+  bounds_frame.mark_dirty_rect(
+    @graphics.PixelRect::new(x=6, y=0, width=1, height=1),
+  )
+  let bounds_surface = NativeSurface::from_frame(42, bounds_frame).with_pre_present_hook(fn() {
+      bounds_count.val = bounds_count.val + 1
+    },
+  )
+
+  let bounds_plan = bounds_surface.dirty_frame_submit_by_strategy_plan(
+    bounds_frame,
+  )
+  assert_true(
+    bounds_plan.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Partial,
+  )
+  assert_true(bounds_plan.get_state() == @graphics.DirtySubmitState::Present)
+  assert_true(bounds_plan.has_dirty())
+  assert_true(bounds_plan.needs_present())
+  assert_true(!bounds_plan.was_clipped_away())
+  assert_true(bounds_plan.uses_bounds_fallback())
+  assert_true(
+    bounds_plan.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=7, height=1)),
+  )
+  assert_eq(bounds_plan.get_present_rect_count(), 1)
+  assert_eq(bounds_plan.get_present_pixel_count(), 7)
+  assert_eq(bounds_plan.get_present_byte_count(), 28)
+  assert_true(bounds_plan.saves_full_present_pixels())
+  assert_eq(bounds_count.val, 0)
+  assert_true(bounds_frame.has_dirty())
+
+  match bounds_surface.submit_frame_by_strategy(bounds_frame) {
+    Ok(result) => {
+      assert_true(
+        result.get_submit_plan().uses_bounds_fallback() ==
+        bounds_plan.uses_bounds_fallback(),
+      )
+      assert_true(
+        result.get_present_strategy() == @graphics.DirtyPresentStrategy::Partial,
+      )
+      assert_true(result.get_state() == @graphics.DirtySubmitState::Present)
+      assert_true(result.has_dirty())
+      assert_true(result.needs_present())
+      assert_true(!result.was_clipped_away())
+      assert_true(result.uses_bounds_fallback())
+      assert_true(
+        result.get_dirty_bounds() ==
+        Some(@graphics.PixelRect::new(x=0, y=0, width=7, height=1)),
+      )
+      assert_true(result.did_present())
+      assert_eq(result.get_present_rect_count(), 1)
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 7)
+      assert_eq(result.get_present_byte_count(), 28)
+      assert_true(result.saves_full_present_pixels())
+    }
+    Err(_) => abort("expected bounds fallback strategy submit result")
+  }
+  assert_eq(bounds_count.val, 1)
+  assert_true(!bounds_frame.has_dirty())
 
   let clean_count = Ref(0)
   let clean_frame = @graphics.RenderFrame::new(2, 1)
@@ -444,6 +533,8 @@ test "NativeSurface submits frames by present strategy" {
   assert_true(!clean_plan.has_dirty())
   assert_true(!clean_plan.needs_present())
   assert_true(!clean_plan.was_clipped_away())
+  assert_true(!clean_plan.uses_bounds_fallback())
+  assert_true(clean_plan.get_dirty_bounds() == None)
   assert_eq(clean_plan.get_present_rect_count(), 0)
   assert_eq(clean_plan.get_present_pixel_count(), 0)
   assert_eq(clean_plan.get_present_byte_count(), 0)
@@ -458,6 +549,8 @@ test "NativeSurface submits frames by present strategy" {
       assert_true(!result.has_dirty())
       assert_true(!result.needs_present())
       assert_true(!result.was_clipped_away())
+      assert_true(!result.uses_bounds_fallback())
+      assert_true(result.get_dirty_bounds() == None)
       assert_true(!result.did_present())
       assert_eq(result.get_present_rect_count(), 0)
       assert_eq(result.get_presented_rect_count(), 0)
@@ -490,6 +583,11 @@ test "NativeSurface strategy submit consumes clipped-away dirty without presenti
   assert_true(submit_plan.has_dirty())
   assert_true(!submit_plan.needs_present())
   assert_true(submit_plan.was_clipped_away())
+  assert_true(!submit_plan.uses_bounds_fallback())
+  assert_true(
+    submit_plan.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=3, y=0, width=1, height=1)),
+  )
   assert_eq(submit_plan.get_present_rect_count(), 0)
   assert_eq(submit_plan.get_present_pixel_count(), 0)
   assert_eq(submit_plan.get_present_byte_count(), 0)
@@ -508,6 +606,11 @@ test "NativeSurface strategy submit consumes clipped-away dirty without presenti
       assert_true(result.has_dirty())
       assert_true(!result.needs_present())
       assert_true(result.was_clipped_away())
+      assert_true(!result.uses_bounds_fallback())
+      assert_true(
+        result.get_dirty_bounds() ==
+        Some(@graphics.PixelRect::new(x=3, y=0, width=1, height=1)),
+      )
       assert_true(!result.did_present())
       assert_eq(result.get_present_rect_count(), 0)
       assert_eq(result.get_presented_rect_count(), 0)
