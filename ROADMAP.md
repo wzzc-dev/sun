@@ -135,6 +135,7 @@ Application / GUI
 - softbuffer 的 strategy-aware submit plan/result 暴露相对整帧 present 的 savings 查询，让窗口后端直接区分 partial/full 成本收益
 - `NativeSurface` 支持可选 pre-present hook，让窗口生命周期通知进入统一 present helper，而不是散落在示例事件处理器里
 - `headless_render` 示例通过 `RenderFrame::submit_dirty_to` 自校验 dirty submit 状态，让 CI 覆盖可执行的调度结果路径
+- `headless_render` 示例通过 graphics-core `RenderFrame::submit_by_strategy_to` 自校验 dry-run plan 与实际 submit 结果，让 CI 覆盖无窗口 Skip/Partial/Full 调度入口
 - `hello_world` 示例走 `RenderFrame + LayerTree + softbuffer state-aware frame-submit helpers`，并在 resize/redraw 中复用 frame 与 layer lifecycle，作为事件循环 dirty submit 的最小真实用例
 - `hello_world` 示例按 `DirtyPresentStrategy` 分派 Skip/Partial/Full present，把统一 dirty present 策略接入窗口提交路径
 - TTF 字体解析（head, hhea, hmtx, cmap, glyf, kern 表）
@@ -345,6 +346,7 @@ Application / GUI
 - [x] `hello_world` 示例接入 `RenderFrame`，覆盖窗口 resize/redraw 上的 frame submit 路径
 - [x] `hello_world` resize 复用 `RenderFrame + LayerTree`，通过背景 resize/clear 与文本层 replace/recenter 覆盖 GUI 级 layer lifecycle 基线
 - [x] `headless_render` 和 `hello_world` 示例消费 state-aware dirty submit 结果，让无窗口 CI 与窗口 demo 都走统一 submit 语义
+- [x] `headless_render` 示例消费 graphics-core strategy-aware submit plan/result，让无窗口 CI 覆盖新的 RenderFrame strategy 调度入口
 - [x] `hello_world` 示例按 Skip/Partial/Full 策略选择跳过、dirty submit 或 full present，推进事件循环 dirty present 调度集成
 - [x] `hello_world` 示例改为调用 softbuffer strategy-aware submit helper，避免窗口循环重复实现 present 策略分派
 - [ ] 脏矩形渲染调度与窗口事件循环深度集成

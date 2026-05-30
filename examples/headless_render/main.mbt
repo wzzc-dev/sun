@@ -69,36 +69,54 @@ fn present_headless(frame : @graphics.RenderFrame) -> @graphics.MemorySurface {
     frame.get_width(),
     frame.get_height(),
   )
-  match frame.submit_dirty_to(surface) {
+  let plan = frame.submit_by_strategy_plan(surface)
+  guard plan.get_present_strategy() == @graphics.DirtyPresentStrategy::Full else {
+    abort("initial frame should plan a full present")
+  }
+  guard plan.get_state() == @graphics.DirtySubmitState::Present else {
+    abort("initial frame should plan present state")
+  }
+  guard plan.needs_present() else { abort("initial frame should need present") }
+  guard plan.get_present_pixel_count() == frame.get_width() * frame.get_height() else {
+    abort("initial frame should budget the full surface")
+  }
+  guard plan.get_present_byte_count() == plan.get_present_pixel_count() * 4 else {
+    abort("initial frame should expose an RGBA byte budget")
+  }
+  guard !plan.saves_full_present_pixels() else {
+    abort("initial frame plan should not claim partial savings")
+  }
+  guard surface.get_present_count() == 0 else {
+    abort("strategy plan must be a dry run")
+  }
+  guard frame.has_dirty() else { abort("strategy plan must keep frame dirty") }
+
+  match frame.submit_by_strategy_to(surface) {
     Ok(result) => {
+      guard result.get_present_strategy() ==
+        @graphics.DirtyPresentStrategy::Full else {
+        abort("initial frame should submit as full present")
+      }
       guard result.get_state() == @graphics.DirtySubmitState::Present else {
-        abort("expected dirty submit to present")
+        abort("expected strategy submit to present")
       }
       guard result.needs_present() else {
-        abort("expected dirty submit to need present")
+        abort("expected strategy submit to need present")
       }
       guard result.did_present() else {
-        abort("expected dirty submit to present pixels")
+        abort("expected strategy submit to present pixels")
       }
       guard result.get_presented_rect_count() > 0 else {
-        abort("expected dirty rects to present")
+        abort("expected strategy submit to present at least one rect")
       }
-      guard result.get_present_pixel_count() > 0 else {
-        abort("expected dirty pixels to present")
+      guard result.get_present_pixel_count() == plan.get_present_pixel_count() else {
+        abort("strategy submit should preserve planned pixel budget")
       }
-      guard result.get_present_byte_count() >=
-        result.get_present_pixel_count() * 4 else {
-        abort("expected RGBA present byte budget")
+      guard result.get_present_byte_count() == plan.get_present_byte_count() else {
+        abort("strategy submit should preserve planned byte budget")
       }
-      guard !result.saves_full_present_pixels(
-        frame.get_width(),
-        frame.get_height(),
-      ) else {
-        abort("initial frame should not claim partial present savings")
-      }
-      guard result.get_present_strategy(frame.get_width(), frame.get_height()) ==
-        @graphics.DirtyPresentStrategy::Full else {
-        abort("initial frame should prefer full present")
+      guard !result.saves_full_present_pixels() else {
+        abort("initial frame result should not claim partial savings")
       }
       surface
     }

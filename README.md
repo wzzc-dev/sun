@@ -133,7 +133,7 @@ Pixel display library.
 Small build-checked programs that exercise the public packages together.
 
 **Features:**
-- `headless_render` renders a GUI-style frame through `RenderFrame`, `LayerTree`, and `MemorySurface`, then self-checks state-aware dirty submit output without creating a window
+- `headless_render` renders a GUI-style frame through `RenderFrame`, `LayerTree`, and `MemorySurface`, then self-checks graphics-core strategy-aware submit planning/results without creating a window
 - `hello_world` uses `graphics.RenderFrame`, `LayerTree`, and `softbuffer` strategy-aware frame-submit helpers as a minimal window submit path with resize/redraw lifecycle reuse
 - `font_demo` renders real TTF text through the `renderer` package
 - `triangle_window` keeps a simple native pixel-output smoke test
