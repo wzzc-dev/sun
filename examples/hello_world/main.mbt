@@ -231,11 +231,8 @@ fn update_hello_world_frame(
   let tree = frame.get_layer_tree()
   guard tree.get_layer_count() >= 2 else { return false }
 
-  ignore(frame.resize(width, height))
-  guard tree.resize_layer(0, width, height) else { return false }
-  match tree.get_layer(0) {
-    Some(background) => background.clear(@graphics.Color::white())
-    None => return false
+  guard frame.resize_and_clear_layer(0, width, height, @graphics.Color::white()) else {
+    return false
   }
   match tree.replace_layer(1, build_text_layer(width, height)) {
     Some(_) => true

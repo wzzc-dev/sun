@@ -548,6 +548,7 @@ pub fn[S : Surface] RenderFrame::present_all_to(Self, S) -> Result[Int, PresentE
 pub fn[S : Surface] RenderFrame::present_dirty_to(Self, S) -> Result[Int, PresentError]
 pub fn[S : Surface] RenderFrame::present_strategy(Self, S) -> DirtyPresentStrategy
 pub fn RenderFrame::resize(Self, Int, Int) -> Self
+pub fn RenderFrame::resize_and_clear_layer(Self, Int, Int, Int, Color) -> Bool
 pub fn RenderFrame::set_dirty_rect_limit(Self, Int) -> Self
 pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(Self, S) -> RenderFrameSubmitPlan
 pub fn[S : Surface] RenderFrame::submit_by_strategy_to(Self, S) -> Result[RenderFrameSubmitResult, PresentError]

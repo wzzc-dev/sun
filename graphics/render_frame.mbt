@@ -288,6 +288,29 @@ pub fn RenderFrame::resize(
 }
 
 ///|
+/// Resize the frame and a layer-sized background cache, then clear that layer.
+/// Intended for GUI resize handlers that keep a full-frame background layer at
+/// a stable index while other layers are replaced or redrawn separately.
+pub fn RenderFrame::resize_and_clear_layer(
+  self : RenderFrame,
+  layer_index : Int,
+  width : Int,
+  height : Int,
+  color : Color,
+) -> Bool {
+  guard width > 0 && height > 0 else { return false }
+  guard self.layer_tree.get_layer(layer_index) is Some(layer) else {
+    return false
+  }
+  ignore(self.resize(width, height))
+  guard self.layer_tree.resize_layer(layer_index, width, height) else {
+    return false
+  }
+  layer.clear(color)
+  true
+}
+
+///|
 pub fn RenderFrame::get_dirty_rect_limit(self : RenderFrame) -> Int {
   self.dirty_rect_limit
 }
