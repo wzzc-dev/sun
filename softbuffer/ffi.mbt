@@ -20,6 +20,17 @@ extern "c" fn renderer_present(
 ) -> Unit = "renderer_present"
 
 ///|
+#borrow(pixels)
+extern "c" fn renderer_present_rect(
+  window : UInt64,
+  pixels : FixedArray[Byte],
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> Unit = "renderer_present_rect"
+
+///|
 extern "c" fn renderer_process_events() -> Int = "renderer_process_events"
 
 ///|
@@ -48,4 +59,17 @@ pub fn display_pixels(
   height : Int,
 ) -> Unit {
   renderer_present(hwnd, pixels, width, height)
+}
+
+///|
+/// Display a tightly packed RGBA rectangle to a window at a destination offset.
+pub fn display_pixels_rect(
+  hwnd : UInt64,
+  pixels : FixedArray[Byte],
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> Unit {
+  renderer_present_rect(hwnd, pixels, x, y, width, height)
 }

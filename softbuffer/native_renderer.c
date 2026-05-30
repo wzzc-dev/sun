@@ -103,6 +103,17 @@ void renderer_destroy_window(native_window_t window) {
 }
 
 void renderer_present(native_window_t window, const uint8_t* pixels, int32_t width, int32_t height) {
+    renderer_present_rect(window, pixels, 0, 0, width, height);
+}
+
+void renderer_present_rect(
+    native_window_t window,
+    const uint8_t* pixels,
+    int32_t x,
+    int32_t y,
+    int32_t width,
+    int32_t height
+) {
     HWND hwnd = (HWND)(uintptr_t)window;
     HDC hdc = GetDC(hwnd);
     if (!hdc) return;
@@ -117,7 +128,7 @@ void renderer_present(native_window_t window, const uint8_t* pixels, int32_t wid
     
     StretchDIBits(
         hdc,
-        0, 0, width, height,
+        x, y, width, height,
         0, 0, width, height,
         pixels,
         &bmi,
@@ -178,6 +189,15 @@ native_window_t renderer_create_window(int32_t width, int32_t height, const char
 void renderer_destroy_window(native_window_t window) {}
 
 void renderer_present(native_window_t window, const uint8_t* pixels, int32_t width, int32_t height) {}
+
+void renderer_present_rect(
+    native_window_t window,
+    const uint8_t* pixels,
+    int32_t x,
+    int32_t y,
+    int32_t width,
+    int32_t height
+) {}
 
 int32_t renderer_process_events(void) { return 0; }
 

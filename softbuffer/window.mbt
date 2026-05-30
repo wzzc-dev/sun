@@ -54,7 +54,7 @@ pub fn Window::new(attrs : WindowAttributes) -> Window {
   let handle = renderer_create_window(
     attrs.width,
     attrs.height,
-    attrs.title.to_bytes(),
+    @utf8.encode(attrs.title),
   )
   { handle, }
 }
@@ -63,6 +63,12 @@ pub fn Window::new(attrs : WindowAttributes) -> Window {
 /// Check if window is valid
 pub fn Window::is_valid(self : Window) -> Bool {
   renderer_is_window_valid(self.handle) == 1
+}
+
+///|
+/// Get the native window handle used by the softbuffer backend.
+pub fn Window::handle(self : Window) -> UInt64 {
+  self.handle
 }
 
 ///|
@@ -80,7 +86,7 @@ pub fn Window::height(self : Window) -> Int {
 ///|
 /// Set window title
 pub fn Window::set_title(self : Window, title : String) -> Unit {
-  renderer_set_window_title(self.handle, title.to_bytes())
+  renderer_set_window_title(self.handle, @utf8.encode(title))
 }
 
 ///|
@@ -98,6 +104,19 @@ pub fn Window::present(
   height : Int,
 ) -> Unit {
   renderer_present(self.handle, pixels, width, height)
+}
+
+///|
+/// Present a tightly packed RGBA rectangle to the window at a destination offset.
+pub fn Window::present_rect(
+  self : Window,
+  pixels : FixedArray[Byte],
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> Unit {
+  renderer_present_rect(self.handle, pixels, x, y, width, height)
 }
 
 ///|

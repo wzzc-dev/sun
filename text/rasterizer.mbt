@@ -8,6 +8,13 @@ pub struct LineSegment {
 } derive(Debug)
 
 ///|
+priv struct CurvePoint {
+  cx : Double
+  cy : Double
+  curve_on : Bool
+}
+
+///|
 /// Rasterizer for rendering glyph outlines to pixels
 /// Implements scanline fill with anti-aliasing
 pub struct Rasterizer {
@@ -15,6 +22,42 @@ pub struct Rasterizer {
   height : Int
   pixels : FixedArray[Byte]
   coverage : FixedArray[Int] // Coverage buffer for anti-aliasing
+}
+
+///|
+/// Grayscale coverage mask produced by text rasterization
+pub struct CoverageMask {
+  width : Int
+  height : Int
+  pixels : FixedArray[Byte]
+} derive(Debug)
+
+///|
+/// Create a coverage mask from grayscale pixels
+pub fn CoverageMask::new(
+  width : Int,
+  height : Int,
+  pixels : FixedArray[Byte],
+) -> CoverageMask {
+  { width, height, pixels }
+}
+
+///|
+/// Get the width of the mask
+pub fn CoverageMask::get_width(self : CoverageMask) -> Int {
+  self.width
+}
+
+///|
+/// Get the height of the mask
+pub fn CoverageMask::get_height(self : CoverageMask) -> Int {
+  self.height
+}
+
+///|
+/// Get the grayscale coverage pixels
+pub fn CoverageMask::get_pixels(self : CoverageMask) -> FixedArray[Byte] {
+  self.pixels
 }
 
 ///|
@@ -33,6 +76,24 @@ pub fn Rasterizer::new(width : Int, height : Int) -> Rasterizer {
 /// Get the pixel buffer (grayscale)
 pub fn Rasterizer::get_pixels(self : Rasterizer) -> FixedArray[Byte] {
   self.pixels
+}
+
+///|
+/// Get the rasterizer width
+pub fn Rasterizer::get_width(self : Rasterizer) -> Int {
+  self.width
+}
+
+///|
+/// Get the rasterizer height
+pub fn Rasterizer::get_height(self : Rasterizer) -> Int {
+  self.height
+}
+
+///|
+/// Snapshot the current grayscale pixels as a coverage mask
+pub fn Rasterizer::to_mask(self : Rasterizer) -> CoverageMask {
+  CoverageMask::new(self.width, self.height, copy_bytes(self.pixels))
 }
 
 ///|
@@ -58,93 +119,195 @@ pub fn Rasterizer::rasterize_glyph(
     self.coverage[i] = 0
   }
 
-  // Flatten contours to line segments
   let segments = []
   for contour in glyph.contours {
-    let points = contour.points
-    let len = points.length()
-    guard len >= 2 else { continue }
-
-    // Track previous point for handling off-curve starting points
-    let mut prev_point = points[len - 1] // Start with last point (contour wraps)
-    let mut i = 0
-    while i < len {
-      let p0 = points[i]
-      let p1_idx = (i + 1) % len
-      let p1 = points[p1_idx]
-
-      if p0.on_curve && p1.on_curve {
-        // Line segment
-        segments.push({
-          x0: x + p0.x.to_double() * scale,
-          y0: y - p0.y.to_double() * scale,
-          x1: x + p1.x.to_double() * scale,
-          y1: y - p1.y.to_double() * scale,
-        })
-        i = i + 1
-      } else if p0.on_curve && !p1.on_curve {
-        // Quadratic bezier - flatten to line segments
-        let p2_idx = (i + 2) % len
-        let p2 = points[p2_idx]
-        if p2.on_curve {
-          let bezier_segments = flatten_quadratic_bezier(
-            x + p0.x.to_double() * scale,
-            y - p0.y.to_double() * scale,
-            x + p1.x.to_double() * scale,
-            y - p1.y.to_double() * scale,
-            x + p2.x.to_double() * scale,
-            y - p2.y.to_double() * scale,
-          )
-          for seg in bezier_segments {
-            segments.push(seg)
-          }
-          i = i + 2
-        } else {
-          // Implicit on-curve point between two off-curve points
-          // Per TrueType spec: insert on-curve point at midpoint of p1 and p2
-          let mid_x = (p1.x + p2.x) / 2
-          let mid_y = (p1.y + p2.y) / 2
-          let bezier_segments = flatten_quadratic_bezier(
-            x + p0.x.to_double() * scale,
-            y - p0.y.to_double() * scale,
-            x + p1.x.to_double() * scale,
-            y - p1.y.to_double() * scale,
-            x + mid_x.to_double() * scale,
-            y - mid_y.to_double() * scale,
-          )
-          for seg in bezier_segments {
-            segments.push(seg)
-          }
-          // Move to p1 (off-curve), next iteration will handle p2
-          i = i + 1
-        }
-      } else if !p0.on_curve && p1.on_curve {
-        // p0 is off-curve, p1 is on-curve
-        // Create bezier from implicit midpoint through p0 to p1
-        let mid_x = (prev_point.x + p0.x) / 2
-        let mid_y = (prev_point.y + p0.y) / 2
-        let bezier_segments = flatten_quadratic_bezier(
-          x + mid_x.to_double() * scale,
-          y - mid_y.to_double() * scale,
-          x + p0.x.to_double() * scale,
-          y - p0.y.to_double() * scale,
-          x + p1.x.to_double() * scale,
-          y - p1.y.to_double() * scale,
-        )
-        for seg in bezier_segments {
-          segments.push(seg)
-        }
-        i = i + 1
-      } else {
-        // Both off-curve - skip (should not happen in valid fonts)
-        i = i + 1
-      }
-      prev_point = p0
+    let contour_segments = flatten_contour(contour, x, y, scale)
+    for segment in contour_segments {
+      segments.push(segment)
     }
   }
 
   // Fill using scanline algorithm with anti-aliasing
   scanline_fill_with_aa(self, segments)
+}
+
+///|
+/// Rasterize laid-out text from a parsed font into this rasterizer
+pub fn Rasterizer::rasterize_text(
+  self : Rasterizer,
+  font : Font,
+  text : String,
+  x : Double,
+  y : Double,
+  config : LayoutConfig,
+) -> Unit {
+  let result = layout_text(font, text, config)
+  let scale = config.font_size / font.get_units_per_em().to_double()
+  for line in result.lines {
+    for glyph in line.glyphs {
+      match font.get_glyph(glyph.glyph_id) {
+        GlyphData::Simple(simple_glyph) =>
+          self.rasterize_glyph(simple_glyph, x + glyph.x, y + line.y, scale)
+        _ => ()
+      }
+    }
+  }
+}
+
+///|
+/// Rasterize laid-out text from a parsed font face into this rasterizer.
+pub fn Rasterizer::rasterize_text_face(
+  self : Rasterizer,
+  face : FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  config : LayoutConfig,
+) -> Unit {
+  let font = face.get_font()
+  let layout = layout_text_face(face, text, config)
+  let scale = config.font_size / face.get_units_per_em().to_double()
+  for run in layout.get_runs() {
+    for glyph in run.get_glyphs() {
+      match font.get_glyph(glyph.glyph_id) {
+        GlyphData::Simple(simple_glyph) =>
+          self.rasterize_glyph(
+            simple_glyph,
+            x + glyph.x,
+            y + run.get_baseline_y(),
+            scale,
+          )
+        _ => ()
+      }
+    }
+  }
+}
+
+///|
+/// Render text into a grayscale coverage mask
+pub fn render_text_mask(
+  font : Font,
+  text : String,
+  width : Int,
+  height : Int,
+  x : Double,
+  y : Double,
+  config : LayoutConfig,
+) -> CoverageMask {
+  let rasterizer = Rasterizer::new(width, height)
+  rasterizer.rasterize_text(font, text, x, y, config)
+  rasterizer.to_mask()
+}
+
+///|
+/// Render text from a parsed font face into a grayscale coverage mask.
+pub fn render_text_mask_face(
+  face : FontFace,
+  text : String,
+  width : Int,
+  height : Int,
+  x : Double,
+  y : Double,
+  config : LayoutConfig,
+) -> CoverageMask {
+  let rasterizer = Rasterizer::new(width, height)
+  rasterizer.rasterize_text_face(face, text, x, y, config)
+  rasterizer.to_mask()
+}
+
+///|
+fn flatten_contour(
+  contour : GlyphContour,
+  x : Double,
+  y : Double,
+  scale : Double,
+) -> Array[LineSegment] {
+  let points = contour.points
+  let segments = []
+  let len = points.length()
+  guard len >= 2 else { return segments }
+
+  let first = transform_point(points[0], x, y, scale)
+  let last = transform_point(points[len - 1], x, y, scale)
+  let mut current = if first.curve_on {
+    first
+  } else if last.curve_on {
+    last
+  } else {
+    midpoint(last, first)
+  }
+  let mut index = if first.curve_on { 1 } else { 0 }
+  let mut processed = 0
+
+  while processed < len {
+    let point = transform_point(points[index % len], x, y, scale)
+    if point.curve_on {
+      segments.push({
+        x0: current.cx,
+        y0: current.cy,
+        x1: point.cx,
+        y1: point.cy,
+      })
+      current = point
+      index = index + 1
+      processed = processed + 1
+    } else {
+      let next = transform_point(points[(index + 1) % len], x, y, scale)
+      if next.curve_on {
+        push_quadratic_segments(segments, current, point, next)
+        current = next
+        index = index + 2
+        processed = processed + 2
+      } else {
+        let implicit = midpoint(point, next)
+        push_quadratic_segments(segments, current, point, implicit)
+        current = implicit
+        index = index + 1
+        processed = processed + 1
+      }
+    }
+  }
+
+  segments
+}
+
+///|
+fn transform_point(
+  point : GlyphPoint,
+  x : Double,
+  y : Double,
+  scale : Double,
+) -> CurvePoint {
+  {
+    cx: x + point.x.to_double() * scale,
+    cy: y - point.y.to_double() * scale,
+    curve_on: point.on_curve,
+  }
+}
+
+///|
+fn midpoint(a : CurvePoint, b : CurvePoint) -> CurvePoint {
+  { cx: (a.cx + b.cx) / 2.0, cy: (a.cy + b.cy) / 2.0, curve_on: true }
+}
+
+///|
+fn push_quadratic_segments(
+  segments : Array[LineSegment],
+  start : CurvePoint,
+  control : CurvePoint,
+  end : CurvePoint,
+) -> Unit {
+  let bezier_segments = flatten_quadratic_bezier(
+    start.cx,
+    start.cy,
+    control.cx,
+    control.cy,
+    end.cx,
+    end.cy,
+  )
+  for segment in bezier_segments {
+    segments.push(segment)
+  }
 }
 
 ///|
@@ -281,9 +444,21 @@ fn scanline_fill_with_aa(
   // Apply coverage to pixels
   for i in 0..<rasterizer.pixels.length() {
     if rasterizer.coverage[i] > 0 {
-      rasterizer.pixels[i] = rasterizer.coverage[i].to_byte()
+      let coverage = rasterizer.coverage[i].min(255).to_byte()
+      if coverage.to_int() > rasterizer.pixels[i].to_int() {
+        rasterizer.pixels[i] = coverage
+      }
     }
   }
+}
+
+///|
+fn copy_bytes(src : FixedArray[Byte]) -> FixedArray[Byte] {
+  let dst = FixedArray::make(src.length(), b"\x00"[0])
+  for i in 0..<src.length() {
+    dst[i] = src[i]
+  }
+  dst
 }
 
 ///|
@@ -350,29 +525,6 @@ fn is_point_inside_glyph(
 
   // Non-zero rule: point is inside if winding number is non-zero
   winding != 0
-}
-
-///|
-/// Sort an array of doubles (simple insertion sort for small arrays)
-fn sort_doubles(arr : Array[Double]) -> Array[Double] {
-  let result = []
-  for val in arr {
-    result.push(val)
-  }
-
-  // Insertion sort
-  let len = result.length()
-  for i in 1..<len {
-    let key = result[i]
-    let mut j = i - 1
-    while j >= 0 && result[j] > key {
-      result[j + 1] = result[j]
-      j = j - 1
-    }
-    result[j + 1] = key
-  }
-
-  result
 }
 
 ///|

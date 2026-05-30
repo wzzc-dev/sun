@@ -24,3 +24,30 @@ test "Color::transparent creates transparent color" {
   let color = Color::transparent()
   assert_eq(color, Color::new(r=0, g=0, b=0, a=0))
 }
+
+///|
+test "Color::with_alpha replaces alpha" {
+  let color = Color::red().with_alpha(128)
+  assert_eq(color, Color::new(r=255, g=0, b=0, a=128))
+}
+
+///|
+test "Color::scale_alpha clamps opacity" {
+  assert_eq(Color::red().scale_alpha(0.5).a, 128)
+  assert_eq(Color::red().scale_alpha(-1.0).a, 0)
+  assert_eq(Color::red().scale_alpha(2.0).a, 255)
+}
+
+///|
+test "Color::blend_over composites straight alpha" {
+  let src = Color::new(r=255, g=0, b=0, a=128)
+  let dst = Color::blue()
+  assert_eq(src.blend_over(dst), Color::new(r=128, g=0, b=127, a=255))
+}
+
+///|
+test "Color::blend_over preserves transparent source and opaque source" {
+  let dst = Color::new(r=10, g=20, b=30, a=200)
+  assert_eq(Color::transparent().blend_over(dst), dst)
+  assert_eq(Color::green().blend_over(dst), Color::green())
+}

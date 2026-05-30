@@ -15,9 +15,12 @@ wzzc-dev/
 │   ├── path.mbt               # Vector path
 │   ├── paint.mbt              # Paint configuration
 │   ├── pixmap.mbt             # Pixel buffer
+│   ├── layer.mbt              # Off-screen layer cache
+│   ├── layer_tree.mbt         # Z-ordered cached layer composition
+│   ├── render_frame.mbt       # Frame canvas + layer tree submit unit
 │   ├── rasterizer.mbt         # Scanline rasterizer
 │   ├── canvas.mbt             # Drawing canvas
-│   └── renderer.mbt           # Text + graphics renderer
+│   └── deprecated.mbt         # Deprecated compatibility APIs
 │
 ├── text/                       # Text processing
 │   ├── moon.mod
@@ -34,15 +37,24 @@ wzzc-dev/
 │   ├── renderer.mbt           # Font renderer
 │   └── file_io.mbt            # File I/O (uses moonbitlang/x/fs)
 │
+├── renderer/                   # Graphics + text integration
+│   ├── moon.mod
+│   ├── renderer.mbt           # Renderer core and text mask composition
+│   └── renderer_test.mbt
+│
 ├── softbuffer/                 # Pixel display
 │   ├── moon.mod
 │   ├── ffi.mbt                # FFI bindings
 │   ├── window.mbt             # Window management
-│   ├── surface.mbt            # Pixel surface
+│   ├── surface.mbt            # graphics.Surface native present targets
 │   ├── event_loop.mbt         # Event loop
 │   └── native_renderer.c      # Win32 GDI implementation
 │
 └── examples/
+    ├── hello_world/            # RenderFrame + LayerTree window demo
+    │   ├── moon.mod
+    │   ├── moon.pkg
+    │   └── main.mbt
     ├── font_demo/              # Font rendering demo
     │   ├── moon.mod
     │   ├── moon.pkg
@@ -59,28 +71,64 @@ wzzc-dev/
 2D graphics rendering library.
 
 **Features:**
-- Color, Path, Paint, Pixmap, Canvas
+- Color, Path, Paint, Pixmap, Canvas, Layer, LayerTree, RenderFrame
 - Scanline triangle/polygon fill
 - Bresenham line drawing
 - Bezier curve rendering
+- `Canvas::draw_placeholder_text` for debug text boxes; real text drawing lives in `renderer`
+- `Surface` trait, `MemorySurface`, and full/rect present helpers for `Canvas` and `Pixmap`
+- Pixmap blitting, explicit nearest/bilinear sampling modes, and straight-alpha composition for image and layer caching
+- Nine-patch Pixmap scaling for reusable GUI panel/background image composition
+- `PixelRect` / `DirtyRegion` tracking with merge and bounded dirty-present helpers
+- `Layer` off-screen caches with resize, overlap preservation, and dirty-region composition back into a target `Canvas`
+- `LayerTree` z-order composition with dirty rectangle propagation, layer resize/remove/replace/reorder lifecycle, property-change invalidation, and partial present submission
+- `RenderFrame` as a frame-sized canvas and layer-tree submit unit with resize lifecycle, dirty queries/marking, and dirty/full present helpers for future event-loop integration
 
 ### text
 Text processing library (font parsing, shaping, layout).
 
 **Features:**
 - TTF font loading and parsing
+- `parse_font_result` for checked TTF structural validation while retaining the legacy `parse_font` compatibility entry point
+- Documented `FontParseError` categories for callers that load untrusted font bytes
+- `FontFace`, `GlyphRun`, and `TextLayout` facades for renderer and GUI-facing text APIs
+- Left, center, right, and basic non-final-line justify alignment through the `TextLayout` facade
+- Explicit newline and empty-line preservation in `TextLayout`, text masks, and renderer text drawing
+- Configurable letter spacing and word spacing through `LayoutConfig`
+- Trailing-space measurement and wrapping semantics suitable for editor-style text blocks
 - Text shaping (simplified)
 - Text layout and line breaking
 - Glyph rasterization with anti-aliasing
 - Kerning support
+
+### renderer
+Renderer integration layer that composes `graphics.Canvas` with `text` coverage masks.
+
+**Features:**
+- `Renderer::draw_text` for `Font -> layout -> glyph raster -> Canvas` drawing
+- `Renderer::draw_text_face` for checked `FontFace -> TextLayout -> Canvas` drawing
+- `Renderer::draw_coverage_mask` for testing and low-level mask composition
+- End-to-end regression from parsed TTF bytes to rendered `Pixmap` pixels
+- Keeps `graphics` independent from font parsing and text layout
 
 ### softbuffer
 Pixel display library.
 
 **Features:**
 - Window creation (Win32 API)
-- Pixel buffer presentation
+- Pixel buffer presentation through `graphics.Surface`
+- `NativeSurface` adapter for external native window handles
+- `RenderFrame -> NativeSurface` dirty/full present helpers for window integration
+- Native full-frame and rectangle present entry points for dirty redraw plumbing
 - Event loop
+
+### examples
+Small build-checked programs that exercise the public packages together.
+
+**Features:**
+- `hello_world` uses `graphics.RenderFrame`, `LayerTree`, and `softbuffer` frame-present helpers as a minimal window submit path with resize/redraw lifecycle reuse
+- `font_demo` renders real TTF text through the `renderer` package
+- `triangle_window` keeps a simple native pixel-output smoke test
 
 ## Building & Running
 
@@ -127,11 +175,20 @@ moon run examples/font_demo --target native
 # Check all packages
 moon check
 
-# Run tests
-moon test
+# Run the local validation gate
+scripts/check_ci.sh
+
+# Run renderer package tests directly
+moon test graphics
+moon test text
+moon test renderer
+moon test softbuffer
 
 # Build example
 moon build examples/font_demo --target native
+
+# Run RenderFrame window demo
+moon run examples/hello_world --target native
 
 # Run font demo
 moon run examples/font_demo --target native
@@ -153,8 +210,25 @@ moon run examples/triangle_window --target native
 ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
 │   graphics    │   │     text      │   │  softbuffer   │
 │  (渲染图形)    │   │  (解析字体)    │   │  (显示到屏幕)  │
-└───────────────┘   └───────────────┘   └───────────────┘
+└───────┬───────┘   └───────┬───────┘   └───────────────┘
+        │                   │
+        └─────────┬─────────┘
+                  ▼
+          ┌───────────────┐
+          │   renderer    │
+          │ (组合渲染管线) │
+          └───────────────┘
 ```
+
+## Project Direction
+
+The long-term goal is to grow this repository into a MoonBit-native,
+CPU-first, testable, cross-platform lightweight 2D rendering stack for text,
+vector graphics, pixel output, and GUI foundations. See [ROADMAP.md](ROADMAP.md)
+for milestones and acceptance criteria, and [docs/testing.md](docs/testing.md)
+for the local validation gate. The checked font parser error contract is tracked
+in [docs/font-parser-errors.md](docs/font-parser-errors.md), and text API facade
+boundaries are tracked in [docs/text-api-boundaries.md](docs/text-api-boundaries.md).
 
 ## License
 

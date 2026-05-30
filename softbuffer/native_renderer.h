@@ -24,6 +24,16 @@ void renderer_present(
     int32_t height
 );
 
+// Draw a tightly packed RGBA pixel rectangle to a window offset
+void renderer_present_rect(
+    native_window_t window,
+    const uint8_t* pixels,
+    int32_t x,
+    int32_t y,
+    int32_t width,
+    int32_t height
+);
+
 // Process window messages (non-blocking)
 // Returns 1 if still running, 0 if quit requested
 int32_t renderer_process_events(void);

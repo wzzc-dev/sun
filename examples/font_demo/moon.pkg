@@ -1,7 +1,9 @@
 import {
-  "Milky2018/window/core",
-  "Milky2018/window/windows",
+  "wzzc-dev/window/core",
+  "wzzc-dev/window/windows",
+  "wzzc-dev/graphics",
   "wzzc-dev/text",
+  "wzzc-dev/renderer",
   "wzzc-dev/softbuffer",
 }
 

@@ -1,6 +1,7 @@
 ///|
 struct App {
   mut window : @windows.Window?
+  mut frame : @graphics.RenderFrame?
   mut width : Int
   mut height : Int
 }
@@ -128,29 +129,15 @@ fn get_char_pixel(ch : Char, row : Int, col : Int) -> Bool {
 }
 
 ///|
-fn render_and_display(hwnd : UInt64, width : Int, height : Int) -> Unit {
-  let size = width * height * 4
-  let pixels : FixedArray[Byte] = FixedArray::make(size, 0b0)
-
-  // Fill white background
-  let white : Byte = 255
-  for i in 0..<(width * height) {
-    let idx = i * 4
-    pixels[idx] = white
-    pixels[idx + 1] = white
-    pixels[idx + 2] = white
-    pixels[idx + 3] = white
-  }
-
-  // Draw "Hello World!" text
-  let text = "Hello World!"
-  let color_r : Byte = 50
-  let color_g : Byte = 50
-  let color_b : Byte = 200
-  let scale = 4
+fn draw_bitmap_text(
+  canvas : @graphics.Canvas,
+  text : String,
+  scale : Int,
+  color : @graphics.Color,
+) -> Unit {
+  let paint = @graphics.Paint::new().set_color(color)
   let char_width = 8 * scale
-  let start_x = (width - text.length() * char_width) / 2
-  let start_y = (height - 8 * scale) / 2
+  let scale_size = scale.to_double()
 
   for i in 0..<text.length() {
     let ch = match text.get_char(i) {
@@ -161,29 +148,173 @@ fn render_and_display(hwnd : UInt64, width : Int, height : Int) -> Unit {
       for col in 0..<8 {
         let is_set = get_char_pixel(ch, row, col)
         if is_set {
-          for sy in 0..<scale {
-            for sx in 0..<scale {
-              let px = start_x + i * char_width + col * scale + sx
-              let py = start_y + row * scale + sy
-              if px >= 0 && px < width && py >= 0 && py < height {
-                let idx = (py * width + px) * 4
-                pixels[idx] = color_r
-                pixels[idx + 1] = color_g
-                pixels[idx + 2] = color_b
-                pixels[idx + 3] = white
-              }
-            }
-          }
+          canvas.fill_rect(
+            (i * char_width + col * scale).to_double(),
+            (row * scale).to_double(),
+            scale_size,
+            scale_size,
+            paint,
+          )
         }
       }
     }
   }
-
-  @softbuffer.display_pixels(hwnd, pixels, width, height)
 }
 
 ///|
-pub impl @windows.ApplicationHandler for App with can_create_surfaces(
+fn hello_world_text() -> String {
+  "Hello World!"
+}
+
+///|
+fn hello_world_text_scale() -> Int {
+  4
+}
+
+///|
+fn hello_world_text_size() -> (Int, Int) {
+  let scale = hello_world_text_scale()
+  let char_width = 8 * scale
+  (hello_world_text().length() * char_width, 8 * scale)
+}
+
+///|
+fn hello_world_text_position(width : Int, height : Int) -> (Int, Int) {
+  let (text_width, text_height) = hello_world_text_size()
+  ((width - text_width) / 2, (height - text_height) / 2)
+}
+
+///|
+fn build_background_layer(width : Int, height : Int) -> @graphics.Layer {
+  let background = @graphics.Layer::new(width, height)
+  background.clear(@graphics.Color::white())
+  background
+}
+
+///|
+fn build_text_layer(width : Int, height : Int) -> @graphics.Layer {
+  let text = hello_world_text()
+  let scale = hello_world_text_scale()
+  let (text_width, text_height) = hello_world_text_size()
+  let (start_x, start_y) = hello_world_text_position(width, height)
+  let text_layer = @graphics.Layer::new(text_width.max(1), text_height.max(1)).set_position(
+    start_x, start_y,
+  )
+
+  draw_bitmap_text(
+    text_layer.get_canvas(),
+    text,
+    scale,
+    @graphics.Color::new(r=50, g=50, b=200),
+  )
+  text_layer
+}
+
+///|
+fn build_hello_world_frame(width : Int, height : Int) -> @graphics.RenderFrame {
+  let frame = @graphics.RenderFrame::new(width, height)
+
+  let tree = frame.get_layer_tree()
+  ignore(tree.add_layer(build_background_layer(width, height)))
+  ignore(tree.add_layer(build_text_layer(width, height)))
+
+  frame
+}
+
+///|
+fn update_hello_world_frame(
+  frame : @graphics.RenderFrame,
+  width : Int,
+  height : Int,
+) -> Bool {
+  guard width > 0 && height > 0 else { return false }
+  let tree = frame.get_layer_tree()
+  guard tree.get_layer_count() >= 2 else { return false }
+
+  ignore(frame.resize(width, height))
+  guard tree.resize_layer(0, width, height) else { return false }
+  match tree.get_layer(0) {
+    Some(background) => background.clear(@graphics.Color::white())
+    None => return false
+  }
+  match tree.replace_layer(1, build_text_layer(width, height)) {
+    Some(_) => true
+    None => false
+  }
+}
+
+///|
+fn present_frame(
+  window : @windows.Window,
+  frame : @graphics.RenderFrame,
+) -> Unit {
+  present_frame_dirty(window, frame)
+}
+
+///|
+fn present_frame_dirty(
+  window : @windows.Window,
+  frame : @graphics.RenderFrame,
+) -> Unit {
+  match @softbuffer.present_render_frame_dirty(window.window_handle(), frame) {
+    Ok(_) => ()
+    Err(_) => println("Present failed")
+  }
+}
+
+///|
+fn present_frame_all(
+  window : @windows.Window,
+  frame : @graphics.RenderFrame,
+) -> Unit {
+  match @softbuffer.present_render_frame_all(window.window_handle(), frame) {
+    Ok(_) => ()
+    Err(_) => println("Present failed")
+  }
+}
+
+///|
+fn render_and_display(
+  window : @windows.Window,
+  width : Int,
+  height : Int,
+) -> @graphics.RenderFrame? {
+  guard width > 0 && height > 0 else { return None }
+  let frame = build_hello_world_frame(width, height)
+  present_frame(window, frame)
+  Some(frame)
+}
+
+///|
+fn resize_and_display(
+  window : @windows.Window,
+  frame : @graphics.RenderFrame?,
+  width : Int,
+  height : Int,
+) -> @graphics.RenderFrame? {
+  guard width > 0 && height > 0 else { return None }
+  match frame {
+    Some(existing) =>
+      if update_hello_world_frame(existing, width, height) {
+        present_frame(window, existing)
+        Some(existing)
+      } else {
+        render_and_display(window, width, height)
+      }
+    None => render_and_display(window, width, height)
+  }
+}
+
+///|
+fn present_cached_frame(
+  window : @windows.Window,
+  frame : @graphics.RenderFrame,
+) -> Unit {
+  present_frame_all(window, frame)
+}
+
+///|
+pub impl @windows.ApplicationHandler for App with fn can_create_surfaces(
   self,
   event_loop,
 ) {
@@ -207,8 +338,7 @@ pub impl @windows.ApplicationHandler for App with can_create_surfaces(
       println("Window size: \{self.width}x\{self.height}")
 
       println("Rendering Hello World...")
-      let hwnd = w.native_handle()
-      render_and_display(hwnd, self.width, self.height)
+      self.frame = render_and_display(w, self.width, self.height)
       println("Hello World displayed!")
     }
     None => println("Failed to create window")
@@ -218,7 +348,7 @@ pub impl @windows.ApplicationHandler for App with can_create_surfaces(
 }
 
 ///|
-pub impl @windows.ApplicationHandler for App with window_event(
+pub impl @windows.ApplicationHandler for App with fn window_event(
   self,
   event_loop,
   _id,
@@ -234,18 +364,23 @@ pub impl @windows.ApplicationHandler for App with window_event(
       self.height = size.height
 
       match self.window {
-        Some(w) => {
-          let hwnd = w.native_handle()
-          render_and_display(hwnd, self.width, self.height)
-        }
+        Some(w) =>
+          self.frame = resize_and_display(
+            w,
+            self.frame,
+            self.width,
+            self.height,
+          )
         None => ()
       }
     }
     @core.WindowEvent::RedrawRequested =>
       match self.window {
         Some(w) => {
-          let hwnd = w.native_handle()
-          render_and_display(hwnd, self.width, self.height)
+          match self.frame {
+            Some(frame) => present_cached_frame(w, frame)
+            None => self.frame = render_and_display(w, self.width, self.height)
+          }
           w.pre_present_notify()
         }
         None => ()
@@ -260,5 +395,5 @@ fn main {
   println("")
 
   let event_loop = @windows.EventLoop::new()
-  event_loop.run_app({ window: None, width: 0, height: 0 })
+  event_loop.run_app({ window: None, frame: None, width: 0, height: 0 })
 }

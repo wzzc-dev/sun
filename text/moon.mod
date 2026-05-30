@@ -6,8 +6,8 @@ import {
   "moonbitlang/x@0.4.43",
 }
 
-options(
-  license: "Apache-2.0",
-  keywords: [ "text", "font", "shaping", "layout" ],
-  description: "Text rendering library (font parsing, shaping, layout)",
-)
+license = "Apache-2.0"
+
+keywords = [ "text", "font", "shaping", "layout" ]
+
+description = "Text rendering library (font parsing, shaping, layout)"

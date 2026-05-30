@@ -19,9 +19,17 @@ pub fn layout_paragraph(String, FontData, LayoutConfig) -> Paragraph
 
 pub fn layout_text(Font, String, LayoutConfig) -> LayoutResult
 
+pub fn layout_text_face(FontFace, String, LayoutConfig) -> TextLayout
+
 pub fn parse_font(Bytes) -> Font
 
+pub fn parse_font_result(Bytes) -> Result[Font, FontParseError]
+
 pub fn read_file(String) -> Bytes raise @fs.IOError
+
+pub fn render_text_mask(Font, String, Int, Int, Double, Double, LayoutConfig) -> CoverageMask
+
+pub fn render_text_mask_face(FontFace, String, Int, Int, Double, Double, LayoutConfig) -> CoverageMask
 
 pub fn split_at_line_breaks(String, Font, Double, Double) -> Array[String]
 
@@ -48,6 +56,16 @@ pub fn BinaryReader::seek(Self, Int) -> Unit
 pub fn BinaryReader::skip(Self, Int) -> Unit
 pub fn BinaryReader::tell(Self) -> Int
 
+pub struct CoverageMask {
+  width : Int
+  height : Int
+  pixels : FixedArray[Byte]
+} derive(@debug.Debug)
+pub fn CoverageMask::get_height(Self) -> Int
+pub fn CoverageMask::get_pixels(Self) -> FixedArray[Byte]
+pub fn CoverageMask::get_width(Self) -> Int
+pub fn CoverageMask::new(Int, Int, FixedArray[Byte]) -> Self
+
 pub struct Font {
   head : FontHead
   hhea : FontHhea
@@ -70,6 +88,21 @@ pub struct FontData {
 } derive(@debug.Debug)
 pub fn FontData::get_data(Self) -> Bytes
 pub fn FontData::new(Bytes, font_index? : Int) -> Self
+pub fn FontData::parse(Self) -> Result[FontFace, FontParseError]
+
+pub struct FontFace {
+  font : Font
+} derive(@debug.Debug)
+pub fn FontFace::char_to_glyph(Self, Int) -> Int
+pub fn FontFace::from_bytes(Bytes) -> Result[Self, FontParseError]
+pub fn FontFace::from_data(FontData) -> Result[Self, FontParseError]
+pub fn FontFace::from_font(Font) -> Self
+pub fn FontFace::get_font(Self) -> Font
+pub fn FontFace::get_glyph(Self, Int) -> GlyphData
+pub fn FontFace::get_h_metrics(Self, Int) -> (Int, Int)
+pub fn FontFace::get_kerning(Self, Int, Int) -> Int
+pub fn FontFace::get_metrics(Self) -> FontMetrics
+pub fn FontFace::get_units_per_em(Self) -> Int
 
 pub struct FontHead {
   units_per_em : Int
@@ -91,6 +124,24 @@ pub struct FontMetrics {
 } derive(Eq, @debug.Debug)
 pub fn FontMetrics::line_height(Self) -> Int
 pub fn FontMetrics::new(units_per_em~ : Int, ascent~ : Int, descent~ : Int, line_gap? : Int) -> Self
+
+pub(all) enum FontParseError {
+  UnexpectedEndOfData(Int, Int, Int)
+  InvalidFontHeader(UInt)
+  MissingTable(String)
+  TableOutOfBounds(String, Int, Int, Int)
+  TableTooShort(String, Int, Int)
+  UnsupportedIndexToLocFormat(Int)
+  MissingHorizontalMetrics
+  UnsortedLocaOffsets
+  UnsortedGlyphContourEndpoints
+  GlyphFlagRepeatOverflow
+  UnsupportedCmapVersion(Int)
+  InvalidCmapSegmentCount(Int)
+  InvalidCmapSegmentRange(Int, Int)
+  InvalidCmapGroupRange(Int, Int)
+  InvalidTable(String, String)
+} derive(Eq, @debug.Debug)
 
 pub struct GlyphComponent {
   glyph_index : Int
@@ -139,6 +190,17 @@ pub struct GlyphPosition {
 } derive(Eq, @debug.Debug)
 pub fn GlyphPosition::new(glyph_id~ : GlyphId, x_advance? : Int, y_advance? : Int, x_offset? : Int, y_offset? : Int) -> Self
 
+pub struct GlyphRun {
+  glyphs : Array[PositionedGlyph]
+  width : Double
+  baseline_y : Double
+} derive(@debug.Debug)
+pub fn GlyphRun::get_baseline_y(Self) -> Double
+pub fn GlyphRun::get_glyphs(Self) -> Array[PositionedGlyph]
+pub fn GlyphRun::get_width(Self) -> Double
+pub fn GlyphRun::glyph_count(Self) -> Int
+pub fn GlyphRun::new(Array[PositionedGlyph], width~ : Double, baseline_y~ : Double) -> Self
+
 pub struct KernPair {
   left : Int
   right : Int
@@ -150,8 +212,10 @@ pub struct LayoutConfig {
   font_size : Double
   line_height : Double
   alignment : TextAlign
+  letter_spacing : Double
+  word_spacing : Double
 } derive(@debug.Debug)
-pub fn LayoutConfig::new(max_width? : Double, font_size? : Double, line_height? : Double, alignment? : TextAlign) -> Self
+pub fn LayoutConfig::new(max_width? : Double, font_size? : Double, line_height? : Double, alignment? : TextAlign, letter_spacing? : Double, word_spacing? : Double) -> Self
 
 pub struct LayoutLine {
   glyphs : Array[PositionedGlyph]
@@ -247,9 +311,14 @@ pub struct Rasterizer {
 }
 pub fn Rasterizer::clear(Self) -> Unit
 pub fn Rasterizer::draw_line(Self, Double, Double, Double, Double) -> Unit
+pub fn Rasterizer::get_height(Self) -> Int
 pub fn Rasterizer::get_pixels(Self) -> FixedArray[Byte]
+pub fn Rasterizer::get_width(Self) -> Int
 pub fn Rasterizer::new(Int, Int) -> Self
 pub fn Rasterizer::rasterize_glyph(Self, SimpleGlyph, Double, Double, Double) -> Unit
+pub fn Rasterizer::rasterize_text(Self, Font, String, Double, Double, LayoutConfig) -> Unit
+pub fn Rasterizer::rasterize_text_face(Self, FontFace, String, Double, Double, LayoutConfig) -> Unit
+pub fn Rasterizer::to_mask(Self) -> CoverageMask
 
 pub struct Script {
   tag : String
@@ -301,6 +370,20 @@ pub enum TextDirection {
   LeftToRight
   RightToLeft
 } derive(Eq, @debug.Debug)
+
+pub struct TextLayout {
+  runs : Array[GlyphRun]
+  metrics : LayoutMetrics
+} derive(@debug.Debug)
+pub fn TextLayout::from_layout_result(LayoutResult) -> Self
+pub fn TextLayout::get_baseline(Self) -> Double
+pub fn TextLayout::get_height(Self) -> Double
+pub fn TextLayout::get_metrics(Self) -> LayoutMetrics
+pub fn TextLayout::get_runs(Self) -> Array[GlyphRun]
+pub fn TextLayout::get_width(Self) -> Double
+pub fn TextLayout::layout(FontFace, String, LayoutConfig) -> Self
+pub fn TextLayout::new(Array[GlyphRun], LayoutMetrics) -> Self
+pub fn TextLayout::run_count(Self) -> Int
 
 pub struct TextLine {
   glyphs : Array[GlyphInfo]

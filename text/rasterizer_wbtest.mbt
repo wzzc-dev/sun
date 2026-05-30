@@ -1,0 +1,533 @@
+///|
+fn make_box_glyph() -> SimpleGlyph {
+  {
+    contours: [
+      {
+        points: [
+          { x: 0, y: 10, on_curve: true },
+          { x: 10, y: 10, on_curve: true },
+          { x: 10, y: 0, on_curve: true },
+          { x: 0, y: 0, on_curve: true },
+        ],
+      },
+    ],
+    xmin: 0,
+    ymin: 0,
+    xmax: 10,
+    ymax: 10,
+  }
+}
+
+///|
+fn make_ring_glyph() -> SimpleGlyph {
+  {
+    contours: [
+      {
+        points: [
+          { x: 0, y: 10, on_curve: true },
+          { x: 10, y: 10, on_curve: true },
+          { x: 10, y: 0, on_curve: true },
+          { x: 0, y: 0, on_curve: true },
+        ],
+      },
+      {
+        points: [
+          { x: 3, y: 7, on_curve: true },
+          { x: 3, y: 3, on_curve: true },
+          { x: 7, y: 3, on_curve: true },
+          { x: 7, y: 7, on_curve: true },
+        ],
+      },
+    ],
+    xmin: 0,
+    ymin: 0,
+    xmax: 10,
+    ymax: 10,
+  }
+}
+
+///|
+fn make_consecutive_off_curve_glyph() -> SimpleGlyph {
+  {
+    contours: [
+      {
+        points: [
+          { x: 0, y: 0, on_curve: true },
+          { x: 4, y: 8, on_curve: false },
+          { x: 8, y: 8, on_curve: false },
+          { x: 10, y: 4, on_curve: false },
+          { x: 10, y: 0, on_curve: true },
+        ],
+      },
+    ],
+    xmin: 0,
+    ymin: 0,
+    xmax: 10,
+    ymax: 8,
+  }
+}
+
+///|
+fn make_box_font() -> Font {
+  let cmap : Map[Int, Int] = {}
+  cmap['A'.to_int()] = 1
+  cmap['B'.to_int()] = 1
+  cmap[' '.to_int()] = 2
+  {
+    head: { units_per_em: 10, index_to_loc_format: 0 },
+    hhea: { ascent: 10, descent: 0, line_gap: 0, num_h_metrics: 3 },
+    hmtx: [
+      { advance_width: 0, lsb: 0 },
+      { advance_width: 10, lsb: 0 },
+      { advance_width: 5, lsb: 0 },
+    ],
+    cmap,
+    glyphs: [
+      GlyphData::Empty,
+      GlyphData::Simple(make_box_glyph()),
+      GlyphData::Empty,
+    ],
+    glyph_count: 3,
+    kern: [],
+  }
+}
+
+///|
+test "Rasterizer::rasterize_glyph preserves opposite-winding holes" {
+  let rasterizer = Rasterizer::new(12, 12)
+  rasterizer.rasterize_glyph(make_ring_glyph(), 1.0, 11.0, 1.0)
+  let pixels = rasterizer.get_pixels()
+  assert_eq(pixels[2 * 12 + 2], 255)
+  assert_eq(pixels[5 * 12 + 5], 0)
+  assert_eq(pixels[0], 0)
+}
+
+///|
+test "flatten_contour inserts implicit points for consecutive off-curve controls" {
+  let glyph = make_consecutive_off_curve_glyph()
+  let segments = flatten_contour(glyph.contours[0], 0.0, 0.0, 1.0)
+  assert_true(has_segment_endpoint(segments, 6.0, -8.0))
+  assert_true(has_segment_endpoint(segments, 9.0, -6.0))
+  assert_true(segments.length() >= 10)
+}
+
+///|
+fn has_segment_endpoint(
+  segments : Array[LineSegment],
+  x : Double,
+  y : Double,
+) -> Bool {
+  for segment in segments {
+    if close_to(segment.x1, x) && close_to(segment.y1, y) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn close_to(a : Double, b : Double) -> Bool {
+  (a - b).abs() < 0.000001
+}
+
+///|
+test "Rasterizer glyph coverage snapshots are stable" {
+  let box = Rasterizer::new(12, 12)
+  box.rasterize_glyph(make_box_glyph(), 1.0, 11.0, 1.0)
+  inspect(
+    dump_pixels(box.get_pixels(), 12, 12),
+    content="............\n.##########.\n.##########.\n.##########.\n.##########.\n.##########.\n.##########.\n.##########.\n.##########.\n.##########.\n.##########.\n............",
+  )
+
+  let ring = Rasterizer::new(12, 12)
+  ring.rasterize_glyph(make_ring_glyph(), 1.0, 11.0, 1.0)
+  inspect(
+    dump_pixels(ring.get_pixels(), 12, 12),
+    content="............\n.##########.\n.##########.\n.##########.\n.###....###.\n.###....###.\n.###....###.\n.###....###.\n.##########.\n.##########.\n.##########.\n............",
+  )
+}
+
+///|
+fn dump_pixels(pixels : FixedArray[Byte], width : Int, height : Int) -> String {
+  let out = StringBuilder(size_hint=(width + 1) * height)
+  for y in 0..<height {
+    if y > 0 {
+      out.write_char('\n')
+    }
+    for x in 0..<width {
+      out.write_char(coverage_char(pixels[y * width + x].to_int()))
+    }
+  }
+  out.to_string()
+}
+
+///|
+fn coverage_char(value : Int) -> Char {
+  if value == 0 {
+    '.'
+  } else if value < 96 {
+    ':'
+  } else if value < 192 {
+    '*'
+  } else {
+    '#'
+  }
+}
+
+///|
+test "render_text_mask rasterizes shaped glyphs" {
+  let font = make_box_font()
+  let config = LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let mask = render_text_mask(font, "A", 12, 12, 1.0, 1.0, config)
+  assert_eq(mask.get_width(), 12)
+  assert_eq(mask.get_height(), 12)
+  assert_eq(mask.get_pixels()[1 * 12 + 1], 255)
+  assert_eq(mask.get_pixels()[0], 0)
+}
+
+///|
+test "FontFace and TextLayout expose stable text API" {
+  let face = FontFace::from_font(make_box_font())
+  let metrics = face.get_metrics()
+  assert_eq(metrics.units_per_em, 10)
+  assert_eq(metrics.line_height(), 10)
+  assert_eq(face.char_to_glyph('A'.to_int()), 1)
+
+  let config = LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let layout = TextLayout::layout(face, "A", config)
+  assert_eq(layout.run_count(), 1)
+  assert_eq(layout.get_width(), 10.0)
+  assert_eq(layout.get_height(), 10.0)
+  assert_eq(layout.get_baseline(), 10.0)
+  let runs = layout.get_runs()
+  assert_eq(runs[0].glyph_count(), 1)
+  assert_eq(runs[0].get_width(), 10.0)
+  assert_eq(runs[0].get_baseline_y(), 10.0)
+}
+
+///|
+test "TextLayout aligns center and right lines" {
+  let face = FontFace::from_font(make_box_font())
+  let center = TextLayout::layout(
+    face,
+    "A",
+    LayoutConfig::new(
+      max_width=30.0,
+      font_size=10.0,
+      line_height=10.0,
+      alignment=TextAlign::Center,
+    ),
+  )
+  let center_glyphs = center.get_runs()[0].get_glyphs()
+  assert_eq(center_glyphs[0].x, 10.0)
+
+  let right = TextLayout::layout(
+    face,
+    "A",
+    LayoutConfig::new(
+      max_width=30.0,
+      font_size=10.0,
+      line_height=10.0,
+      alignment=TextAlign::Right,
+    ),
+  )
+  let right_glyphs = right.get_runs()[0].get_glyphs()
+  assert_eq(right_glyphs[0].x, 20.0)
+}
+
+///|
+test "TextLayout justifies non-final lines" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "A B A",
+    LayoutConfig::new(
+      max_width=34.0,
+      font_size=10.0,
+      line_height=10.0,
+      alignment=TextAlign::Justify,
+    ),
+  )
+  assert_eq(layout.run_count(), 2)
+  let first_run = layout.get_runs()[0]
+  assert_eq(first_run.get_width(), 34.0)
+  let first_glyphs = first_run.get_glyphs()
+  assert_eq(first_glyphs.length(), 4)
+  assert_eq(first_glyphs[0].x, 0.0)
+  assert_eq(first_glyphs[1].advance_width, 9.0)
+  assert_eq(first_glyphs[2].x, 19.0)
+  assert_eq(first_glyphs[3].x, 29.0)
+  assert_eq(first_glyphs[3].advance_width, 5.0)
+
+  let last_run = layout.get_runs()[1]
+  assert_eq(last_run.get_width(), 10.0)
+  assert_eq(last_run.get_glyphs()[0].x, 0.0)
+}
+
+///|
+test "TextLayout preserves explicit newlines" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "A\nA",
+    LayoutConfig::new(max_width=30.0, font_size=10.0, line_height=10.0),
+  )
+  assert_eq(layout.run_count(), 2)
+  assert_eq(layout.get_width(), 10.0)
+  assert_eq(layout.get_height(), 20.0)
+  let runs = layout.get_runs()
+  assert_eq(runs[0].glyph_count(), 1)
+  assert_eq(runs[0].get_baseline_y(), 10.0)
+  assert_eq(runs[1].glyph_count(), 1)
+  assert_eq(runs[1].get_baseline_y(), 20.0)
+}
+
+///|
+test "TextLayout preserves empty lines" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "A\n\nA",
+    LayoutConfig::new(max_width=30.0, font_size=10.0, line_height=10.0),
+  )
+  assert_eq(layout.run_count(), 3)
+  assert_eq(layout.get_width(), 10.0)
+  assert_eq(layout.get_height(), 30.0)
+  let runs = layout.get_runs()
+  assert_eq(runs[0].glyph_count(), 1)
+  assert_eq(runs[0].get_baseline_y(), 10.0)
+  assert_eq(runs[1].glyph_count(), 0)
+  assert_eq(runs[1].get_width(), 0.0)
+  assert_eq(runs[1].get_baseline_y(), 20.0)
+  assert_eq(runs[2].glyph_count(), 1)
+  assert_eq(runs[2].get_baseline_y(), 30.0)
+}
+
+///|
+test "TextLayout does not justify explicit line breaks" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "A B\nA",
+    LayoutConfig::new(
+      max_width=30.0,
+      font_size=10.0,
+      line_height=10.0,
+      alignment=TextAlign::Justify,
+    ),
+  )
+  assert_eq(layout.run_count(), 2)
+  let first_run = layout.get_runs()[0]
+  assert_eq(first_run.get_width(), 25.0)
+  let glyphs = first_run.get_glyphs()
+  assert_eq(glyphs[1].advance_width, 5.0)
+  assert_eq(glyphs[2].x, 15.0)
+}
+
+///|
+test "TextLayout applies letter spacing" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "AB",
+    LayoutConfig::new(
+      max_width=40.0,
+      font_size=10.0,
+      line_height=10.0,
+      letter_spacing=3.0,
+    ),
+  )
+  assert_eq(layout.run_count(), 1)
+  assert_eq(layout.get_width(), 23.0)
+  let glyphs = layout.get_runs()[0].get_glyphs()
+  assert_eq(glyphs.length(), 2)
+  assert_eq(glyphs[0].x, 0.0)
+  assert_eq(glyphs[0].advance_width, 13.0)
+  assert_eq(glyphs[1].x, 13.0)
+  assert_eq(glyphs[1].advance_width, 10.0)
+}
+
+///|
+test "TextLayout applies word spacing" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "A A",
+    LayoutConfig::new(
+      max_width=40.0,
+      font_size=10.0,
+      line_height=10.0,
+      word_spacing=4.0,
+    ),
+  )
+  assert_eq(layout.run_count(), 1)
+  assert_eq(layout.get_width(), 29.0)
+  let glyphs = layout.get_runs()[0].get_glyphs()
+  assert_eq(glyphs.length(), 3)
+  assert_eq(glyphs[0].x, 0.0)
+  assert_eq(glyphs[1].x, 10.0)
+  assert_eq(glyphs[1].advance_width, 9.0)
+  assert_eq(glyphs[2].x, 19.0)
+}
+
+///|
+test "TextLayout uses word spacing for wrapping" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "A A",
+    LayoutConfig::new(
+      max_width=27.0,
+      font_size=10.0,
+      line_height=10.0,
+      word_spacing=4.0,
+    ),
+  )
+  assert_eq(layout.run_count(), 2)
+  let runs = layout.get_runs()
+  assert_eq(runs[0].get_width(), 19.0)
+  assert_eq(runs[1].get_width(), 10.0)
+  assert_eq(runs[1].get_baseline_y(), 20.0)
+}
+
+///|
+test "TextLayout keeps trailing spaces before wrapped words" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "A A",
+    LayoutConfig::new(max_width=12.0, font_size=10.0, line_height=10.0),
+  )
+  assert_eq(layout.run_count(), 2)
+  let runs = layout.get_runs()
+  assert_eq(runs[0].get_width(), 15.0)
+  assert_eq(runs[0].glyph_count(), 2)
+  assert_eq(runs[1].get_width(), 10.0)
+  assert_eq(runs[1].glyph_count(), 1)
+  assert_eq(runs[1].get_baseline_y(), 20.0)
+}
+
+///|
+test "TextLayout keeps explicit trailing spaces" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "A ",
+    LayoutConfig::new(max_width=12.0, font_size=10.0, line_height=10.0),
+  )
+  assert_eq(layout.run_count(), 1)
+  assert_eq(layout.get_width(), 15.0)
+  let glyphs = layout.get_runs()[0].get_glyphs()
+  assert_eq(glyphs.length(), 2)
+  assert_eq(glyphs[1].x, 10.0)
+  assert_eq(glyphs[1].advance_width, 5.0)
+}
+
+///|
+test "TextLayout does not justify final trailing spaces" {
+  let face = FontFace::from_font(make_box_font())
+  let layout = TextLayout::layout(
+    face,
+    "A ",
+    LayoutConfig::new(
+      max_width=30.0,
+      font_size=10.0,
+      line_height=10.0,
+      alignment=TextAlign::Justify,
+    ),
+  )
+  assert_eq(layout.run_count(), 1)
+  let run = layout.get_runs()[0]
+  assert_eq(run.get_width(), 15.0)
+  let glyphs = run.get_glyphs()
+  assert_eq(glyphs[1].advance_width, 5.0)
+}
+
+///|
+test "render_text_mask_face applies alignment" {
+  let face = FontFace::from_font(make_box_font())
+  let config = LayoutConfig::new(
+    max_width=30.0,
+    font_size=10.0,
+    line_height=10.0,
+    alignment=TextAlign::Right,
+  )
+  let mask = render_text_mask_face(face, "A", 36, 12, 1.0, 1.0, config)
+  assert_eq(mask.get_pixels()[1 * 36 + 20], 0)
+  assert_eq(mask.get_pixels()[1 * 36 + 21], 255)
+}
+
+///|
+test "render_text_mask_face applies explicit newlines" {
+  let face = FontFace::from_font(make_box_font())
+  let config = LayoutConfig::new(
+    max_width=30.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let mask = render_text_mask_face(face, "A\nA", 12, 24, 1.0, 1.0, config)
+  assert_eq(mask.get_pixels()[1 * 12 + 1], 255)
+  assert_eq(mask.get_pixels()[11 * 12 + 1], 255)
+  assert_eq(mask.get_pixels()[0], 0)
+}
+
+///|
+test "render_text_mask_face applies letter spacing" {
+  let face = FontFace::from_font(make_box_font())
+  let config = LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+    letter_spacing=3.0,
+  )
+  let mask = render_text_mask_face(face, "AA", 26, 12, 1.0, 1.0, config)
+  assert_eq(mask.get_pixels()[1 * 26 + 1], 255)
+  assert_eq(mask.get_pixels()[1 * 26 + 11], 0)
+  assert_eq(mask.get_pixels()[1 * 26 + 14], 255)
+}
+
+///|
+test "render_text_mask_face wraps after trailing space" {
+  let face = FontFace::from_font(make_box_font())
+  let config = LayoutConfig::new(
+    max_width=12.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let mask = render_text_mask_face(face, "A A", 14, 24, 1.0, 1.0, config)
+  assert_eq(mask.get_pixels()[1 * 14 + 1], 255)
+  assert_eq(mask.get_pixels()[1 * 14 + 11], 0)
+  assert_eq(mask.get_pixels()[11 * 14 + 1], 255)
+}
+
+///|
+test "FontData::parse reports checked parser errors" {
+  let data = FontData::new(b"")
+  match data.parse() {
+    Err(FontParseError::UnexpectedEndOfData(0, 12, 0)) => ()
+    _ => abort("expected checked font-data parse error")
+  }
+}
+
+///|
+test "render_text_mask_face rasterizes through FontFace" {
+  let face = FontFace::from_font(make_box_font())
+  let config = LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let mask = render_text_mask_face(face, "A", 12, 12, 1.0, 1.0, config)
+  assert_eq(mask.get_width(), 12)
+  assert_eq(mask.get_height(), 12)
+  assert_eq(mask.get_pixels()[1 * 12 + 1], 255)
+  assert_eq(mask.get_pixels()[0], 0)
+}

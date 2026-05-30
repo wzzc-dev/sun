@@ -93,7 +93,7 @@ pub fn BinaryReader::read_i16_be(self : BinaryReader) -> Int {
 ///|
 /// Read Int32 big-endian (as Int)
 pub fn BinaryReader::read_i32_be(self : BinaryReader) -> Int {
-  self.read_u32_be().to_int()
+  self.read_u32_be().reinterpret_as_int()
 }
 
 ///|

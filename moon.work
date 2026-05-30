@@ -1,6 +1,7 @@
 members = [
   "./graphics",
   "./text",
+  "./renderer",
   "./softbuffer",
   "./examples/triangle_window",
   "./examples/hello_world",

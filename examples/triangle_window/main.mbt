@@ -61,7 +61,25 @@ fn render_triangle(width : Int, height : Int) -> FixedArray[Byte] {
 }
 
 ///|
-pub impl @windows.ApplicationHandler for App with can_create_surfaces(
+fn present_to_window(
+  window : @windows.Window,
+  pixels : FixedArray[Byte],
+  width : Int,
+  height : Int,
+) -> Unit {
+  let surface = @softbuffer.NativeSurface::new(
+    window.window_handle(),
+    width,
+    height,
+  )
+  match @graphics.present_pixels(surface, width, height, width * 4, pixels) {
+    Ok(_) => ()
+    Err(_) => println("Present failed")
+  }
+}
+
+///|
+pub impl @windows.ApplicationHandler for App with fn can_create_surfaces(
   self,
   event_loop,
 ) {
@@ -90,8 +108,7 @@ pub impl @windows.ApplicationHandler for App with can_create_surfaces(
 
       // Display pixels using softbuffer
       println("Displaying pixels...")
-      let hwnd = w.native_handle()
-      @softbuffer.display_pixels(hwnd, self.pixels, self.width, self.height)
+      present_to_window(w, self.pixels, self.width, self.height)
       println("Triangle displayed!")
     }
     None => println("Failed to create window")
@@ -101,7 +118,7 @@ pub impl @windows.ApplicationHandler for App with can_create_surfaces(
 }
 
 ///|
-pub impl @windows.ApplicationHandler for App with window_event(
+pub impl @windows.ApplicationHandler for App with fn window_event(
   self,
   event_loop,
   _id,
@@ -118,10 +135,7 @@ pub impl @windows.ApplicationHandler for App with window_event(
       self.pixels = render_triangle(self.width, self.height)
 
       match self.window {
-        Some(w) => {
-          let hwnd = w.native_handle()
-          @softbuffer.display_pixels(hwnd, self.pixels, self.width, self.height)
-        }
+        Some(w) => present_to_window(w, self.pixels, self.width, self.height)
         None => ()
       }
     }
@@ -129,13 +143,7 @@ pub impl @windows.ApplicationHandler for App with window_event(
       if self.rendered {
         match self.window {
           Some(w) => {
-            let hwnd = w.native_handle()
-            @softbuffer.display_pixels(
-              hwnd,
-              self.pixels,
-              self.width,
-              self.height,
-            )
+            present_to_window(w, self.pixels, self.width, self.height)
             w.pre_present_notify()
           }
           None => ()
