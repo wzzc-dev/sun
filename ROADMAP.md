@@ -167,7 +167,8 @@ Application / GUI
 - `GlyphMaskAtlas` 支持把单 glyph `CoverageMask` 按行打包到 text-local atlas，并复制 mask 像素隔离调用方 mutation，同时暴露 capacity、used/free pixels、occupancy ratio、can-fit 查询、hit/new-insert telemetry 和满载清空重插 helper 供资源生命周期决策使用
 - Renderer 可从 `GlyphMaskAtlas` coverage snapshot 按 entry source rect 合成单个 glyph placement，避免为 atlas 子区域额外复制 mask
 - Renderer 提供 `draw_text_face_atlas`，让调用方传入 glyph mask cache 与 glyph atlas，按 `TextLayout` 逐 glyph 缓存、打包、合成，并返回 drawn/skipped/cache-hit/rasterized/atlas-hit/atlas-inserted/atlas-clear telemetry
-- `TextMaskCache` 支持按 key 复用 rendered `CoverageMask`，并通过像素拷贝隔离缓存内容，作为 GUI label/text run 缓存基础
+- `TextMaskCache` 支持按 key 复用 rendered `CoverageMask`，并通过像素拷贝隔离缓存内容，同时提供 hit/render miss telemetry，作为 GUI label/text run 缓存基础
+- Renderer 提供 `draw_text_face_cached`，让调用方传入 `TextMaskCache` 直接绘制 repeated label/text run，并返回 text-mask cache hit/render telemetry
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
 - Canvas 路径描边（Butt/Round/Square cap，Miter/Round/Bevel join，dash/dotted）
 - 基础 clip rect 与 intersect clip，覆盖 rect/path/stroke/mask/pixel/pixmap 绘制入口
@@ -223,7 +224,7 @@ Application / GUI
 - [x] 让 `TextLayout`/`render_text_mask_face`/`Renderer::draw_text_face` 保留显式换行与空行，并确保硬换行行不被 Justify 拉伸
 - [x] 支持灰度 mask 与 RGBA Pixmap 的 alpha 合成
 - [x] 暴露 `Canvas::draw_mask`，作为 `text.Rasterizer` 接入 `graphics` 的低耦合桥接点
-- [x] 暴露 `Canvas::draw_mask_rect`、`Renderer::draw_glyph_atlas_entry` 与 `Renderer::draw_text_face_atlas`，让 glyph atlas entry 和带 cache/atlas telemetry 的基础 atlas-backed text path 可直接合成到 Pixmap
+- [x] 暴露 `Canvas::draw_mask_rect`、`Renderer::draw_glyph_atlas_entry`、`Renderer::draw_text_face_cached` 与 `Renderer::draw_text_face_atlas`，让 text mask cache、glyph atlas entry 和带 cache/atlas telemetry 的基础 atlas-backed text path 可直接合成到 Pixmap
 - [x] 在 `text` 侧产出稳定的 glyph/text mask，并在 `font_demo` 接入 `Canvas::draw_mask`
 - [x] 将 `font_demo` 改为调用 Renderer Core 文本绘制入口
 - [x] 将旧 `Canvas::draw_text` 的公开 API 迁移到真实字体渲染管线或标记废弃
@@ -248,6 +249,7 @@ Application / GUI
 - [x] 明确 `text` 包中哪些结构是 facade stable，哪些仍是 implementation-adjacent，见 `docs/text-api-boundaries.md`
 - [x] 增加 `FontFaceCache`，让 GUI/resource 代码可按 key 复用 checked `FontFace` 并保留解析错误语义
 - [x] 增加 `GlyphMaskCache`，让 renderer/resource 代码可按 key 复用单 glyph mask，并为 cache hit/miss telemetry 与后续 glyph atlas 铺底
+- [x] 将 `TextMaskCache` 接入 Renderer，提供 repeated label/text run 的 cached draw path 与 hit/render telemetry
 - [x] 增加最小 `GlyphMaskAtlas`，让 renderer/resource 代码可先获得确定性的 glyph mask 行打包 placement、占用 telemetry、hit/insert telemetry 与满载清空重插信号
 
 #### 2.1 OpenType 支持

@@ -30,8 +30,9 @@ the facade types below.
   telemetry.
 - `TextMaskCache` is a small keyed cache for rendered `CoverageMask` values.
   GUI and renderer code can use `get_or_render_face` for repeated labels or
-  text runs, while `get` and `insert` copy mask pixels to keep cached entries
-  isolated from caller mutation.
+  text runs, or `get_or_render_face_result` when cache-hit versus render-miss
+  telemetry is needed. `get` and `insert` copy mask pixels to keep cached
+  entries isolated from caller mutation.
 - `TextLayout` is the layout result intended for renderer and GUI code. It owns
   layout metrics and an array of `GlyphRun` values.
 - `GlyphRun` is one positioned run of glyphs with width and baseline. It is the
@@ -81,10 +82,13 @@ construct these types by hand.
   upload, or dirty atlas state, and use `did_reuse` for atlas hit telemetry.
 - Prefer `TextMaskCache::get_or_render_face(key, face, text, ...)` when a GUI
   owns a stable text-resource key and may draw the same mask repeatedly.
+  Prefer `get_or_render_face_result` or `Renderer::draw_text_face_cached` when
+  the caller also needs cache hit/render telemetry.
 - Prefer `TextLayout::layout(face, text, config)` or `layout_text_face` over
   calling `layout_text` directly from application code.
 - Prefer `render_text_mask_face` and `Renderer::draw_text_face` when connecting
-  text to pixels.
+  text to pixels. Prefer `Renderer::draw_text_face_cached` for repeated labels
+  or text runs with a caller-owned `TextMaskCache`.
 - Add layout-level and renderer-level regressions when changing alignment,
   baseline, wrapping, or glyph positioning semantics.
 - Keep exact parser error tests in `text/parser_test.mbt`; keep facade and

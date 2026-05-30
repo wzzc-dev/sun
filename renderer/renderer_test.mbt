@@ -213,6 +213,53 @@ test "Renderer::draw_text_face_atlas reports glyph cache hits" {
 }
 
 ///|
+test "Renderer::draw_text_face_cached reuses rendered text masks" {
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  let canvas = @graphics.Canvas::new(12, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let config = @text.LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let text_cache = @text.TextMaskCache::new()
+  let first = renderer.draw_text_face_cached(
+    face,
+    "A",
+    1.0,
+    1.0,
+    config,
+    text_cache,
+    "label",
+    @graphics.Paint::new().set_color(@graphics.Color::black()),
+  )
+  let pixmap = renderer.get_canvas().get_pixmap()
+  assert_true(first.did_render_mask())
+  assert_true(!first.did_hit_cache())
+  assert_eq(text_cache.len(), 1)
+  assert_eq(pixmap.get_pixel(1, 1), @graphics.Color::black())
+  assert_eq(pixmap.get_pixel(0, 0), @graphics.Color::white())
+
+  canvas.clear(@graphics.Color::white())
+  let second = renderer.draw_text_face_cached(
+    face,
+    "O",
+    1.0,
+    1.0,
+    config,
+    text_cache,
+    "label",
+    @graphics.Paint::new().set_color(@graphics.Color::black()),
+  )
+  assert_true(!second.did_render_mask())
+  assert_true(second.did_hit_cache())
+  assert_eq(text_cache.len(), 1)
+  assert_eq(pixmap.get_pixel(1, 1), @graphics.Color::black())
+  assert_eq(pixmap.get_pixel(0, 0), @graphics.Color::white())
+}
+
+///|
 test "Renderer::draw_text preserves holes in parsed TTF glyphs" {
   let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
   let canvas = @graphics.Canvas::new(12, 12)

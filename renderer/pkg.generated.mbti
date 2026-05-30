@@ -18,6 +18,8 @@ pub fn draw_text_face(@graphics.Canvas, @text.FontFace, String, Double, Double, 
 
 pub fn draw_text_face_atlas(@graphics.Canvas, @text.FontFace, String, Double, Double, @text.LayoutConfig, @text.GlyphMaskCache, @text.GlyphMaskAtlas, String, @graphics.Paint) -> TextAtlasDrawResult
 
+pub fn draw_text_face_cached(@graphics.Canvas, @text.FontFace, String, Double, Double, Int, Int, @text.LayoutConfig, @text.TextMaskCache, String, @graphics.Paint) -> TextMaskDrawResult
+
 // Errors
 
 // Types and methods
@@ -29,6 +31,7 @@ pub fn Renderer::draw_glyph_atlas_entry(Self, @text.CoverageMask, @text.GlyphAtl
 pub fn Renderer::draw_text(Self, @text.Font, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text_face_atlas(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @text.GlyphMaskCache, @text.GlyphMaskAtlas, String, @graphics.Paint) -> TextAtlasDrawResult
+pub fn Renderer::draw_text_face_cached(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @text.TextMaskCache, String, @graphics.Paint) -> TextMaskDrawResult
 pub fn Renderer::get_canvas(Self) -> @graphics.Canvas
 pub fn Renderer::new(@graphics.Canvas) -> Self
 
@@ -50,6 +53,12 @@ pub fn TextAtlasDrawResult::get_drawn_glyph_count(Self) -> Int
 pub fn TextAtlasDrawResult::get_glyph_count(Self) -> Int
 pub fn TextAtlasDrawResult::get_rasterized_glyph_count(Self) -> Int
 pub fn TextAtlasDrawResult::get_skipped_glyph_count(Self) -> Int
+
+pub struct TextMaskDrawResult {
+  did_render_mask : Bool
+} derive(@debug.Debug)
+pub fn TextMaskDrawResult::did_hit_cache(Self) -> Bool
+pub fn TextMaskDrawResult::did_render_mask(Self) -> Bool
 
 // Type aliases
 

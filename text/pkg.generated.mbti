@@ -491,11 +491,19 @@ pub struct TextMaskCache {
 pub fn TextMaskCache::clear(Self) -> Unit
 pub fn TextMaskCache::get(Self, String) -> CoverageMask?
 pub fn TextMaskCache::get_or_render_face(Self, String, FontFace, String, Int, Int, Double, Double, LayoutConfig) -> CoverageMask
+pub fn TextMaskCache::get_or_render_face_result(Self, String, FontFace, String, Int, Int, Double, Double, LayoutConfig) -> TextMaskCacheRenderResult
 pub fn TextMaskCache::insert(Self, String, CoverageMask) -> CoverageMask
 pub fn TextMaskCache::is_empty(Self) -> Bool
 pub fn TextMaskCache::len(Self) -> Int
 pub fn TextMaskCache::new() -> Self
 pub fn TextMaskCache::remove(Self, String) -> Unit
+
+pub struct TextMaskCacheRenderResult {
+  mask : CoverageMask
+  did_render : Bool
+} derive(@debug.Debug)
+pub fn TextMaskCacheRenderResult::did_render(Self) -> Bool
+pub fn TextMaskCacheRenderResult::get_mask(Self) -> CoverageMask
 
 // Type aliases
 

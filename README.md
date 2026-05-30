@@ -108,7 +108,7 @@ Text processing library (font parsing, shaping, layout).
   with capacity, occupancy, free-space, fit-query, rotate-on-full insert, and
   atlas hit/new-insert telemetry helpers for resource lifecycle decisions
 - `TextMaskCache` for keyed reuse of rendered coverage masks with copy-isolated
-  cache entries
+  cache entries and optional hit/render-miss telemetry
 - Left, center, right, and basic non-final-line justify alignment through the `TextLayout` facade
 - Explicit newline and empty-line preservation in `TextLayout`, text masks, and renderer text drawing
 - Configurable letter spacing and word spacing through `LayoutConfig`
@@ -124,6 +124,8 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
 **Features:**
 - `Renderer::draw_text` for `Font -> layout -> glyph raster -> Canvas` drawing
 - `Renderer::draw_text_face` for checked `FontFace -> TextLayout -> Canvas` drawing
+- `Renderer::draw_text_face_cached` for caller-owned `TextMaskCache` backed
+  label/text-run drawing with hit/render telemetry
 - `Renderer::draw_text_face_atlas` for caller-owned glyph mask cache and
   `GlyphMaskAtlas` backed text drawing with per-call draw/skip/cache/atlas/clear
   telemetry

@@ -18,6 +18,12 @@ pub struct TextAtlasDrawResult {
 } derive(Debug)
 
 ///|
+/// Result of drawing text through a caller-owned rendered text-mask cache.
+pub struct TextMaskDrawResult {
+  did_render_mask : Bool
+} derive(Debug)
+
+///|
 priv struct GlyphAtlasMaskPlacement {
   width : Int
   height : Int
@@ -100,6 +106,18 @@ pub fn TextAtlasDrawResult::did_clear_atlas(self : TextAtlasDrawResult) -> Bool 
 }
 
 ///|
+/// Return whether this draw rendered a new text mask instead of hitting cache.
+pub fn TextMaskDrawResult::did_render_mask(self : TextMaskDrawResult) -> Bool {
+  self.did_render_mask
+}
+
+///|
+/// Return whether this draw reused a rendered text mask from cache.
+pub fn TextMaskDrawResult::did_hit_cache(self : TextMaskDrawResult) -> Bool {
+  !self.did_render_mask
+}
+
+///|
 /// Draw text through the real text rasterization pipeline.
 pub fn Renderer::draw_text(
   self : Renderer,
@@ -145,6 +163,35 @@ pub fn Renderer::draw_text_face(
     pixmap.get_width(),
     pixmap.get_height(),
     config,
+    paint,
+  )
+}
+
+///|
+/// Draw text through a caller-owned rendered text-mask cache.
+pub fn Renderer::draw_text_face_cached(
+  self : Renderer,
+  face : @text.FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  text_cache : @text.TextMaskCache,
+  text_key : String,
+  paint : @graphics.Paint,
+) -> TextMaskDrawResult {
+  let pixmap = self.canvas.get_pixmap()
+  draw_text_face_cached(
+    self.canvas,
+    face,
+    text,
+    x,
+    y,
+    pixmap.get_width(),
+    pixmap.get_height(),
+    config,
+    text_cache,
+    text_key,
     paint,
   )
 }
@@ -234,6 +281,28 @@ pub fn draw_text_face(
     face, text, width, height, x, y, config,
   )
   draw_coverage_mask(canvas, mask, paint)
+}
+
+///|
+/// Draw text through a caller-owned rendered text-mask cache.
+pub fn draw_text_face_cached(
+  canvas : @graphics.Canvas,
+  face : @text.FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  width : Int,
+  height : Int,
+  config : @text.LayoutConfig,
+  text_cache : @text.TextMaskCache,
+  text_key : String,
+  paint : @graphics.Paint,
+) -> TextMaskDrawResult {
+  let result = text_cache.get_or_render_face_result(
+    text_key, face, text, width, height, x, y, config,
+  )
+  draw_coverage_mask(canvas, result.get_mask(), paint)
+  { did_render_mask: result.did_render() }
 }
 
 ///|

@@ -525,9 +525,32 @@ pub struct TextMaskCache {
 } derive(Debug)
 
 ///|
+/// Result of reading a rendered text mask from cache or rendering it on miss.
+pub struct TextMaskCacheRenderResult {
+  mask : CoverageMask
+  did_render : Bool
+} derive(Debug)
+
+///|
 /// Create an empty text mask cache.
 pub fn TextMaskCache::new() -> TextMaskCache {
   { masks: {} }
+}
+
+///|
+/// Get the resulting text coverage mask.
+pub fn TextMaskCacheRenderResult::get_mask(
+  self : TextMaskCacheRenderResult,
+) -> CoverageMask {
+  self.mask
+}
+
+///|
+/// Return whether this lookup rendered a new mask instead of hitting cache.
+pub fn TextMaskCacheRenderResult::did_render(
+  self : TextMaskCacheRenderResult,
+) -> Bool {
+  self.did_render
 }
 
 ///|
@@ -576,13 +599,33 @@ pub fn TextMaskCache::get_or_render_face(
   y : Double,
   config : LayoutConfig,
 ) -> CoverageMask {
+  self
+  .get_or_render_face_result(key, face, text, width, height, x, y, config)
+  .get_mask()
+}
+
+///|
+/// Render text from a checked face on first use and report whether cache missed.
+pub fn TextMaskCache::get_or_render_face_result(
+  self : TextMaskCache,
+  key : String,
+  face : FontFace,
+  text : String,
+  width : Int,
+  height : Int,
+  x : Double,
+  y : Double,
+  config : LayoutConfig,
+) -> TextMaskCacheRenderResult {
   match self.get(key) {
-    Some(mask) => mask
-    None =>
-      self.insert(
+    Some(mask) => { mask, did_render: false }
+    None => {
+      let mask = self.insert(
         key,
         render_text_mask_face(face, text, width, height, x, y, config),
       )
+      { mask, did_render: true }
+    }
   }
 }
 
