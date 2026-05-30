@@ -282,6 +282,7 @@ test "NativeSurface submits frames by present strategy" {
   assert_true(!partial_plan.was_clipped_away())
   assert_eq(partial_plan.get_present_pixel_count(), 1)
   assert_eq(partial_plan.get_present_byte_count(), 4)
+  assert_true(partial_plan.saves_full_present_pixels())
   assert_eq(partial_count.val, 0)
   assert_true(partial_frame.has_dirty())
 
@@ -302,6 +303,7 @@ test "NativeSurface submits frames by present strategy" {
       assert_eq(result.get_presented_rect_count(), 1)
       assert_eq(result.get_present_pixel_count(), 1)
       assert_eq(result.get_present_byte_count(), 4)
+      assert_true(result.saves_full_present_pixels())
     }
     Err(_) => abort("expected partial strategy submit result")
   }
@@ -326,6 +328,7 @@ test "NativeSurface submits frames by present strategy" {
   assert_true(!full_plan.was_clipped_away())
   assert_eq(full_plan.get_present_pixel_count(), 2)
   assert_eq(full_plan.get_present_byte_count(), 8)
+  assert_true(!full_plan.saves_full_present_pixels())
   assert_eq(full_count.val, 0)
   assert_true(full_frame.has_dirty())
 
@@ -346,6 +349,7 @@ test "NativeSurface submits frames by present strategy" {
       assert_eq(result.get_presented_rect_count(), 1)
       assert_eq(result.get_present_pixel_count(), 2)
       assert_eq(result.get_present_byte_count(), 8)
+      assert_true(!result.saves_full_present_pixels())
     }
     Err(_) => abort("expected full strategy submit result")
   }
@@ -370,6 +374,7 @@ test "NativeSurface submits frames by present strategy" {
   assert_true(!clean_plan.was_clipped_away())
   assert_eq(clean_plan.get_present_pixel_count(), 0)
   assert_eq(clean_plan.get_present_byte_count(), 0)
+  assert_true(!clean_plan.saves_full_present_pixels())
   assert_eq(clean_count.val, 0)
   match clean_surface.submit_frame_by_strategy(clean_frame) {
     Ok(result) => {
@@ -384,6 +389,7 @@ test "NativeSurface submits frames by present strategy" {
       assert_eq(result.get_presented_rect_count(), 0)
       assert_eq(result.get_present_pixel_count(), 0)
       assert_eq(result.get_present_byte_count(), 0)
+      assert_true(!result.saves_full_present_pixels())
     }
     Err(_) => abort("expected clean strategy submit result")
   }
@@ -412,6 +418,7 @@ test "NativeSurface strategy submit consumes clipped-away dirty without presenti
   assert_true(submit_plan.was_clipped_away())
   assert_eq(submit_plan.get_present_pixel_count(), 0)
   assert_eq(submit_plan.get_present_byte_count(), 0)
+  assert_true(!submit_plan.saves_full_present_pixels())
   assert_eq(count.val, 0)
   assert_true(frame.has_dirty())
 
@@ -430,6 +437,7 @@ test "NativeSurface strategy submit consumes clipped-away dirty without presenti
       assert_eq(result.get_presented_rect_count(), 0)
       assert_eq(result.get_present_pixel_count(), 0)
       assert_eq(result.get_present_byte_count(), 0)
+      assert_true(!result.saves_full_present_pixels())
     }
     Err(_) => abort("expected clipped-away strategy submit result")
   }
@@ -484,6 +492,7 @@ test "render frame strategy submit helper constructs NativeSurface internally" {
   assert_true(plan.get_state() == @graphics.DirtySubmitState::Present)
   assert_eq(plan.get_present_pixel_count(), 1)
   assert_eq(plan.get_present_byte_count(), 4)
+  assert_true(plan.saves_full_present_pixels())
   assert_true(frame.has_dirty())
 
   match submit_render_frame_by_strategy(42, frame) {
@@ -496,6 +505,7 @@ test "render frame strategy submit helper constructs NativeSurface internally" {
       assert_eq(result.get_presented_rect_count(), 1)
       assert_eq(result.get_present_pixel_count(), 1)
       assert_eq(result.get_present_byte_count(), 4)
+      assert_true(result.saves_full_present_pixels())
     }
     Err(_) => abort("expected constructed strategy submit result")
   }

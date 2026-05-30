@@ -82,6 +82,13 @@ pub fn NativeFrameSubmitPlan::get_present_byte_count(
 }
 
 ///|
+pub fn NativeFrameSubmitPlan::saves_full_present_pixels(
+  self : NativeFrameSubmitPlan,
+) -> Bool {
+  self.strategy == @graphics.DirtyPresentStrategy::Partial
+}
+
+///|
 pub fn NativeFrameSubmitResult::get_submit_plan(
   self : NativeFrameSubmitResult,
 ) -> NativeFrameSubmitPlan {
@@ -142,6 +149,13 @@ pub fn NativeFrameSubmitResult::get_present_byte_count(
   self : NativeFrameSubmitResult,
 ) -> Int {
   self.submit_plan.get_present_byte_count()
+}
+
+///|
+pub fn NativeFrameSubmitResult::saves_full_present_pixels(
+  self : NativeFrameSubmitResult,
+) -> Bool {
+  self.submit_plan.saves_full_present_pixels()
 }
 
 ///|
