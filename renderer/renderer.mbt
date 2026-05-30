@@ -93,6 +93,15 @@ pub struct CachedFontFallbackDrawResult {
 } derive(Debug)
 
 ///|
+/// Result of parsing a font-byte fallback stack and drawing atlas fallback
+/// text.
+pub struct CachedFontFallbackAtlasDrawResult {
+  parsed_font_count : Int
+  font_cache_hit_count : Int
+  fallback_result : TextFallbackAtlasDrawResult
+} derive(Debug)
+
+///|
 /// Result of drawing through a caller-owned pixmap cache.
 pub struct CachedPixmapDrawResult {
   did_insert_pixmap : Bool
@@ -793,6 +802,118 @@ pub fn CachedFontFallbackDrawResult::get_text_cache_hit_count(
 }
 
 ///|
+/// Return the number of fallback font sources parsed on this atlas draw.
+pub fn CachedFontFallbackAtlasDrawResult::get_parsed_font_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.parsed_font_count
+}
+
+///|
+/// Return the number of fallback font sources reused from the font cache.
+pub fn CachedFontFallbackAtlasDrawResult::get_font_cache_hit_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.font_cache_hit_count
+}
+
+///|
+/// Return the underlying fallback atlas draw result.
+pub fn CachedFontFallbackAtlasDrawResult::get_fallback_result(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> TextFallbackAtlasDrawResult {
+  self.fallback_result
+}
+
+///|
+/// Return the number of fallback spans drawn with a covering face.
+pub fn CachedFontFallbackAtlasDrawResult::get_drawn_span_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_drawn_span_count()
+}
+
+///|
+/// Return the number of missing-glyph spans skipped by this atlas draw.
+pub fn CachedFontFallbackAtlasDrawResult::get_skipped_span_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_skipped_span_count()
+}
+
+///|
+/// Return the number of text scalars not covered by any fallback face.
+pub fn CachedFontFallbackAtlasDrawResult::get_missing_char_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_missing_char_count()
+}
+
+///|
+/// Return the number of layout glyphs visited by covered fallback spans.
+pub fn CachedFontFallbackAtlasDrawResult::get_glyph_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_glyph_count()
+}
+
+///|
+/// Return the number of glyphs composited from the atlas.
+pub fn CachedFontFallbackAtlasDrawResult::get_drawn_glyph_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_drawn_glyph_count()
+}
+
+///|
+/// Return the number of layout glyphs that could not be drawn through the atlas.
+pub fn CachedFontFallbackAtlasDrawResult::get_skipped_glyph_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_skipped_glyph_count()
+}
+
+///|
+/// Return the number of drawable glyphs reused from the glyph mask cache.
+pub fn CachedFontFallbackAtlasDrawResult::get_cache_hit_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_cache_hit_count()
+}
+
+///|
+/// Return the number of glyph masks rasterized on cache miss.
+pub fn CachedFontFallbackAtlasDrawResult::get_rasterized_glyph_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_rasterized_glyph_count()
+}
+
+///|
+/// Return the number of glyph placements reused from the atlas.
+pub fn CachedFontFallbackAtlasDrawResult::get_atlas_hit_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_atlas_hit_count()
+}
+
+///|
+/// Return the number of glyph placements newly inserted into the atlas.
+pub fn CachedFontFallbackAtlasDrawResult::get_atlas_inserted_count(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Int {
+  self.fallback_result.get_atlas_inserted_count()
+}
+
+///|
+/// Return whether the atlas was cleared while drawing this fallback line.
+pub fn CachedFontFallbackAtlasDrawResult::did_clear_atlas(
+  self : CachedFontFallbackAtlasDrawResult,
+) -> Bool {
+  self.fallback_result.did_clear_atlas()
+}
+
+///|
 /// Return whether this draw inserted a pixmap into the image cache.
 pub fn CachedPixmapDrawResult::did_insert_pixmap(
   self : CachedPixmapDrawResult,
@@ -1192,6 +1313,45 @@ pub fn Renderer::draw_font_bytes_fallback_line_cached_with_renderer_resources(
   }
   let fallback_result = self.draw_text_fallback_line_cached_with_renderer_resources(
     faces, text, x, y, config, resources, text_key_prefix, paint,
+  )
+  Ok({ parsed_font_count, font_cache_hit_count, fallback_result })
+}
+
+///|
+/// Parse an ordered font-byte stack through renderer resources, then draw a
+/// fallback line through the shared glyph mask cache and atlas.
+pub fn Renderer::draw_font_bytes_fallback_line_atlas_with_renderer_resources(
+  self : Renderer,
+  sources : Array[FontBytesFallbackSource],
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> Result[CachedFontFallbackAtlasDrawResult, @text.FontParseError] {
+  let faces : Array[@text.FontFace] = []
+  let mut parsed_font_count = 0
+  let mut font_cache_hit_count = 0
+  for source in sources {
+    match
+      resources
+      .get_font_face_cache()
+      .get_or_parse_result(source.get_font_key(), source.get_font_data()) {
+      Ok(parse_result) => {
+        faces.push(parse_result.get_face())
+        if parse_result.did_parse() {
+          parsed_font_count += 1
+        } else {
+          font_cache_hit_count += 1
+        }
+      }
+      Err(error) => return Err(error)
+    }
+  }
+  let fallback_result = self.draw_text_fallback_line_atlas_with_renderer_resources(
+    faces, text, x, y, config, resources, glyph_key_prefix, paint,
   )
   Ok({ parsed_font_count, font_cache_hit_count, fallback_result })
 }

@@ -157,8 +157,8 @@ Renderer integration layer that composes `graphics.Canvas` with `text` coverage 
 - `RendererResources` for sharing checked font-face cache, renderer text
   resources, and image `PixmapCache` from one GUI/resource object
 - `Renderer::draw_font_bytes_cached_with_renderer_resources`, fallback-line,
-  and atlas-backed font-byte drawing for checked parse reuse with
-  font/text/glyph cache telemetry
+  fallback atlas, and single-face atlas-backed font-byte drawing for checked
+  parse reuse with font/text/glyph cache telemetry
 - `Renderer::draw_pixmap_cached` and quality-scaled cached pixmap drawing for
   `RendererResources` backed image reuse with hit/insert telemetry
 - `Renderer::draw_coverage_mask` for testing and low-level mask composition

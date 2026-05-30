@@ -114,7 +114,10 @@ construct these types by hand.
   glyph masks and atlas placements instead of whole rendered text masks. Prefer
   `Renderer::draw_font_bytes_fallback_line_cached_with_renderer_resources` when
   the GUI/resource layer starts from keyed font bytes and wants checked
-  font-face cache reuse before fallback span rendering. Prefer
+  font-face cache reuse before cached fallback span rendering. Prefer
+  `Renderer::draw_font_bytes_fallback_line_atlas_with_renderer_resources` when
+  keyed font-byte fallback labels should reuse glyph masks and atlas placements
+  instead of whole rendered text masks. Prefer
   `Renderer::draw_text_face_cached` for repeated single-face labels or text
   runs with a caller-owned `TextMaskCache`.
 - Add layout-level and renderer-level regressions when changing alignment,
