@@ -109,16 +109,22 @@ pub fn FontFace::get_units_per_em(Self) -> Int
 
 pub struct FontFaceCache {
   mut faces : Map[String, FontFace]
+  mut access_order : Array[String]
+  capacity : Int
+  is_bounded : Bool
 } derive(@debug.Debug)
+pub fn FontFaceCache::capacity(Self) -> Int
 pub fn FontFaceCache::clear(Self) -> Unit
 pub fn FontFaceCache::get(Self, String) -> FontFace?
 pub fn FontFaceCache::get_or_parse(Self, String, Bytes) -> Result[FontFace, FontParseError]
 pub fn FontFaceCache::get_or_parse_result(Self, String, Bytes) -> Result[FontFaceCacheParseResult, FontParseError]
 pub fn FontFaceCache::insert(Self, String, FontFace) -> FontFace
+pub fn FontFaceCache::is_capacity_bounded(Self) -> Bool
 pub fn FontFaceCache::is_empty(Self) -> Bool
 pub fn FontFaceCache::len(Self) -> Int
 pub fn FontFaceCache::new() -> Self
 pub fn FontFaceCache::remove(Self, String) -> Unit
+pub fn FontFaceCache::with_capacity(Int) -> Self
 
 pub struct FontFaceCacheParseResult {
   face : FontFace

@@ -36,6 +36,9 @@ pub fn FontData::parse(self : FontData) -> Result[FontFace, FontParseError] {
 /// the same parsed face.
 pub struct FontFaceCache {
   mut faces : Map[String, FontFace]
+  mut access_order : Array[String]
+  capacity : Int
+  is_bounded : Bool
 } derive(Debug)
 
 ///|
@@ -48,7 +51,13 @@ pub struct FontFaceCacheParseResult {
 ///|
 /// Create an empty font-face cache.
 pub fn FontFaceCache::new() -> FontFaceCache {
-  { faces: {} }
+  { faces: {}, access_order: [], capacity: 0, is_bounded: false }
+}
+
+///|
+/// Create an empty font-face cache with least-recently-used eviction.
+pub fn FontFaceCache::with_capacity(capacity : Int) -> FontFaceCache {
+  { faces: {}, access_order: [], capacity: capacity.max(1), is_bounded: true }
 }
 
 ///|
@@ -88,9 +97,27 @@ pub fn FontFaceCache::is_empty(self : FontFaceCache) -> Bool {
 }
 
 ///|
+/// Return the maximum number of cached font faces, or 0 for an unbounded cache.
+pub fn FontFaceCache::capacity(self : FontFaceCache) -> Int {
+  self.capacity
+}
+
+///|
+/// Return whether the cache has a configured entry limit.
+pub fn FontFaceCache::is_capacity_bounded(self : FontFaceCache) -> Bool {
+  self.is_bounded
+}
+
+///|
 /// Look up a parsed face by caller-provided key.
 pub fn FontFaceCache::get(self : FontFaceCache, key : String) -> FontFace? {
-  self.faces.get(key)
+  match self.faces.get(key) {
+    Some(face) => {
+      self.touch_key(key)
+      Some(face)
+    }
+    None => None
+  }
 }
 
 ///|
@@ -101,6 +128,8 @@ pub fn FontFaceCache::insert(
   face : FontFace,
 ) -> FontFace {
   self.faces[key] = face
+  self.touch_key(key)
+  self.evict_over_capacity()
   face
 }
 
@@ -138,12 +167,41 @@ pub fn FontFaceCache::get_or_parse_result(
 /// Remove a cached face by key.
 pub fn FontFaceCache::remove(self : FontFaceCache, key : String) -> Unit {
   self.faces.remove(key)
+  self.remove_access_key(key)
 }
 
 ///|
 /// Drop all cached faces.
 pub fn FontFaceCache::clear(self : FontFaceCache) -> Unit {
   self.faces = {}
+  self.access_order = []
+}
+
+///|
+fn FontFaceCache::touch_key(self : FontFaceCache, key : String) -> Unit {
+  self.remove_access_key(key)
+  self.access_order.push(key)
+}
+
+///|
+fn FontFaceCache::remove_access_key(self : FontFaceCache, key : String) -> Unit {
+  let mut index = 0
+  while index < self.access_order.length() {
+    if self.access_order[index] == key {
+      ignore(self.access_order.remove(index))
+    } else {
+      index += 1
+    }
+  }
+}
+
+///|
+fn FontFaceCache::evict_over_capacity(self : FontFaceCache) -> Unit {
+  guard self.is_bounded && self.capacity > 0 else { return }
+  while self.faces.length() > self.capacity && self.access_order.length() > 0 {
+    let key = self.access_order.remove(0)
+    self.faces.remove(key)
+  }
 }
 
 ///|

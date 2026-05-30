@@ -241,6 +241,8 @@ test "FontFace and TextLayout expose stable text API" {
 test "FontFaceCache stores and replaces checked faces" {
   let cache = FontFaceCache::new()
   assert_true(cache.is_empty())
+  assert_true(!cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 0)
   let face = FontFace::from_font(make_box_font())
   let inserted = cache.insert("ui", face)
   assert_eq(cache.len(), 1)
@@ -264,6 +266,39 @@ test "FontFaceCache stores and replaces checked faces" {
   cache.remove("ui")
   assert_true(cache.is_empty())
   assert_true(cache.get("ui") is None)
+}
+
+///|
+test "FontFaceCache::with_capacity evicts least recently used faces" {
+  let cache = FontFaceCache::with_capacity(2)
+  assert_true(cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 2)
+  ignore(cache.insert("first", FontFace::from_font(make_box_font())))
+  ignore(cache.insert("second", FontFace::from_font(make_space_only_font())))
+  match cache.get("first") {
+    Some(face) => assert_eq(face.char_to_glyph('A'.to_int()), 1)
+    None => abort("expected first font face")
+  }
+  ignore(cache.insert("third", FontFace::from_font(make_box_font())))
+  assert_eq(cache.len(), 2)
+  assert_true(cache.get("second") is None)
+  assert_true(cache.get("first") is Some(_))
+  assert_true(cache.get("third") is Some(_))
+}
+
+///|
+test "FontFaceCache clamps invalid capacity" {
+  let cache = FontFaceCache::with_capacity(0)
+  assert_true(cache.is_capacity_bounded())
+  assert_eq(cache.capacity(), 1)
+  ignore(cache.insert("first", FontFace::from_font(make_box_font())))
+  ignore(cache.insert("second", FontFace::from_font(make_space_only_font())))
+  assert_eq(cache.len(), 1)
+  assert_true(cache.get("first") is None)
+  match cache.get("second") {
+    Some(face) => assert_eq(face.char_to_glyph(' '.to_int()), 1)
+    None => abort("expected second font face")
+  }
 }
 
 ///|
