@@ -439,9 +439,48 @@ pub fn RenderFrame::mark_dirty_rect(Self, PixelRect) -> Unit
 pub fn RenderFrame::new(Int, Int) -> Self
 pub fn[S : Surface] RenderFrame::present_all_to(Self, S) -> Result[Int, PresentError]
 pub fn[S : Surface] RenderFrame::present_dirty_to(Self, S) -> Result[Int, PresentError]
+pub fn[S : Surface] RenderFrame::present_strategy(Self, S) -> DirtyPresentStrategy
 pub fn RenderFrame::resize(Self, Int, Int) -> Self
 pub fn RenderFrame::set_dirty_rect_limit(Self, Int) -> Self
+pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(Self, S) -> RenderFrameSubmitPlan
+pub fn[S : Surface] RenderFrame::submit_by_strategy_to(Self, S) -> Result[RenderFrameSubmitResult, PresentError]
 pub fn[S : Surface] RenderFrame::submit_dirty_to(Self, S) -> Result[DirtySubmitResult, PresentError]
+
+pub struct RenderFrameSubmitPlan {
+  dirty_submit_plan : DirtySubmitPlan
+  strategy : DirtyPresentStrategy
+  present_pixel_count : Int
+  present_byte_count : Int
+} derive(@debug.Debug)
+pub fn RenderFrameSubmitPlan::get_dirty_bounds(Self) -> PixelRect?
+pub fn RenderFrameSubmitPlan::get_dirty_submit_plan(Self) -> DirtySubmitPlan
+pub fn RenderFrameSubmitPlan::get_present_byte_count(Self) -> Int
+pub fn RenderFrameSubmitPlan::get_present_pixel_count(Self) -> Int
+pub fn RenderFrameSubmitPlan::get_present_strategy(Self) -> DirtyPresentStrategy
+pub fn RenderFrameSubmitPlan::get_state(Self) -> DirtySubmitState
+pub fn RenderFrameSubmitPlan::has_dirty(Self) -> Bool
+pub fn RenderFrameSubmitPlan::needs_present(Self) -> Bool
+pub fn RenderFrameSubmitPlan::saves_full_present_pixels(Self) -> Bool
+pub fn RenderFrameSubmitPlan::uses_bounds_fallback(Self) -> Bool
+pub fn RenderFrameSubmitPlan::was_clipped_away(Self) -> Bool
+
+pub struct RenderFrameSubmitResult {
+  submit_plan : RenderFrameSubmitPlan
+  presented_rect_count : Int
+} derive(@debug.Debug)
+pub fn RenderFrameSubmitResult::did_present(Self) -> Bool
+pub fn RenderFrameSubmitResult::get_dirty_bounds(Self) -> PixelRect?
+pub fn RenderFrameSubmitResult::get_present_byte_count(Self) -> Int
+pub fn RenderFrameSubmitResult::get_present_pixel_count(Self) -> Int
+pub fn RenderFrameSubmitResult::get_present_strategy(Self) -> DirtyPresentStrategy
+pub fn RenderFrameSubmitResult::get_presented_rect_count(Self) -> Int
+pub fn RenderFrameSubmitResult::get_state(Self) -> DirtySubmitState
+pub fn RenderFrameSubmitResult::get_submit_plan(Self) -> RenderFrameSubmitPlan
+pub fn RenderFrameSubmitResult::has_dirty(Self) -> Bool
+pub fn RenderFrameSubmitResult::needs_present(Self) -> Bool
+pub fn RenderFrameSubmitResult::saves_full_present_pixels(Self) -> Bool
+pub fn RenderFrameSubmitResult::uses_bounds_fallback(Self) -> Bool
+pub fn RenderFrameSubmitResult::was_clipped_away(Self) -> Bool
 
 pub struct ScanlineRasterizer {
   width : Int

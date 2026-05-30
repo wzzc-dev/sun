@@ -176,12 +176,11 @@ fn native_frame_submit_plan(
 }
 
 ///|
-fn native_frame_submit_plan_from_dirty(
-  strategy : @graphics.DirtyPresentStrategy,
-  plan : @graphics.DirtySubmitPlan,
+fn native_frame_submit_plan_from_frame(
+  plan : @graphics.RenderFrameSubmitPlan,
 ) -> NativeFrameSubmitPlan {
   native_frame_submit_plan(
-    strategy,
+    plan.get_present_strategy(),
     plan.get_state(),
     plan.get_present_pixel_count(),
     plan.get_present_byte_count(),
@@ -194,6 +193,16 @@ fn native_frame_submit_result(
   presented_rect_count : Int,
 ) -> NativeFrameSubmitResult {
   { submit_plan, presented_rect_count }
+}
+
+///|
+fn native_frame_submit_result_from_frame(
+  result : @graphics.RenderFrameSubmitResult,
+) -> NativeFrameSubmitResult {
+  native_frame_submit_result(
+    native_frame_submit_plan_from_frame(result.get_submit_plan()),
+    result.get_presented_rect_count(),
+  )
 }
 
 ///|
@@ -508,23 +517,7 @@ pub fn NativeSurface::dirty_frame_submit_by_strategy_plan(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
 ) -> NativeFrameSubmitPlan {
-  let dirty_plan = self.dirty_frame_submit_plan(frame)
-  let strategy = dirty_plan.get_present_strategy(
-    self.get_width(),
-    self.get_height(),
-  )
-  match strategy {
-    @graphics.DirtyPresentStrategy::Full => {
-      let present_pixels = self.get_width().max(0) * self.get_height().max(0)
-      native_frame_submit_plan(
-        strategy,
-        @graphics.DirtySubmitState::Present,
-        present_pixels,
-        present_pixels * 4,
-      )
-    }
-    _ => native_frame_submit_plan_from_dirty(strategy, dirty_plan)
-  }
+  native_frame_submit_plan_from_frame(frame.submit_by_strategy_plan(self))
 }
 
 ///|
@@ -532,39 +525,9 @@ pub fn NativeSurface::submit_frame_by_strategy(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
 ) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
-  let submit_plan = self.dirty_frame_submit_by_strategy_plan(frame)
-  match submit_plan.get_present_strategy() {
-    @graphics.DirtyPresentStrategy::Skip =>
-      if frame.has_dirty() {
-        match self.submit_frame_dirty(frame) {
-          Ok(result) =>
-            Ok(
-              native_frame_submit_result(
-                submit_plan,
-                result.get_presented_rect_count(),
-              ),
-            )
-          Err(error) => Err(error)
-        }
-      } else {
-        Ok(native_frame_submit_result(submit_plan, 0))
-      }
-    @graphics.DirtyPresentStrategy::Partial =>
-      match self.submit_frame_dirty(frame) {
-        Ok(result) =>
-          Ok(
-            native_frame_submit_result(
-              submit_plan,
-              result.get_presented_rect_count(),
-            ),
-          )
-        Err(error) => Err(error)
-      }
-    @graphics.DirtyPresentStrategy::Full =>
-      match self.present_frame_all(frame) {
-        Ok(presented) => Ok(native_frame_submit_result(submit_plan, presented))
-        Err(error) => Err(error)
-      }
+  match frame.submit_by_strategy_to(self) {
+    Ok(result) => Ok(native_frame_submit_result_from_frame(result))
+    Err(error) => Err(error)
   }
 }
 

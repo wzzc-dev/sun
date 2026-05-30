@@ -124,6 +124,7 @@ Application / GUI
 - `DirtyPresentPlan`/`DirtySubmitPlan`/`DirtySubmitResult` 暴露计划提交像素数与紧凑 RGBA 字节数，给事件循环提供可测试的 present 成本预算
 - dirty present/submit/result 暴露相对整帧 present 是否节省像素的判定，给事件循环选择 partial/full present 提供统一语义
 - `DirtyPresentStrategy` 将 Skip/Partial/Full present 选择显式化，让事件循环能直接消费统一调度决策
+- `RenderFrame` 在 graphics 核心层提供 strategy-aware submit plan/result/helper，让 MemorySurface、窗口后端和未来 backend 复用同一套 Skip/Partial/Full 调度
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty-submit plan 查询，让窗口后端调度能复用 graphics 的统一 dirty snapshot
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` Skip/Partial/Full 策略查询，让窗口后端可直接消费统一 present 决策
@@ -325,6 +326,7 @@ Application / GUI
 - [x] Dirty present/submit/result 暴露计划提交像素数与紧凑 RGBA 字节数，让事件循环能按成本预算做调度
 - [x] Dirty present/submit/result 暴露 partial present 是否节省整帧像素的判定，减少事件循环重复比较逻辑
 - [x] `DirtyPresentStrategy` 暴露 Skip/Partial/Full present 决策，给事件循环一个可测试的统一策略枚举
+- [x] `RenderFrame` 暴露通用 strategy-aware submit plan/result/helper，把 Skip/Partial/Full 调度从 softbuffer 下沉到 graphics 核心层
 - [x] softbuffer 暴露 `RenderFrame` present strategy 查询，让窗口后端无需拆 dirty-submit plan 就能调度 present
 - [x] softbuffer 暴露 strategy-aware frame submit helper，让窗口后端复用统一 Skip/Partial/Full 分派和提交结果
 - [x] softbuffer strategy submit result 暴露 state、present rect 数和像素/字节成本，给窗口后端提供统一 telemetry

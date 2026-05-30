@@ -244,6 +244,165 @@ test "RenderFrame::submit_dirty_to consumes surface-clipped dirty" {
 }
 
 ///|
+test "RenderFrame::submit_by_strategy_plan reports partial present cost" {
+  let frame = RenderFrame::new(4, 1)
+  frame.mark_dirty_rect(PixelRect::new(x=1, y=0, width=1, height=1))
+  let surface = MemorySurface::new(4, 1)
+
+  assert_true(frame.present_strategy(surface) == DirtyPresentStrategy::Partial)
+  let plan = frame.submit_by_strategy_plan(surface)
+  assert_true(plan.get_present_strategy() == DirtyPresentStrategy::Partial)
+  assert_true(plan.get_state() == DirtySubmitState::Present)
+  assert_true(plan.has_dirty())
+  assert_true(plan.needs_present())
+  assert_true(!plan.was_clipped_away())
+  assert_true(!plan.uses_bounds_fallback())
+  assert_eq(plan.get_present_pixel_count(), 1)
+  assert_eq(plan.get_present_byte_count(), 4)
+  assert_true(plan.saves_full_present_pixels())
+  assert_true(
+    plan.get_dirty_bounds() == Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
+  assert_true(
+    plan.get_dirty_submit_plan().get_present_strategy(4, 1) ==
+    DirtyPresentStrategy::Partial,
+  )
+  assert_true(frame.has_dirty())
+  assert_eq(surface.get_present_count(), 0)
+}
+
+///|
+test "RenderFrame::submit_by_strategy_to submits partial dirty rects" {
+  let frame = RenderFrame::new(4, 1)
+  frame.get_canvas().draw_pixel(1, 0, Color::red())
+  let surface = MemorySurface::new(4, 1)
+
+  match frame.submit_by_strategy_to(surface) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == DirtyPresentStrategy::Partial,
+      )
+      assert_true(
+        result.get_submit_plan().get_present_strategy() ==
+        DirtyPresentStrategy::Partial,
+      )
+      assert_true(result.get_state() == DirtySubmitState::Present)
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_true(result.has_dirty())
+      assert_true(result.needs_present())
+      assert_true(result.did_present())
+      assert_true(!result.was_clipped_away())
+      assert_eq(result.get_present_pixel_count(), 1)
+      assert_eq(result.get_present_byte_count(), 4)
+      assert_true(result.saves_full_present_pixels())
+      assert_true(
+        result.get_dirty_bounds() ==
+        Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+      )
+    }
+    Err(_) => abort("expected partial strategy submit result")
+  }
+  assert_eq(surface.get_present_count(), 1)
+  assert_eq(surface.get_pixel(1, 0), Color::red())
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "RenderFrame::submit_by_strategy_to promotes full-frame cost" {
+  let frame = RenderFrame::new(2, 1)
+  frame.mark_all_dirty()
+  let surface = MemorySurface::new(2, 1)
+
+  let plan = frame.submit_by_strategy_plan(surface)
+  assert_true(plan.get_present_strategy() == DirtyPresentStrategy::Full)
+  assert_true(plan.get_state() == DirtySubmitState::Present)
+  assert_true(plan.has_dirty())
+  assert_true(plan.needs_present())
+  assert_eq(plan.get_present_pixel_count(), 2)
+  assert_eq(plan.get_present_byte_count(), 8)
+  assert_true(!plan.saves_full_present_pixels())
+  assert_true(frame.has_dirty())
+  assert_eq(surface.get_present_count(), 0)
+
+  match frame.submit_by_strategy_to(surface) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Full)
+      assert_true(result.get_state() == DirtySubmitState::Present)
+      assert_true(result.did_present())
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 2)
+      assert_eq(result.get_present_byte_count(), 8)
+      assert_true(!result.saves_full_present_pixels())
+    }
+    Err(_) => abort("expected full strategy submit result")
+  }
+  assert_eq(surface.get_present_count(), 1)
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "RenderFrame::submit_by_strategy_to consumes clipped-away dirty" {
+  let frame = RenderFrame::new(4, 1)
+  frame.mark_dirty_rect(PixelRect::new(x=3, y=0, width=1, height=1))
+  let surface = MemorySurface::new(2, 1)
+
+  let plan = frame.submit_by_strategy_plan(surface)
+  assert_true(plan.get_present_strategy() == DirtyPresentStrategy::Skip)
+  assert_true(plan.get_state() == DirtySubmitState::DirtyClippedAway)
+  assert_true(plan.has_dirty())
+  assert_true(!plan.needs_present())
+  assert_true(plan.was_clipped_away())
+  assert_eq(plan.get_present_pixel_count(), 0)
+  assert_eq(plan.get_present_byte_count(), 0)
+  assert_true(!plan.saves_full_present_pixels())
+  assert_true(frame.has_dirty())
+  assert_eq(surface.get_present_count(), 0)
+
+  match frame.submit_by_strategy_to(surface) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Skip)
+      assert_true(result.get_state() == DirtySubmitState::DirtyClippedAway)
+      assert_true(result.has_dirty())
+      assert_true(!result.needs_present())
+      assert_true(result.was_clipped_away())
+      assert_true(!result.did_present())
+      assert_eq(result.get_presented_rect_count(), 0)
+      assert_eq(result.get_present_pixel_count(), 0)
+      assert_eq(result.get_present_byte_count(), 0)
+      assert_true(!result.saves_full_present_pixels())
+    }
+    Err(_) => abort("expected clipped-away strategy submit result")
+  }
+  assert_eq(surface.get_present_count(), 0)
+  assert_true(!frame.has_dirty())
+}
+
+///|
+test "RenderFrame::submit_by_strategy_to skips clean frames" {
+  let frame = RenderFrame::new(2, 1)
+  let surface = MemorySurface::new(2, 1)
+
+  match frame.submit_by_strategy_to(surface) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Skip)
+      assert_true(result.get_state() == DirtySubmitState::Clean)
+      assert_true(!result.has_dirty())
+      assert_true(!result.needs_present())
+      assert_true(!result.was_clipped_away())
+      assert_true(!result.did_present())
+      assert_eq(result.get_presented_rect_count(), 0)
+      assert_eq(result.get_present_pixel_count(), 0)
+      assert_eq(result.get_present_byte_count(), 0)
+      assert_true(!result.saves_full_present_pixels())
+      assert_true(result.get_dirty_bounds() == None)
+    }
+    Err(_) => abort("expected clean strategy submit result")
+  }
+  assert_eq(surface.get_present_count(), 0)
+  assert_true(!frame.has_dirty())
+}
+
+///|
 test "RenderFrame dirty helpers cover canvas and layer tree dirtiness" {
   let frame = RenderFrame::new(4, 2)
   assert_true(!frame.has_dirty())

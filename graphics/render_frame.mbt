@@ -8,6 +8,206 @@ pub struct RenderFrame {
 } derive(Debug)
 
 ///|
+/// Strategy-aware dry-run plan for submitting a RenderFrame to a Surface.
+pub struct RenderFrameSubmitPlan {
+  dirty_submit_plan : DirtySubmitPlan
+  strategy : DirtyPresentStrategy
+  present_pixel_count : Int
+  present_byte_count : Int
+} derive(Debug)
+
+///|
+/// Result of submitting a RenderFrame through the strategy-aware scheduler.
+pub struct RenderFrameSubmitResult {
+  submit_plan : RenderFrameSubmitPlan
+  presented_rect_count : Int
+} derive(Debug)
+
+///|
+pub fn RenderFrameSubmitPlan::get_dirty_submit_plan(
+  self : RenderFrameSubmitPlan,
+) -> DirtySubmitPlan {
+  self.dirty_submit_plan
+}
+
+///|
+pub fn RenderFrameSubmitPlan::get_present_strategy(
+  self : RenderFrameSubmitPlan,
+) -> DirtyPresentStrategy {
+  self.strategy
+}
+
+///|
+pub fn RenderFrameSubmitPlan::get_state(
+  self : RenderFrameSubmitPlan,
+) -> DirtySubmitState {
+  self.dirty_submit_plan.get_state()
+}
+
+///|
+pub fn RenderFrameSubmitPlan::get_dirty_bounds(
+  self : RenderFrameSubmitPlan,
+) -> PixelRect? {
+  self.dirty_submit_plan.get_dirty_bounds()
+}
+
+///|
+pub fn RenderFrameSubmitPlan::has_dirty(self : RenderFrameSubmitPlan) -> Bool {
+  self.dirty_submit_plan.has_dirty()
+}
+
+///|
+pub fn RenderFrameSubmitPlan::needs_present(
+  self : RenderFrameSubmitPlan,
+) -> Bool {
+  self.dirty_submit_plan.needs_present()
+}
+
+///|
+pub fn RenderFrameSubmitPlan::was_clipped_away(
+  self : RenderFrameSubmitPlan,
+) -> Bool {
+  self.get_state() == DirtySubmitState::DirtyClippedAway
+}
+
+///|
+pub fn RenderFrameSubmitPlan::uses_bounds_fallback(
+  self : RenderFrameSubmitPlan,
+) -> Bool {
+  self.dirty_submit_plan.uses_bounds_fallback()
+}
+
+///|
+pub fn RenderFrameSubmitPlan::get_present_pixel_count(
+  self : RenderFrameSubmitPlan,
+) -> Int {
+  self.present_pixel_count
+}
+
+///|
+pub fn RenderFrameSubmitPlan::get_present_byte_count(
+  self : RenderFrameSubmitPlan,
+) -> Int {
+  self.present_byte_count
+}
+
+///|
+pub fn RenderFrameSubmitPlan::saves_full_present_pixels(
+  self : RenderFrameSubmitPlan,
+) -> Bool {
+  self.strategy == DirtyPresentStrategy::Partial
+}
+
+///|
+pub fn RenderFrameSubmitResult::get_submit_plan(
+  self : RenderFrameSubmitResult,
+) -> RenderFrameSubmitPlan {
+  self.submit_plan
+}
+
+///|
+pub fn RenderFrameSubmitResult::get_present_strategy(
+  self : RenderFrameSubmitResult,
+) -> DirtyPresentStrategy {
+  self.submit_plan.get_present_strategy()
+}
+
+///|
+pub fn RenderFrameSubmitResult::get_presented_rect_count(
+  self : RenderFrameSubmitResult,
+) -> Int {
+  self.presented_rect_count
+}
+
+///|
+pub fn RenderFrameSubmitResult::get_state(
+  self : RenderFrameSubmitResult,
+) -> DirtySubmitState {
+  self.submit_plan.get_state()
+}
+
+///|
+pub fn RenderFrameSubmitResult::get_dirty_bounds(
+  self : RenderFrameSubmitResult,
+) -> PixelRect? {
+  self.submit_plan.get_dirty_bounds()
+}
+
+///|
+pub fn RenderFrameSubmitResult::has_dirty(
+  self : RenderFrameSubmitResult,
+) -> Bool {
+  self.submit_plan.has_dirty()
+}
+
+///|
+pub fn RenderFrameSubmitResult::needs_present(
+  self : RenderFrameSubmitResult,
+) -> Bool {
+  self.submit_plan.needs_present()
+}
+
+///|
+pub fn RenderFrameSubmitResult::was_clipped_away(
+  self : RenderFrameSubmitResult,
+) -> Bool {
+  self.submit_plan.was_clipped_away()
+}
+
+///|
+pub fn RenderFrameSubmitResult::uses_bounds_fallback(
+  self : RenderFrameSubmitResult,
+) -> Bool {
+  self.submit_plan.uses_bounds_fallback()
+}
+
+///|
+pub fn RenderFrameSubmitResult::did_present(
+  self : RenderFrameSubmitResult,
+) -> Bool {
+  self.presented_rect_count > 0
+}
+
+///|
+pub fn RenderFrameSubmitResult::get_present_pixel_count(
+  self : RenderFrameSubmitResult,
+) -> Int {
+  self.submit_plan.get_present_pixel_count()
+}
+
+///|
+pub fn RenderFrameSubmitResult::get_present_byte_count(
+  self : RenderFrameSubmitResult,
+) -> Int {
+  self.submit_plan.get_present_byte_count()
+}
+
+///|
+pub fn RenderFrameSubmitResult::saves_full_present_pixels(
+  self : RenderFrameSubmitResult,
+) -> Bool {
+  self.submit_plan.saves_full_present_pixels()
+}
+
+///|
+fn render_frame_submit_plan(
+  dirty_submit_plan : DirtySubmitPlan,
+  strategy : DirtyPresentStrategy,
+  present_pixel_count : Int,
+  present_byte_count : Int,
+) -> RenderFrameSubmitPlan {
+  { dirty_submit_plan, strategy, present_pixel_count, present_byte_count }
+}
+
+///|
+fn render_frame_submit_result(
+  submit_plan : RenderFrameSubmitPlan,
+  presented_rect_count : Int,
+) -> RenderFrameSubmitResult {
+  { submit_plan, presented_rect_count }
+}
+
+///|
 pub fn RenderFrame::new(width : Int, height : Int) -> RenderFrame {
   {
     canvas: Canvas::new(width, height),
@@ -135,6 +335,47 @@ pub fn[S : Surface] RenderFrame::dirty_submit_plan(
 }
 
 ///|
+pub fn[S : Surface] RenderFrame::present_strategy(
+  self : RenderFrame,
+  surface : S,
+) -> DirtyPresentStrategy {
+  self
+  .dirty_submit_plan(surface)
+  .get_present_strategy(surface.get_width(), surface.get_height())
+}
+
+///|
+pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(
+  self : RenderFrame,
+  surface : S,
+) -> RenderFrameSubmitPlan {
+  let dirty_plan = self.dirty_submit_plan(surface)
+  let strategy = dirty_plan.get_present_strategy(
+    surface.get_width(),
+    surface.get_height(),
+  )
+  match strategy {
+    DirtyPresentStrategy::Full => {
+      let present_pixels = surface.get_width().max(0) *
+        surface.get_height().max(0)
+      render_frame_submit_plan(
+        dirty_plan,
+        strategy,
+        present_pixels,
+        present_pixels * 4,
+      )
+    }
+    _ =>
+      render_frame_submit_plan(
+        dirty_plan,
+        strategy,
+        dirty_plan.get_present_pixel_count(),
+        dirty_plan.get_present_byte_count(),
+      )
+  }
+}
+
+///|
 pub fn[S : Surface] RenderFrame::present_dirty_to(
   self : RenderFrame,
   surface : S,
@@ -155,6 +396,47 @@ pub fn[S : Surface] RenderFrame::submit_dirty_to(
   match self.present_dirty_to(surface) {
     Ok(presented) => Ok({ submit_plan, presented_rect_count: presented })
     Err(error) => Err(error)
+  }
+}
+
+///|
+pub fn[S : Surface] RenderFrame::submit_by_strategy_to(
+  self : RenderFrame,
+  surface : S,
+) -> Result[RenderFrameSubmitResult, PresentError] {
+  let submit_plan = self.submit_by_strategy_plan(surface)
+  match submit_plan.get_present_strategy() {
+    DirtyPresentStrategy::Skip =>
+      if self.has_dirty() {
+        match self.submit_dirty_to(surface) {
+          Ok(result) =>
+            Ok(
+              render_frame_submit_result(
+                submit_plan,
+                result.get_presented_rect_count(),
+              ),
+            )
+          Err(error) => Err(error)
+        }
+      } else {
+        Ok(render_frame_submit_result(submit_plan, 0))
+      }
+    DirtyPresentStrategy::Partial =>
+      match self.submit_dirty_to(surface) {
+        Ok(result) =>
+          Ok(
+            render_frame_submit_result(
+              submit_plan,
+              result.get_presented_rect_count(),
+            ),
+          )
+        Err(error) => Err(error)
+      }
+    DirtyPresentStrategy::Full =>
+      match self.present_all_to(surface) {
+        Ok(presented) => Ok(render_frame_submit_result(submit_plan, presented))
+        Err(error) => Err(error)
+      }
   }
 }
 
