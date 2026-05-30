@@ -149,6 +149,10 @@ pub struct RendererResources {
   image_cache : @graphics.PixmapCache
 } derive(@debug.Debug)
 pub fn RendererResources::clear(Self) -> Unit
+pub fn RendererResources::contains_font_face(Self, String) -> Bool
+pub fn RendererResources::contains_glyph_mask(Self, String) -> Bool
+pub fn RendererResources::contains_image(Self, String) -> Bool
+pub fn RendererResources::contains_text_mask(Self, String) -> Bool
 pub fn RendererResources::get_font_face_cache(Self) -> @text.FontFaceCache
 pub fn RendererResources::get_glyph_mask_atlas(Self) -> @text.GlyphMaskAtlas
 pub fn RendererResources::get_glyph_mask_cache(Self) -> @text.GlyphMaskCache
@@ -165,6 +169,8 @@ pub struct RendererTextResources {
   atlas : @text.GlyphMaskAtlas
 } derive(@debug.Debug)
 pub fn RendererTextResources::clear(Self) -> Unit
+pub fn RendererTextResources::contains_glyph_mask(Self, String) -> Bool
+pub fn RendererTextResources::contains_text_mask(Self, String) -> Bool
 pub fn RendererTextResources::get_glyph_mask_atlas(Self) -> @text.GlyphMaskAtlas
 pub fn RendererTextResources::get_glyph_mask_cache(Self) -> @text.GlyphMaskCache
 pub fn RendererTextResources::get_text_mask_cache(Self) -> @text.TextMaskCache

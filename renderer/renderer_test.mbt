@@ -555,6 +555,31 @@ test "RendererTextResources configures bounded text caches" {
 }
 
 ///|
+test "RendererTextResources reports cached text and glyph residency" {
+  let resources = RendererTextResources::new(16, 16)
+  let text_pixels : FixedArray[Byte] = FixedArray::make(1, 24)
+  let glyph_pixels : FixedArray[Byte] = FixedArray::make(1, 48)
+  ignore(
+    resources
+    .get_text_mask_cache()
+    .insert("label", @text.CoverageMask::new(1, 1, text_pixels)),
+  )
+  ignore(
+    resources
+    .get_glyph_mask_cache()
+    .insert("glyph:A", @text.CoverageMask::new(1, 1, glyph_pixels)),
+  )
+  assert_true(resources.contains_text_mask("label"))
+  assert_true(!resources.contains_text_mask("missing"))
+  assert_true(resources.contains_glyph_mask("glyph:A"))
+  assert_true(!resources.contains_glyph_mask("glyph:B"))
+
+  resources.clear()
+  assert_true(!resources.contains_text_mask("label"))
+  assert_true(!resources.contains_glyph_mask("glyph:A"))
+}
+
+///|
 test "RendererResources configures bounded font text and image caches" {
   let resources = RendererResources::with_font_capacity(16, 16, 1, 2, 3, 1)
   let font_cache = resources.get_font_face_cache()
@@ -603,6 +628,43 @@ test "RendererResources configures bounded font text and image caches" {
     Some(cached) => assert_eq(cached.get_pixel(0, 0), @graphics.Color::blue())
     None => abort("expected cached blue pixmap")
   }
+}
+
+///|
+test "RendererResources reports unified cache residency" {
+  let resources = RendererResources::new(16, 16)
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  ignore(resources.get_font_face_cache().insert("ui-font", face))
+  let text_pixels : FixedArray[Byte] = FixedArray::make(1, 32)
+  let glyph_pixels : FixedArray[Byte] = FixedArray::make(1, 64)
+  ignore(
+    resources
+    .get_text_mask_cache()
+    .insert("label", @text.CoverageMask::new(1, 1, text_pixels)),
+  )
+  ignore(
+    resources
+    .get_glyph_mask_cache()
+    .insert("glyph:A", @text.CoverageMask::new(1, 1, glyph_pixels)),
+  )
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::green())
+  ignore(resources.get_image_cache().insert("icon", icon))
+
+  assert_true(resources.contains_font_face("ui-font"))
+  assert_true(!resources.contains_font_face("missing-font"))
+  assert_true(resources.contains_text_mask("label"))
+  assert_true(!resources.contains_text_mask("missing-label"))
+  assert_true(resources.contains_glyph_mask("glyph:A"))
+  assert_true(!resources.contains_glyph_mask("glyph:B"))
+  assert_true(resources.contains_image("icon"))
+  assert_true(!resources.contains_image("missing-icon"))
+
+  resources.clear()
+  assert_true(!resources.contains_font_face("ui-font"))
+  assert_true(!resources.contains_text_mask("label"))
+  assert_true(!resources.contains_glyph_mask("glyph:A"))
+  assert_true(!resources.contains_image("icon"))
 }
 
 ///|

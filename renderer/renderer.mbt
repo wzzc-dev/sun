@@ -226,6 +226,24 @@ pub fn RendererTextResources::get_glyph_mask_atlas(
 }
 
 ///|
+/// Return whether these text resources have a rendered text mask for this key.
+pub fn RendererTextResources::contains_text_mask(
+  self : RendererTextResources,
+  key : String,
+) -> Bool {
+  self.text_cache.contains(key)
+}
+
+///|
+/// Return whether these text resources have a rendered glyph mask for this key.
+pub fn RendererTextResources::contains_glyph_mask(
+  self : RendererTextResources,
+  key : String,
+) -> Bool {
+  self.glyph_cache.contains(key)
+}
+
+///|
 /// Get the reusable checked font-face cache.
 pub fn RendererResources::get_font_face_cache(
   self : RendererResources,
@@ -271,6 +289,42 @@ pub fn RendererResources::get_image_cache(
   self : RendererResources,
 ) -> @graphics.PixmapCache {
   self.image_cache
+}
+
+///|
+/// Return whether these resources have a parsed font face for this key.
+pub fn RendererResources::contains_font_face(
+  self : RendererResources,
+  key : String,
+) -> Bool {
+  self.font_cache.contains(key)
+}
+
+///|
+/// Return whether these resources have a rendered text mask for this key.
+pub fn RendererResources::contains_text_mask(
+  self : RendererResources,
+  key : String,
+) -> Bool {
+  self.text.contains_text_mask(key)
+}
+
+///|
+/// Return whether these resources have a rendered glyph mask for this key.
+pub fn RendererResources::contains_glyph_mask(
+  self : RendererResources,
+  key : String,
+) -> Bool {
+  self.text.contains_glyph_mask(key)
+}
+
+///|
+/// Return whether these resources have an image pixmap for this key.
+pub fn RendererResources::contains_image(
+  self : RendererResources,
+  key : String,
+) -> Bool {
+  self.image_cache.contains(key)
 }
 
 ///|
