@@ -8,6 +8,49 @@ pub struct PixelRect {
 } derive(Eq, Debug)
 
 ///|
+/// Strategy selected for submitting a dirty region to a Surface.
+pub(all) enum DirtyPresentPlanMode {
+  Empty
+  Rects
+  Bounds
+} derive(Eq, Debug)
+
+///|
+/// A concrete dirty-present plan after clipping to the target bounds and
+/// applying a rectangle-count limit.
+pub struct DirtyPresentPlan {
+  mode : DirtyPresentPlanMode
+  rects : Array[PixelRect]
+} derive(Debug)
+
+///|
+pub fn DirtyPresentPlan::get_mode(
+  self : DirtyPresentPlan,
+) -> DirtyPresentPlanMode {
+  self.mode
+}
+
+///|
+pub fn DirtyPresentPlan::get_rects(self : DirtyPresentPlan) -> Array[PixelRect] {
+  self.rects
+}
+
+///|
+pub fn DirtyPresentPlan::get_rect_count(self : DirtyPresentPlan) -> Int {
+  self.rects.length()
+}
+
+///|
+pub fn DirtyPresentPlan::is_empty(self : DirtyPresentPlan) -> Bool {
+  self.mode == DirtyPresentPlanMode::Empty || self.rects.length() == 0
+}
+
+///|
+pub fn DirtyPresentPlan::uses_bounds_fallback(self : DirtyPresentPlan) -> Bool {
+  self.mode == DirtyPresentPlanMode::Bounds
+}
+
+///|
 pub fn PixelRect::new(
   x~ : Int,
   y~ : Int,
@@ -197,6 +240,15 @@ pub fn DirtyRegion::present_rects(
   bounds : PixelRect,
   max_rects : Int,
 ) -> Array[PixelRect] {
+  self.present_plan(bounds, max_rects).get_rects()
+}
+
+///|
+pub fn DirtyRegion::present_plan(
+  self : DirtyRegion,
+  bounds : PixelRect,
+  max_rects : Int,
+) -> DirtyPresentPlan {
   let clipped = []
   for rect in self.rects {
     match rect.clip_to(bounds) {
@@ -204,16 +256,18 @@ pub fn DirtyRegion::present_rects(
       None => ()
     }
   }
-  guard clipped.length() > 0 else { return clipped }
+  guard clipped.length() > 0 else {
+    return { mode: DirtyPresentPlanMode::Empty, rects: [] }
+  }
   guard max_rects <= 0 || clipped.length() <= max_rects else {
     let region = DirtyRegion::new()
     for rect in clipped {
       region.add_rect(rect)
     }
     match region.bounds() {
-      Some(value) => [value]
-      None => []
+      Some(value) => { mode: DirtyPresentPlanMode::Bounds, rects: [value] }
+      None => { mode: DirtyPresentPlanMode::Empty, rects: [] }
     }
   }
-  clipped
+  { mode: DirtyPresentPlanMode::Rects, rects: clipped }
 }

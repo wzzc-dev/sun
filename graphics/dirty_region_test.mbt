@@ -80,3 +80,42 @@ test "DirtyRegion::present_rects clips and falls back to bounds over limit" {
   assert_eq(fallback.length(), 1)
   assert_true(fallback[0] == PixelRect::new(x=0, y=0, width=7, height=1))
 }
+
+///|
+test "DirtyRegion::present_plan exposes dirty present strategy" {
+  let region = DirtyRegion::new()
+  region.add_rect(PixelRect::new(x=0, y=0, width=1, height=1))
+  region.add_rect(PixelRect::new(x=3, y=0, width=1, height=1))
+  region.add_rect(PixelRect::new(x=6, y=0, width=1, height=1))
+
+  let empty = region.present_plan(
+    PixelRect::new(x=10, y=0, width=1, height=1),
+    4,
+  )
+  assert_true(empty.is_empty())
+  assert_true(empty.get_mode() == DirtyPresentPlanMode::Empty)
+  assert_eq(empty.get_rect_count(), 0)
+
+  let rect_plan = region.present_plan(
+    PixelRect::new(x=0, y=0, width=7, height=2),
+    4,
+  )
+  assert_true(!rect_plan.is_empty())
+  assert_true(rect_plan.get_mode() == DirtyPresentPlanMode::Rects)
+  assert_true(!rect_plan.uses_bounds_fallback())
+  assert_eq(rect_plan.get_rect_count(), 3)
+  assert_true(
+    rect_plan.get_rects()[1] == PixelRect::new(x=3, y=0, width=1, height=1),
+  )
+
+  let bounds_plan = region.present_plan(
+    PixelRect::new(x=0, y=0, width=7, height=2),
+    2,
+  )
+  assert_true(bounds_plan.get_mode() == DirtyPresentPlanMode::Bounds)
+  assert_true(bounds_plan.uses_bounds_fallback())
+  assert_eq(bounds_plan.get_rect_count(), 1)
+  assert_true(
+    bounds_plan.get_rects()[0] == PixelRect::new(x=0, y=0, width=7, height=1),
+  )
+}

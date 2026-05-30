@@ -113,6 +113,7 @@ Application / GUI
 - GUI/window 后端 build-only 验证策略
 - `headless_render` 示例走 `RenderFrame + LayerTree + MemorySurface`，无需窗口即可自校验离屏渲染与 dirty present 路径
 - `graphics.validate_present_rect` 标准化 Surface rect present 的 bounds、row stride 和 buffer 长度校验，`MemorySurface` 与 `softbuffer.NativeSurface` 共享同一错误语义
+- `DirtyRegion::present_plan` 将 dirty present 策略显式化为 Empty/Rects/Bounds，作为批量提交和事件循环调度的可测试基础
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - `NativeSurface` 支持可选 pre-present hook，让窗口生命周期通知进入统一 present helper，而不是散落在示例事件处理器里
 - `hello_world` 示例走 `RenderFrame + LayerTree + softbuffer frame-present helpers`，并在 resize/redraw 中复用 frame 与 layer lifecycle，作为事件循环 dirty submit 的最小真实用例
@@ -294,6 +295,7 @@ Application / GUI
 - [x] `PixelRect`/`DirtyRegion` 数据结构与 Canvas dirty tracking
 - [x] `Surface::present_pixels_rect`、`Pixmap::present_rect_to`、`Canvas::present_dirty_to` 基础 partial present 契约
 - [x] Dirty rect 相交/相邻合并与 `Canvas::present_dirty_to_with_limit` 阈值提交策略
+- [x] `DirtyRegion::present_plan` 暴露 Empty/Rects/Bounds 提交计划，便于后续事件循环和后端批量 present 共享调度语义
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation
 - [x] `Layer::resize` 保留重叠像素并标记新 bounds dirty

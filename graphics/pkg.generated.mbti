@@ -102,6 +102,22 @@ pub impl Show for Color
 
 type DashCursor derive(@debug.Debug)
 
+pub struct DirtyPresentPlan {
+  mode : DirtyPresentPlanMode
+  rects : Array[PixelRect]
+} derive(@debug.Debug)
+pub fn DirtyPresentPlan::get_mode(Self) -> DirtyPresentPlanMode
+pub fn DirtyPresentPlan::get_rect_count(Self) -> Int
+pub fn DirtyPresentPlan::get_rects(Self) -> Array[PixelRect]
+pub fn DirtyPresentPlan::is_empty(Self) -> Bool
+pub fn DirtyPresentPlan::uses_bounds_fallback(Self) -> Bool
+
+pub(all) enum DirtyPresentPlanMode {
+  Empty
+  Rects
+  Bounds
+} derive(Eq, @debug.Debug)
+
 pub struct DirtyRegion {
   mut rects : Array[PixelRect]
 } derive(@debug.Debug)
@@ -114,6 +130,7 @@ pub fn DirtyRegion::get_rect_count(Self) -> Int
 pub fn DirtyRegion::get_rects(Self) -> Array[PixelRect]
 pub fn DirtyRegion::is_empty(Self) -> Bool
 pub fn DirtyRegion::new() -> Self
+pub fn DirtyRegion::present_plan(Self, PixelRect, Int) -> DirtyPresentPlan
 pub fn DirtyRegion::present_rects(Self, PixelRect, Int) -> Array[PixelRect]
 
 pub(all) enum FillRule {
