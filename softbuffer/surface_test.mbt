@@ -269,8 +269,28 @@ test "NativeSurface submits frames by present strategy" {
     },
   )
 
+  let partial_plan = partial_surface.dirty_frame_submit_by_strategy_plan(
+    partial_frame,
+  )
+  assert_true(
+    partial_plan.get_present_strategy() ==
+    @graphics.DirtyPresentStrategy::Partial,
+  )
+  assert_true(partial_plan.get_state() == @graphics.DirtySubmitState::Present)
+  assert_true(partial_plan.has_dirty())
+  assert_true(partial_plan.needs_present())
+  assert_true(!partial_plan.was_clipped_away())
+  assert_eq(partial_plan.get_present_pixel_count(), 1)
+  assert_eq(partial_plan.get_present_byte_count(), 4)
+  assert_eq(partial_count.val, 0)
+  assert_true(partial_frame.has_dirty())
+
   match partial_surface.submit_frame_by_strategy(partial_frame) {
     Ok(result) => {
+      assert_true(
+        result.get_submit_plan().get_present_strategy() ==
+        partial_plan.get_present_strategy(),
+      )
       assert_true(
         result.get_present_strategy() == @graphics.DirtyPresentStrategy::Partial,
       )
@@ -296,8 +316,25 @@ test "NativeSurface submits frames by present strategy" {
     },
   )
 
+  let full_plan = full_surface.dirty_frame_submit_by_strategy_plan(full_frame)
+  assert_true(
+    full_plan.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
+  )
+  assert_true(full_plan.get_state() == @graphics.DirtySubmitState::Present)
+  assert_true(full_plan.has_dirty())
+  assert_true(full_plan.needs_present())
+  assert_true(!full_plan.was_clipped_away())
+  assert_eq(full_plan.get_present_pixel_count(), 2)
+  assert_eq(full_plan.get_present_byte_count(), 8)
+  assert_eq(full_count.val, 0)
+  assert_true(full_frame.has_dirty())
+
   match full_surface.submit_frame_by_strategy(full_frame) {
     Ok(result) => {
+      assert_true(
+        result.get_submit_plan().get_present_strategy() ==
+        full_plan.get_present_strategy(),
+      )
       assert_true(
         result.get_present_strategy() == @graphics.DirtyPresentStrategy::Full,
       )
@@ -321,6 +358,19 @@ test "NativeSurface submits frames by present strategy" {
       clean_count.val = clean_count.val + 1
     },
   )
+  let clean_plan = clean_surface.dirty_frame_submit_by_strategy_plan(
+    clean_frame,
+  )
+  assert_true(
+    clean_plan.get_present_strategy() == @graphics.DirtyPresentStrategy::Skip,
+  )
+  assert_true(clean_plan.get_state() == @graphics.DirtySubmitState::Clean)
+  assert_true(!clean_plan.has_dirty())
+  assert_true(!clean_plan.needs_present())
+  assert_true(!clean_plan.was_clipped_away())
+  assert_eq(clean_plan.get_present_pixel_count(), 0)
+  assert_eq(clean_plan.get_present_byte_count(), 0)
+  assert_eq(clean_count.val, 0)
   match clean_surface.submit_frame_by_strategy(clean_frame) {
     Ok(result) => {
       assert_true(
@@ -349,6 +399,21 @@ test "NativeSurface strategy submit consumes clipped-away dirty without presenti
   let surface = NativeSurface::new(42, 2, 1).with_pre_present_hook(fn() {
     count.val = count.val + 1
   })
+
+  let submit_plan = surface.dirty_frame_submit_by_strategy_plan(frame)
+  assert_true(
+    submit_plan.get_present_strategy() == @graphics.DirtyPresentStrategy::Skip,
+  )
+  assert_true(
+    submit_plan.get_state() == @graphics.DirtySubmitState::DirtyClippedAway,
+  )
+  assert_true(submit_plan.has_dirty())
+  assert_true(!submit_plan.needs_present())
+  assert_true(submit_plan.was_clipped_away())
+  assert_eq(submit_plan.get_present_pixel_count(), 0)
+  assert_eq(submit_plan.get_present_byte_count(), 0)
+  assert_eq(count.val, 0)
+  assert_true(frame.has_dirty())
 
   match surface.submit_frame_by_strategy(frame) {
     Ok(result) => {
@@ -411,6 +476,15 @@ test "render frame strategy submit helper constructs NativeSurface internally" {
   let layer = @graphics.Layer::new(1, 1).set_position(1, 0)
   layer.get_canvas().draw_pixel(0, 0, @graphics.Color::red())
   ignore(frame.get_layer_tree().add_layer(layer))
+
+  let plan = dirty_render_frame_submit_by_strategy_plan(42, frame)
+  assert_true(
+    plan.get_present_strategy() == @graphics.DirtyPresentStrategy::Partial,
+  )
+  assert_true(plan.get_state() == @graphics.DirtySubmitState::Present)
+  assert_eq(plan.get_present_pixel_count(), 1)
+  assert_eq(plan.get_present_byte_count(), 4)
+  assert_true(frame.has_dirty())
 
   match submit_render_frame_by_strategy(42, frame) {
     Ok(result) => {

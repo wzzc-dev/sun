@@ -130,6 +130,7 @@ Application / GUI
 - softbuffer 的 `NativeSurface` 暴露 state-aware dirty submit helper，返回 Clean/Present/DirtyClippedAway 与实际提交数量
 - softbuffer 的 `NativeSurface` 暴露 strategy-aware frame submit helper，把 Skip/Partial/Full 分派收敛为后端可复用入口
 - softbuffer 的 strategy-aware submit result 暴露 state、present rect 数和像素/字节成本，方便窗口后端统一做 telemetry
+- softbuffer 的 strategy-aware submit plan 支持提交前 dry-run state/cost 查询，不触发 hook、不清 dirty
 - `NativeSurface` 支持可选 pre-present hook，让窗口生命周期通知进入统一 present helper，而不是散落在示例事件处理器里
 - `headless_render` 示例通过 `RenderFrame::submit_dirty_to` 自校验 dirty submit 状态，让 CI 覆盖可执行的调度结果路径
 - `hello_world` 示例走 `RenderFrame + LayerTree + softbuffer state-aware frame-submit helpers`，并在 resize/redraw 中复用 frame 与 layer lifecycle，作为事件循环 dirty submit 的最小真实用例
@@ -326,6 +327,7 @@ Application / GUI
 - [x] softbuffer 暴露 `RenderFrame` present strategy 查询，让窗口后端无需拆 dirty-submit plan 就能调度 present
 - [x] softbuffer 暴露 strategy-aware frame submit helper，让窗口后端复用统一 Skip/Partial/Full 分派和提交结果
 - [x] softbuffer strategy submit result 暴露 state、present rect 数和像素/字节成本，给窗口后端提供统一 telemetry
+- [x] softbuffer 暴露 strategy-aware frame submit plan，让窗口后端可在 present 前 dry-run Skip/Partial/Full 调度
 - [x] `Layer`/`Pixmap` 缓存原语，支持局部重绘和复用 alpha composition
 - [x] `LayerTree` 支持 z-order 图层合成、dirty rect 汇总和基础 invalidation propagation
 - [x] `Layer::resize` 保留重叠像素并标记新 bounds dirty
@@ -357,6 +359,7 @@ Application / GUI
 - [x] softbuffer 提供 `RenderFrame -> NativeSurface` dirty/full present helper，并覆盖 frame submit 回归
 - [x] softbuffer 提供 `RenderFrame -> NativeSurface` dirty-submit plan 查询，并验证查询不会触发 pre-present hook
 - [x] softbuffer 提供 state-aware dirty submit helper，并覆盖 Clean/Present/DirtyClippedAway 的 pre-present 行为
+- [x] softbuffer 提供 strategy-aware submit plan 查询，并验证 dry-run 不触发 pre-present hook、不消费 frame dirty 状态
 - [x] `NativeSurface` 增加 pre-present hook，校验通过后、native present 前触发窗口生命周期通知
 - [ ] Windows 支持（Win32）从 demo 后端升级为稳定后端
 - [ ] Linux 支持（Wayland，X11 作为后续选项）
