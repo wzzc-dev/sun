@@ -48,6 +48,7 @@ pub(all) enum NativeFrameScheduleAction {
 ///|
 /// Dry-run scheduling decision for a NativeSurface RenderFrame submit.
 pub struct NativeFrameSchedule {
+  render_frame_schedule : @graphics.RenderFrameSchedule
   submit_plan : NativeFrameSubmitPlan
   action : NativeFrameScheduleAction
 } derive(Debug)
@@ -233,6 +234,13 @@ pub fn NativeFrameSchedule::get_submit_plan(
 }
 
 ///|
+pub fn NativeFrameSchedule::to_render_frame_schedule(
+  self : NativeFrameSchedule,
+) -> @graphics.RenderFrameSchedule {
+  self.render_frame_schedule
+}
+
+///|
 pub fn NativeFrameSchedule::get_action(
   self : NativeFrameSchedule,
 ) -> NativeFrameScheduleAction {
@@ -380,16 +388,20 @@ fn native_frame_submit_result_from_schedule(
 }
 
 ///|
-fn native_frame_schedule(
-  submit_plan : NativeFrameSubmitPlan,
+fn native_frame_schedule_from_frame(
+  render_frame_schedule : @graphics.RenderFrameSchedule,
 ) -> NativeFrameSchedule {
-  let action = match submit_plan.get_state() {
-    @graphics.DirtySubmitState::Clean => NativeFrameScheduleAction::Skip
-    @graphics.DirtySubmitState::DirtyClippedAway =>
+  let submit_plan = native_frame_submit_plan_from_frame(
+    render_frame_schedule.get_submit_plan(),
+  )
+  let action = match render_frame_schedule.get_action() {
+    @graphics.RenderFrameScheduleAction::Skip => NativeFrameScheduleAction::Skip
+    @graphics.RenderFrameScheduleAction::SubmitWithoutPresent =>
       NativeFrameScheduleAction::SubmitWithoutPresent
-    @graphics.DirtySubmitState::Present => NativeFrameScheduleAction::Present
+    @graphics.RenderFrameScheduleAction::Present =>
+      NativeFrameScheduleAction::Present
   }
-  { submit_plan, action }
+  { render_frame_schedule, submit_plan, action }
 }
 
 ///|
@@ -720,7 +732,7 @@ pub fn NativeSurface::frame_schedule(
   self : NativeSurface,
   frame : @graphics.RenderFrame,
 ) -> NativeFrameSchedule {
-  native_frame_schedule(self.dirty_frame_submit_by_strategy_plan(frame))
+  native_frame_schedule_from_frame(frame.submit_schedule(self))
 }
 
 ///|
@@ -729,42 +741,15 @@ pub fn NativeSurface::submit_frame_schedule(
   frame : @graphics.RenderFrame,
   schedule : NativeFrameSchedule,
 ) -> Result[NativeFrameSubmitResult, @graphics.PresentError] {
-  match schedule.get_action() {
-    NativeFrameScheduleAction::Skip =>
-      Ok(native_frame_submit_result_from_schedule(schedule, 0))
-    NativeFrameScheduleAction::SubmitWithoutPresent =>
-      match frame.submit_dirty_to(self) {
-        Ok(result) =>
-          Ok(
-            native_frame_submit_result_from_schedule(
-              schedule,
-              result.get_presented_rect_count(),
-            ),
-          )
-        Err(error) => Err(error)
-      }
-    NativeFrameScheduleAction::Present =>
-      match schedule.get_present_strategy() {
-        @graphics.DirtyPresentStrategy::Full =>
-          match frame.present_all_to(self) {
-            Ok(presented) =>
-              Ok(native_frame_submit_result_from_schedule(schedule, presented))
-            Err(error) => Err(error)
-          }
-        @graphics.DirtyPresentStrategy::Partial =>
-          match frame.submit_dirty_to(self) {
-            Ok(result) =>
-              Ok(
-                native_frame_submit_result_from_schedule(
-                  schedule,
-                  result.get_presented_rect_count(),
-                ),
-              )
-            Err(error) => Err(error)
-          }
-        @graphics.DirtyPresentStrategy::Skip =>
-          Ok(native_frame_submit_result_from_schedule(schedule, 0))
-      }
+  match frame.submit_scheduled_to(self, schedule.to_render_frame_schedule()) {
+    Ok(result) =>
+      Ok(
+        native_frame_submit_result_from_schedule(
+          schedule,
+          result.get_presented_rect_count(),
+        ),
+      )
+    Err(error) => Err(error)
   }
 }
 

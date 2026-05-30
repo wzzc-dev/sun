@@ -741,6 +741,56 @@ pub fn[S : Surface] RenderFrame::submit_schedule(
 }
 
 ///|
+pub fn[S : Surface] RenderFrame::submit_scheduled_to(
+  self : RenderFrame,
+  surface : S,
+  schedule : RenderFrameSchedule,
+) -> Result[RenderFrameSubmitResult, PresentError] {
+  match schedule.get_action() {
+    RenderFrameScheduleAction::Skip =>
+      Ok(render_frame_submit_result(schedule.get_submit_plan(), 0))
+    RenderFrameScheduleAction::SubmitWithoutPresent =>
+      match self.submit_dirty_to(surface) {
+        Ok(result) =>
+          Ok(
+            render_frame_submit_result(
+              schedule.get_submit_plan(),
+              result.get_presented_rect_count(),
+            ),
+          )
+        Err(error) => Err(error)
+      }
+    RenderFrameScheduleAction::Present =>
+      match schedule.get_present_strategy() {
+        DirtyPresentStrategy::Full =>
+          match self.present_all_to(surface) {
+            Ok(presented) =>
+              Ok(
+                render_frame_submit_result(
+                  schedule.get_submit_plan(),
+                  presented,
+                ),
+              )
+            Err(error) => Err(error)
+          }
+        DirtyPresentStrategy::Partial =>
+          match self.submit_dirty_to(surface) {
+            Ok(result) =>
+              Ok(
+                render_frame_submit_result(
+                  schedule.get_submit_plan(),
+                  result.get_presented_rect_count(),
+                ),
+              )
+            Err(error) => Err(error)
+          }
+        DirtyPresentStrategy::Skip =>
+          Ok(render_frame_submit_result(schedule.get_submit_plan(), 0))
+      }
+  }
+}
+
+///|
 pub fn[S : Surface] RenderFrame::present_dirty_to(
   self : RenderFrame,
   surface : S,

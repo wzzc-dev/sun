@@ -555,6 +555,113 @@ test "RenderFrame::submit_by_strategy_to skips clean frames" {
 }
 
 ///|
+test "RenderFrame::submit_scheduled_to consumes precomputed schedules" {
+  let partial_frame = RenderFrame::new(4, 1)
+  partial_frame.get_canvas().draw_pixel(1, 0, Color::red())
+  let partial_surface = MemorySurface::new(4, 1)
+  let partial_schedule = partial_frame.submit_schedule(partial_surface)
+  match partial_frame.submit_scheduled_to(partial_surface, partial_schedule) {
+    Ok(result) => {
+      assert_true(
+        result.get_present_strategy() == DirtyPresentStrategy::Partial,
+      )
+      assert_true(result.get_state() == DirtySubmitState::Present)
+      assert_true(result.did_present())
+      assert_eq(result.get_present_rect_count(), 1)
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 1)
+      assert_eq(result.get_present_byte_count(), 4)
+      assert_true(result.saves_full_present_pixels())
+    }
+    Err(_) => abort("expected scheduled partial submit result")
+  }
+  assert_eq(partial_surface.get_present_count(), 1)
+  assert_eq(partial_surface.get_pixel(1, 0), Color::red())
+  assert_true(!partial_frame.has_dirty())
+
+  let full_frame = RenderFrame::new(2, 1)
+  full_frame.get_canvas().draw_pixel(0, 0, Color::green())
+  full_frame.mark_all_dirty()
+  let full_surface = MemorySurface::new(2, 1)
+  let full_schedule = full_frame.submit_schedule(full_surface)
+  match full_frame.submit_scheduled_to(full_surface, full_schedule) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Full)
+      assert_true(result.get_state() == DirtySubmitState::Present)
+      assert_true(result.did_present())
+      assert_eq(result.get_present_rect_count(), 1)
+      assert_eq(result.get_presented_rect_count(), 1)
+      assert_eq(result.get_present_pixel_count(), 2)
+      assert_eq(result.get_present_byte_count(), 8)
+      assert_true(!result.saves_full_present_pixels())
+    }
+    Err(_) => abort("expected scheduled full submit result")
+  }
+  assert_eq(full_surface.get_present_count(), 1)
+  assert_eq(full_surface.get_pixel(0, 0), Color::green())
+  assert_true(!full_frame.has_dirty())
+
+  let clipped_frame = RenderFrame::new(4, 1)
+  clipped_frame.mark_dirty_rect(PixelRect::new(x=3, y=0, width=1, height=1))
+  let clipped_surface = MemorySurface::new(2, 1)
+  let clipped_schedule = clipped_frame.submit_schedule(clipped_surface)
+  match clipped_frame.submit_scheduled_to(clipped_surface, clipped_schedule) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Skip)
+      assert_true(result.get_state() == DirtySubmitState::DirtyClippedAway)
+      assert_true(result.has_dirty())
+      assert_true(!result.needs_present())
+      assert_true(result.was_clipped_away())
+      assert_true(!result.did_present())
+      assert_eq(result.get_present_rect_count(), 0)
+      assert_eq(result.get_presented_rect_count(), 0)
+      assert_eq(result.get_present_pixel_count(), 0)
+      assert_eq(result.get_present_byte_count(), 0)
+      assert_true(!result.saves_full_present_pixels())
+    }
+    Err(_) => abort("expected scheduled clipped submit result")
+  }
+  assert_eq(clipped_surface.get_present_count(), 0)
+  assert_true(!clipped_frame.has_dirty())
+
+  let clean_frame = RenderFrame::new(2, 1)
+  let clean_surface = MemorySurface::new(2, 1)
+  let clean_schedule = clean_frame.submit_schedule(clean_surface)
+  match clean_frame.submit_scheduled_to(clean_surface, clean_schedule) {
+    Ok(result) => {
+      assert_true(result.get_present_strategy() == DirtyPresentStrategy::Skip)
+      assert_true(result.get_state() == DirtySubmitState::Clean)
+      assert_true(!result.has_dirty())
+      assert_true(!result.needs_present())
+      assert_true(!result.did_present())
+      assert_eq(result.get_presented_rect_count(), 0)
+      assert_eq(result.get_present_pixel_count(), 0)
+      assert_eq(result.get_present_byte_count(), 0)
+    }
+    Err(_) => abort("expected scheduled clean submit result")
+  }
+  assert_eq(clean_surface.get_present_count(), 0)
+  assert_true(!clean_frame.has_dirty())
+}
+
+///|
+test "RenderFrame::submit_scheduled_to preserves dirty after surface error" {
+  let frame = RenderFrame::new(2, 1)
+  frame.mark_all_dirty()
+  let surface = RenderFrameFailingSurface::new(2, 1)
+  let schedule = frame.submit_schedule(surface)
+
+  match frame.submit_scheduled_to(surface, schedule) {
+    Err(PresentError::InvalidDimensions(0, 0)) => ()
+    _ => abort("expected scheduled submit surface failure")
+  }
+  assert_true(frame.has_dirty())
+  assert_true(
+    frame.dirty_bounds() == Some(PixelRect::new(x=0, y=0, width=2, height=1)),
+  )
+}
+
+///|
 test "RenderFrame dirty helpers cover canvas and layer tree dirtiness" {
   let frame = RenderFrame::new(4, 2)
   assert_true(!frame.has_dirty())
