@@ -239,6 +239,17 @@ pub fn Canvas::fill_ellipse(
 }
 
 ///|
+/// Draw a filled polygon.
+pub fn Canvas::fill_polygon(
+  self : Canvas,
+  points : Array[Point],
+  paint : Paint,
+) -> Unit {
+  guard points.length() >= 3 else { return }
+  self.fill_path(Path::new().add_polygon(points), paint)
+}
+
+///|
 /// Draw a stroked rectangle.
 pub fn Canvas::stroke_rect(
   self : Canvas,
@@ -263,6 +274,28 @@ pub fn Canvas::stroke_line(
   paint : Paint,
 ) -> Unit {
   self.stroke_path(Path::new().move_to(x0, y0).line_to(x1, y1), paint)
+}
+
+///|
+/// Draw a stroked open polyline.
+pub fn Canvas::stroke_polyline(
+  self : Canvas,
+  points : Array[Point],
+  paint : Paint,
+) -> Unit {
+  guard points.length() >= 2 else { return }
+  self.stroke_path(Path::new().add_polyline(points), paint)
+}
+
+///|
+/// Draw a stroked closed polygon.
+pub fn Canvas::stroke_polygon(
+  self : Canvas,
+  points : Array[Point],
+  paint : Paint,
+) -> Unit {
+  guard points.length() >= 3 else { return }
+  self.stroke_path(Path::new().add_polygon(points), paint)
 }
 
 ///|

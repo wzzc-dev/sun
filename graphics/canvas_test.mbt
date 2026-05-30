@@ -914,6 +914,40 @@ test "Canvas::fill_ellipse matches ellipse path fill" {
 }
 
 ///|
+test "Canvas::fill_polygon matches polygon path fill" {
+  let points = [
+    Point::new(x=1.0, y=1.0),
+    Point::new(x=5.0, y=1.0),
+    Point::new(x=3.0, y=5.0),
+  ]
+
+  let helper_canvas = Canvas::new(8, 7)
+  helper_canvas.clear(Color::white())
+  helper_canvas.clear_dirty_region()
+  helper_canvas.set_clip_rect(Rect::new(x=2.0, y=0.0, width=5.0, height=7.0))
+  helper_canvas.translate(tx=1.0, ty=0.0)
+  helper_canvas.fill_polygon(points, Paint::new().set_color(Color::black()))
+
+  let path_canvas = Canvas::new(8, 7)
+  path_canvas.clear(Color::white())
+  path_canvas.clear_dirty_region()
+  path_canvas.set_clip_rect(Rect::new(x=2.0, y=0.0, width=5.0, height=7.0))
+  path_canvas.translate(tx=1.0, ty=0.0)
+  path_canvas.fill_path(
+    Path::new().add_polygon(points),
+    Paint::new().set_color(Color::black()),
+  )
+
+  assert_same_pixmap(helper_canvas.get_pixmap(), path_canvas.get_pixmap())
+  assert_true(
+    helper_canvas.get_dirty_region().bounds() ==
+    path_canvas.get_dirty_region().bounds(),
+  )
+  assert_not_white(helper_canvas.get_pixmap().get_pixel(4, 2))
+  assert_eq(helper_canvas.get_pixmap().get_pixel(1, 2), Color::white())
+}
+
+///|
 test "Canvas::fill_path composites paint opacity" {
   let canvas = Canvas::new(2, 2)
   canvas.clear(Color::white())
@@ -1121,6 +1155,37 @@ test "Canvas::stroke_line applies transform and clip" {
 }
 
 ///|
+test "Canvas::stroke_polyline matches polyline path stroke" {
+  let points = [
+    Point::new(x=0.0, y=1.0),
+    Point::new(x=3.0, y=1.0),
+    Point::new(x=3.0, y=4.0),
+  ]
+  let paint = Paint::new()
+    .set_color(Color::black())
+    .set_style(PaintStyle::Stroke)
+    .set_stroke_width(1.0)
+
+  let helper_canvas = Canvas::new(6, 6)
+  helper_canvas.clear(Color::white())
+  helper_canvas.clear_dirty_region()
+  helper_canvas.stroke_polyline(points, paint)
+
+  let path_canvas = Canvas::new(6, 6)
+  path_canvas.clear(Color::white())
+  path_canvas.clear_dirty_region()
+  path_canvas.stroke_path(Path::new().add_polyline(points), paint)
+
+  assert_same_pixmap(helper_canvas.get_pixmap(), path_canvas.get_pixmap())
+  assert_true(
+    helper_canvas.get_dirty_region().bounds() ==
+    path_canvas.get_dirty_region().bounds(),
+  )
+  assert_not_white(helper_canvas.get_pixmap().get_pixel(2, 1))
+  assert_eq(helper_canvas.get_pixmap().get_pixel(1, 4), Color::white())
+}
+
+///|
 test "Canvas::stroke_circle matches circle path stroke" {
   let paint = Paint::new()
     .set_color(Color::black())
@@ -1170,6 +1235,37 @@ test "Canvas::stroke_ellipse matches ellipse path stroke" {
   )
   assert_not_white(helper_canvas.get_pixmap().get_pixel(4, 1))
   assert_eq(helper_canvas.get_pixmap().get_pixel(4, 3), Color::white())
+}
+
+///|
+test "Canvas::stroke_polygon matches polygon path stroke" {
+  let points = [
+    Point::new(x=1.0, y=1.0),
+    Point::new(x=7.0, y=1.0),
+    Point::new(x=4.0, y=7.0),
+  ]
+  let paint = Paint::new()
+    .set_color(Color::black())
+    .set_style(PaintStyle::Stroke)
+    .set_stroke_width(1.0)
+
+  let helper_canvas = Canvas::new(9, 9)
+  helper_canvas.clear(Color::white())
+  helper_canvas.clear_dirty_region()
+  helper_canvas.stroke_polygon(points, paint)
+
+  let path_canvas = Canvas::new(9, 9)
+  path_canvas.clear(Color::white())
+  path_canvas.clear_dirty_region()
+  path_canvas.stroke_path(Path::new().add_polygon(points), paint)
+
+  assert_same_pixmap(helper_canvas.get_pixmap(), path_canvas.get_pixmap())
+  assert_true(
+    helper_canvas.get_dirty_region().bounds() ==
+    path_canvas.get_dirty_region().bounds(),
+  )
+  assert_not_white(helper_canvas.get_pixmap().get_pixel(4, 1))
+  assert_eq(helper_canvas.get_pixmap().get_pixel(8, 8), Color::white())
 }
 
 ///|

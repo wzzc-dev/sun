@@ -14,6 +14,49 @@ test "Path::add_rect creates rectangle path" {
 }
 
 ///|
+test "Path::add_polyline creates open line path" {
+  let points = [
+    Point::new(x=1.0, y=1.0),
+    Point::new(x=3.0, y=1.0),
+    Point::new(x=3.0, y=4.0),
+  ]
+  let path = Path::new().add_polyline(points)
+  let segments = path.get_segments()
+  inspect(segments.length(), content="3")
+  assert_move_to(segments[0], 1.0, 1.0)
+  assert_line_to(segments[1], 3.0, 1.0)
+  assert_line_to(segments[2], 3.0, 4.0)
+}
+
+///|
+test "Path::add_polygon creates closed polygon path" {
+  let points = [
+    Point::new(x=1.0, y=1.0),
+    Point::new(x=4.0, y=1.0),
+    Point::new(x=2.0, y=4.0),
+  ]
+  let path = Path::new().add_polygon(points)
+  let segments = path.get_segments()
+  inspect(segments.length(), content="4")
+  assert_move_to(segments[0], 1.0, 1.0)
+  assert_line_to(segments[1], 4.0, 1.0)
+  assert_line_to(segments[2], 2.0, 4.0)
+  assert_close(segments[3])
+}
+
+///|
+test "Path::add_polyline and add_polygon ignore invalid point counts" {
+  let empty_polyline = Path::new().add_polyline([])
+  assert_true(empty_polyline.is_empty())
+
+  let line = Path::new().add_polygon([
+    Point::new(x=0.0, y=0.0),
+    Point::new(x=1.0, y=1.0),
+  ])
+  assert_true(line.is_empty())
+}
+
+///|
 test "Path::add_rounded_rect creates cubic corner path" {
   let path = Path::new()
   ignore(path.add_rounded_rect(0.0, 0.0, 10.0, 6.0, 2.0))

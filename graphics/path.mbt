@@ -102,6 +102,25 @@ pub fn Path::add_rect(
 }
 
 ///|
+/// Add an open polyline through the given points
+pub fn Path::add_polyline(self : Path, points : Array[Point]) -> Path {
+  guard points.length() > 0 else { return self }
+  ignore(self.move_to(points[0].x, points[0].y))
+  for i in 1..<points.length() {
+    ignore(self.line_to(points[i].x, points[i].y))
+  }
+  self
+}
+
+///|
+/// Add a closed polygon through the given points
+pub fn Path::add_polygon(self : Path, points : Array[Point]) -> Path {
+  guard points.length() >= 3 else { return self }
+  ignore(self.add_polyline(points))
+  self.close()
+}
+
+///|
 /// Add a rounded rectangle with a uniform corner radius to the path
 pub fn Path::add_rounded_rect(
   self : Path,
