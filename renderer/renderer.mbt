@@ -5,6 +5,14 @@ pub struct Renderer {
 } derive(Debug)
 
 ///|
+/// Caller-owned text rendering resources shared across renderer text draws.
+pub struct RendererTextResources {
+  text_cache : @text.TextMaskCache
+  glyph_cache : @text.GlyphMaskCache
+  atlas : @text.GlyphMaskAtlas
+} derive(Debug)
+
+///|
 /// Result of drawing text through glyph-mask cache and atlas resources.
 pub struct TextAtlasDrawResult {
   glyph_count : Int
@@ -37,6 +45,66 @@ priv struct GlyphAtlasMaskPlacement {
 /// Create a renderer around an existing canvas.
 pub fn Renderer::new(canvas : @graphics.Canvas) -> Renderer {
   { canvas, }
+}
+
+///|
+/// Create text resources with unbounded text/glyph caches and a glyph atlas.
+pub fn RendererTextResources::new(
+  atlas_width : Int,
+  atlas_height : Int,
+) -> RendererTextResources {
+  {
+    text_cache: @text.TextMaskCache::new(),
+    glyph_cache: @text.GlyphMaskCache::new(),
+    atlas: @text.GlyphMaskAtlas::new(atlas_width, atlas_height),
+  }
+}
+
+///|
+/// Create text resources with bounded text/glyph caches and a glyph atlas.
+pub fn RendererTextResources::with_capacities(
+  atlas_width : Int,
+  atlas_height : Int,
+  text_mask_capacity : Int,
+  glyph_mask_capacity : Int,
+) -> RendererTextResources {
+  {
+    text_cache: @text.TextMaskCache::with_capacity(text_mask_capacity),
+    glyph_cache: @text.GlyphMaskCache::with_capacity(glyph_mask_capacity),
+    atlas: @text.GlyphMaskAtlas::new(atlas_width, atlas_height),
+  }
+}
+
+///|
+/// Get the reusable rendered text-mask cache.
+pub fn RendererTextResources::get_text_mask_cache(
+  self : RendererTextResources,
+) -> @text.TextMaskCache {
+  self.text_cache
+}
+
+///|
+/// Get the reusable glyph mask cache.
+pub fn RendererTextResources::get_glyph_mask_cache(
+  self : RendererTextResources,
+) -> @text.GlyphMaskCache {
+  self.glyph_cache
+}
+
+///|
+/// Get the reusable glyph mask atlas.
+pub fn RendererTextResources::get_glyph_mask_atlas(
+  self : RendererTextResources,
+) -> @text.GlyphMaskAtlas {
+  self.atlas
+}
+
+///|
+/// Drop all cached text masks, glyph masks, and atlas entries.
+pub fn RendererTextResources::clear(self : RendererTextResources) -> Unit {
+  self.text_cache.clear()
+  self.glyph_cache.clear()
+  self.atlas.clear()
 }
 
 ///|
@@ -197,6 +265,31 @@ pub fn Renderer::draw_text_face_cached(
 }
 
 ///|
+/// Draw text through renderer-owned text resources and the rendered mask cache.
+pub fn Renderer::draw_text_face_cached_with_resources(
+  self : Renderer,
+  face : @text.FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererTextResources,
+  text_key : String,
+  paint : @graphics.Paint,
+) -> TextMaskDrawResult {
+  self.draw_text_face_cached(
+    face,
+    text,
+    x,
+    y,
+    config,
+    resources.get_text_mask_cache(),
+    text_key,
+    paint,
+  )
+}
+
+///|
 /// Draw text through caller-owned glyph mask cache and glyph atlas resources.
 pub fn Renderer::draw_text_face_atlas(
   self : Renderer,
@@ -219,6 +312,32 @@ pub fn Renderer::draw_text_face_atlas(
     config,
     glyph_cache,
     atlas,
+    glyph_key_prefix,
+    paint,
+  )
+}
+
+///|
+/// Draw text through renderer-owned text resources and the glyph atlas path.
+pub fn Renderer::draw_text_face_atlas_with_resources(
+  self : Renderer,
+  face : @text.FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererTextResources,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> TextAtlasDrawResult {
+  self.draw_text_face_atlas(
+    face,
+    text,
+    x,
+    y,
+    config,
+    resources.get_glyph_mask_cache(),
+    resources.get_glyph_mask_atlas(),
     glyph_key_prefix,
     paint,
   )

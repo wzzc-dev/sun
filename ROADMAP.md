@@ -169,6 +169,7 @@ Application / GUI
 - Renderer 提供 `draw_text_face_atlas`，让调用方传入 glyph mask cache 与 glyph atlas，按 `TextLayout` 逐 glyph 缓存、打包、合成，并返回 drawn/skipped/cache-hit/rasterized/atlas-hit/atlas-inserted/atlas-clear telemetry
 - `TextMaskCache` 支持按 key 复用 rendered `CoverageMask`，并通过像素拷贝隔离缓存内容，同时提供 hit/render miss telemetry，作为 GUI label/text run 缓存基础
 - Renderer 提供 `draw_text_face_cached`，让调用方传入 `TextMaskCache` 直接绘制 repeated label/text run，并返回 text-mask cache hit/render telemetry
+- Renderer 提供 `RendererTextResources`，让 GUI/resource 代码以单个对象复用 bounded text mask cache、glyph mask cache 与 glyph atlas 状态
 - Canvas 路径填充（直线/二次/三次曲线展平、4x4 coverage 抗锯齿、transform、NonZero/EvenOdd 填充规则）
 - Canvas 路径描边（Butt/Round/Square cap，Miter/Round/Bevel join，dash/dotted）
 - 基础 clip rect 与 intersect clip，覆盖 rect/path/stroke/mask/pixel/pixmap 绘制入口
@@ -253,6 +254,7 @@ Application / GUI
 - [x] 将 `TextMaskCache` 接入 Renderer，提供 repeated label/text run 的 cached draw path 与 hit/render telemetry
 - [x] 为 `GlyphMaskCache`/`TextMaskCache` 增加 opt-in LRU entry limit，覆盖最近访问刷新、最旧条目淘汰和非法容量 clamp 回归
 - [x] 增加最小 `GlyphMaskAtlas`，让 renderer/resource 代码可先获得确定性的 glyph mask 行打包 placement、占用 telemetry、hit/insert telemetry 与满载清空重插信号
+- [x] 增加 `RendererTextResources`，让 renderer 调用方复用 bounded text/glyph mask cache 与 glyph atlas，并覆盖 cached-mask/atlas draw path 与 clear lifecycle
 
 #### 2.1 OpenType 支持
 - [ ] 解析 CFF/CFF2 表（PostScript 轮廓）
@@ -433,7 +435,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache`，后续补 renderer 集成策略
+- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache`，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache`，renderer 已有 `RendererTextResources` 统一复用 text/glyph cache 与 atlas 状态，后续补 image/font loader 集成策略
 
 ---
 

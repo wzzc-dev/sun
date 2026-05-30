@@ -31,9 +31,23 @@ pub fn Renderer::draw_glyph_atlas_entry(Self, @text.CoverageMask, @text.GlyphAtl
 pub fn Renderer::draw_text(Self, @text.Font, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
 pub fn Renderer::draw_text_face_atlas(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @text.GlyphMaskCache, @text.GlyphMaskAtlas, String, @graphics.Paint) -> TextAtlasDrawResult
+pub fn Renderer::draw_text_face_atlas_with_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextAtlasDrawResult
 pub fn Renderer::draw_text_face_cached(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @text.TextMaskCache, String, @graphics.Paint) -> TextMaskDrawResult
+pub fn Renderer::draw_text_face_cached_with_resources(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextMaskDrawResult
 pub fn Renderer::get_canvas(Self) -> @graphics.Canvas
 pub fn Renderer::new(@graphics.Canvas) -> Self
+
+pub struct RendererTextResources {
+  text_cache : @text.TextMaskCache
+  glyph_cache : @text.GlyphMaskCache
+  atlas : @text.GlyphMaskAtlas
+} derive(@debug.Debug)
+pub fn RendererTextResources::clear(Self) -> Unit
+pub fn RendererTextResources::get_glyph_mask_atlas(Self) -> @text.GlyphMaskAtlas
+pub fn RendererTextResources::get_glyph_mask_cache(Self) -> @text.GlyphMaskCache
+pub fn RendererTextResources::get_text_mask_cache(Self) -> @text.TextMaskCache
+pub fn RendererTextResources::new(Int, Int) -> Self
+pub fn RendererTextResources::with_capacities(Int, Int, Int, Int) -> Self
 
 pub struct TextAtlasDrawResult {
   glyph_count : Int
