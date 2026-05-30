@@ -315,6 +315,109 @@ test "RenderFrame::submit_by_strategy_plan reports partial present cost" {
 }
 
 ///|
+test "RenderFrame::submit_schedule exposes dry-run event-loop actions" {
+  let partial_frame = RenderFrame::new(4, 1)
+  partial_frame.mark_dirty_rect(PixelRect::new(x=1, y=0, width=1, height=1))
+  let partial_surface = MemorySurface::new(4, 1)
+  let partial_schedule = partial_frame.submit_schedule(partial_surface)
+  assert_true(
+    partial_schedule.get_action() == RenderFrameScheduleAction::Present,
+  )
+  assert_true(partial_schedule.should_submit())
+  assert_true(partial_schedule.needs_present())
+  assert_true(partial_schedule.has_dirty())
+  assert_true(!partial_schedule.was_clipped_away())
+  assert_true(!partial_schedule.uses_bounds_fallback())
+  assert_true(
+    partial_schedule.get_present_strategy() == DirtyPresentStrategy::Partial,
+  )
+  assert_true(partial_schedule.get_state() == DirtySubmitState::Present)
+  assert_true(
+    partial_schedule.get_dirty_bounds() ==
+    Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
+  assert_true(
+    partial_schedule.get_submit_plan().get_present_strategy() ==
+    DirtyPresentStrategy::Partial,
+  )
+  assert_eq(partial_schedule.get_present_rect_count(), 1)
+  assert_eq(partial_schedule.get_present_pixel_count(), 1)
+  assert_eq(partial_schedule.get_present_byte_count(), 4)
+  assert_true(partial_schedule.saves_full_present_pixels())
+  assert_eq(partial_surface.get_present_count(), 0)
+  assert_true(partial_frame.has_dirty())
+
+  let full_frame = RenderFrame::new(2, 1)
+  full_frame.mark_all_dirty()
+  let full_surface = MemorySurface::new(2, 1)
+  let full_schedule = full_frame.submit_schedule(full_surface)
+  assert_true(full_schedule.get_action() == RenderFrameScheduleAction::Present)
+  assert_true(full_schedule.should_submit())
+  assert_true(full_schedule.needs_present())
+  assert_true(full_schedule.has_dirty())
+  assert_true(!full_schedule.was_clipped_away())
+  assert_true(
+    full_schedule.get_present_strategy() == DirtyPresentStrategy::Full,
+  )
+  assert_true(full_schedule.get_state() == DirtySubmitState::Present)
+  assert_eq(full_schedule.get_present_rect_count(), 1)
+  assert_eq(full_schedule.get_present_pixel_count(), 2)
+  assert_eq(full_schedule.get_present_byte_count(), 8)
+  assert_true(!full_schedule.saves_full_present_pixels())
+  assert_eq(full_surface.get_present_count(), 0)
+  assert_true(full_frame.has_dirty())
+
+  let clipped_frame = RenderFrame::new(4, 1)
+  clipped_frame.mark_dirty_rect(PixelRect::new(x=3, y=0, width=1, height=1))
+  let clipped_surface = MemorySurface::new(2, 1)
+  let clipped_schedule = clipped_frame.submit_schedule(clipped_surface)
+  assert_true(
+    clipped_schedule.get_action() ==
+    RenderFrameScheduleAction::SubmitWithoutPresent,
+  )
+  assert_true(clipped_schedule.should_submit())
+  assert_true(!clipped_schedule.needs_present())
+  assert_true(clipped_schedule.has_dirty())
+  assert_true(clipped_schedule.was_clipped_away())
+  assert_true(
+    clipped_schedule.get_present_strategy() == DirtyPresentStrategy::Skip,
+  )
+  assert_true(
+    clipped_schedule.get_state() == DirtySubmitState::DirtyClippedAway,
+  )
+  assert_true(
+    clipped_schedule.get_dirty_bounds() ==
+    Some(PixelRect::new(x=3, y=0, width=1, height=1)),
+  )
+  assert_eq(clipped_schedule.get_present_rect_count(), 0)
+  assert_eq(clipped_schedule.get_present_pixel_count(), 0)
+  assert_eq(clipped_schedule.get_present_byte_count(), 0)
+  assert_true(!clipped_schedule.saves_full_present_pixels())
+  assert_eq(clipped_surface.get_present_count(), 0)
+  assert_true(clipped_frame.has_dirty())
+
+  let clean_frame = RenderFrame::new(2, 1)
+  let clean_surface = MemorySurface::new(2, 1)
+  let clean_schedule = clean_frame.submit_schedule(clean_surface)
+  assert_true(clean_schedule.get_action() == RenderFrameScheduleAction::Skip)
+  assert_true(!clean_schedule.should_submit())
+  assert_true(!clean_schedule.needs_present())
+  assert_true(!clean_schedule.has_dirty())
+  assert_true(!clean_schedule.was_clipped_away())
+  assert_true(
+    clean_schedule.get_present_strategy() == DirtyPresentStrategy::Skip,
+  )
+  assert_true(clean_schedule.get_state() == DirtySubmitState::Clean)
+  assert_true(clean_schedule.get_dirty_bounds() == None)
+  assert_eq(clean_schedule.get_present_rect_count(), 0)
+  assert_eq(clean_schedule.get_present_pixel_count(), 0)
+  assert_eq(clean_schedule.get_present_byte_count(), 0)
+  assert_true(!clean_schedule.saves_full_present_pixels())
+  assert_eq(clean_surface.get_present_count(), 0)
+  assert_true(!clean_frame.has_dirty())
+}
+
+///|
 test "RenderFrame::submit_by_strategy_to submits partial dirty rects" {
   let frame = RenderFrame::new(4, 1)
   frame.get_canvas().draw_pixel(1, 0, Color::red())

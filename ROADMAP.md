@@ -367,6 +367,7 @@ Application / GUI
 - [x] `DirtyPresentStrategy` 暴露 Skip/Partial/Full present 决策，给事件循环一个可测试的统一策略枚举
 - [x] `RenderFrame` 暴露通用 strategy-aware submit plan/result/helper，把 Skip/Partial/Full 调度从 softbuffer 下沉到 graphics 核心层
 - [x] `RenderFrame` strategy-aware submit plan/result 暴露计划 present rect 数，补齐 dry-run 与实际提交结果的批量调度 telemetry
+- [x] `RenderFrame` 暴露 `RenderFrameSchedule` dry-run 调度快照，将 clean skip、clipped-away submit 和 partial/full present 统一给核心事件循环
 - [x] softbuffer 暴露 `RenderFrame` present strategy 查询，让窗口后端无需拆 dirty-submit plan 就能调度 present
 - [x] softbuffer 暴露 `RenderFrame` dirty present batch dry-run，让窗口后端可检查 packed payload 且不触发 hook、不清 dirty
 - [x] softbuffer 暴露 strategy-aware frame submit helper，让窗口后端复用统一 Skip/Partial/Full 分派和提交结果
@@ -415,6 +416,7 @@ Application / GUI
 - [x] softbuffer 提供 state-aware dirty submit helper，并覆盖 Clean/Present/DirtyClippedAway 的 pre-present 行为
 - [x] softbuffer 提供 strategy-aware submit plan 查询，并验证 dry-run 不触发 pre-present hook、不消费 frame dirty 状态
 - [x] softbuffer 提供 event-loop-facing frame schedule 查询，覆盖 skip/submit-without-present/present 三种动作且不触发 native present
+- [x] graphics core 提供 event-loop-facing `RenderFrame` schedule 查询，覆盖 skip/submit-without-present/present 且不提交到 surface
 - [x] `NativeSurface` 增加 pre-present hook，校验通过后、native present 前触发窗口生命周期通知
 - [ ] Windows 支持（Win32）从 demo 后端升级为稳定后端
 - [ ] Linux 支持（Wayland，X11 作为后续选项）

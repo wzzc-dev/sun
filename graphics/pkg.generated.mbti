@@ -558,6 +558,7 @@ pub fn RenderFrame::set_dirty_rect_limit(Self, Int) -> Self
 pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(Self, S) -> RenderFrameSubmitPlan
 pub fn[S : Surface] RenderFrame::submit_by_strategy_to(Self, S) -> Result[RenderFrameSubmitResult, PresentError]
 pub fn[S : Surface] RenderFrame::submit_dirty_to(Self, S) -> Result[DirtySubmitResult, PresentError]
+pub fn[S : Surface] RenderFrame::submit_schedule(Self, S) -> RenderFrameSchedule
 
 pub struct RenderFrameLayerClearRequest {
   layer_index : Int
@@ -574,6 +575,31 @@ pub struct RenderFrameLayerReplacementRequest {
 pub fn RenderFrameLayerReplacementRequest::get_layer(Self) -> Layer
 pub fn RenderFrameLayerReplacementRequest::get_layer_index(Self) -> Int
 pub fn RenderFrameLayerReplacementRequest::new(Int, Layer) -> Self
+
+pub struct RenderFrameSchedule {
+  submit_plan : RenderFrameSubmitPlan
+  action : RenderFrameScheduleAction
+} derive(@debug.Debug)
+pub fn RenderFrameSchedule::get_action(Self) -> RenderFrameScheduleAction
+pub fn RenderFrameSchedule::get_dirty_bounds(Self) -> PixelRect?
+pub fn RenderFrameSchedule::get_present_byte_count(Self) -> Int
+pub fn RenderFrameSchedule::get_present_pixel_count(Self) -> Int
+pub fn RenderFrameSchedule::get_present_rect_count(Self) -> Int
+pub fn RenderFrameSchedule::get_present_strategy(Self) -> DirtyPresentStrategy
+pub fn RenderFrameSchedule::get_state(Self) -> DirtySubmitState
+pub fn RenderFrameSchedule::get_submit_plan(Self) -> RenderFrameSubmitPlan
+pub fn RenderFrameSchedule::has_dirty(Self) -> Bool
+pub fn RenderFrameSchedule::needs_present(Self) -> Bool
+pub fn RenderFrameSchedule::saves_full_present_pixels(Self) -> Bool
+pub fn RenderFrameSchedule::should_submit(Self) -> Bool
+pub fn RenderFrameSchedule::uses_bounds_fallback(Self) -> Bool
+pub fn RenderFrameSchedule::was_clipped_away(Self) -> Bool
+
+pub(all) enum RenderFrameScheduleAction {
+  Skip
+  SubmitWithoutPresent
+  Present
+} derive(Eq, @debug.Debug)
 
 pub struct RenderFrameSubmitPlan {
   dirty_submit_plan : DirtySubmitPlan

@@ -25,6 +25,21 @@ pub struct RenderFrameSubmitResult {
 } derive(Debug)
 
 ///|
+/// Event-loop-facing action selected from a dry-run RenderFrame submit plan.
+pub(all) enum RenderFrameScheduleAction {
+  Skip
+  SubmitWithoutPresent
+  Present
+} derive(Eq, Debug)
+
+///|
+/// Dry-run scheduling decision for submitting a RenderFrame to a Surface.
+pub struct RenderFrameSchedule {
+  submit_plan : RenderFrameSubmitPlan
+  action : RenderFrameScheduleAction
+} derive(Debug)
+
+///|
 /// Request to resize one frame-owned layer cache and clear it to a color.
 pub struct RenderFrameLayerClearRequest {
   layer_index : Int
@@ -269,6 +284,98 @@ pub fn RenderFrameSubmitResult::saves_full_present_pixels(
 }
 
 ///|
+pub fn RenderFrameSchedule::get_submit_plan(
+  self : RenderFrameSchedule,
+) -> RenderFrameSubmitPlan {
+  self.submit_plan
+}
+
+///|
+pub fn RenderFrameSchedule::get_action(
+  self : RenderFrameSchedule,
+) -> RenderFrameScheduleAction {
+  self.action
+}
+
+///|
+pub fn RenderFrameSchedule::get_present_strategy(
+  self : RenderFrameSchedule,
+) -> DirtyPresentStrategy {
+  self.submit_plan.get_present_strategy()
+}
+
+///|
+pub fn RenderFrameSchedule::get_state(
+  self : RenderFrameSchedule,
+) -> DirtySubmitState {
+  self.submit_plan.get_state()
+}
+
+///|
+pub fn RenderFrameSchedule::get_dirty_bounds(
+  self : RenderFrameSchedule,
+) -> PixelRect? {
+  self.submit_plan.get_dirty_bounds()
+}
+
+///|
+pub fn RenderFrameSchedule::has_dirty(self : RenderFrameSchedule) -> Bool {
+  self.submit_plan.has_dirty()
+}
+
+///|
+pub fn RenderFrameSchedule::needs_present(self : RenderFrameSchedule) -> Bool {
+  self.action == RenderFrameScheduleAction::Present
+}
+
+///|
+pub fn RenderFrameSchedule::should_submit(self : RenderFrameSchedule) -> Bool {
+  self.action != RenderFrameScheduleAction::Skip
+}
+
+///|
+pub fn RenderFrameSchedule::was_clipped_away(
+  self : RenderFrameSchedule,
+) -> Bool {
+  self.submit_plan.was_clipped_away()
+}
+
+///|
+pub fn RenderFrameSchedule::uses_bounds_fallback(
+  self : RenderFrameSchedule,
+) -> Bool {
+  self.submit_plan.uses_bounds_fallback()
+}
+
+///|
+pub fn RenderFrameSchedule::get_present_rect_count(
+  self : RenderFrameSchedule,
+) -> Int {
+  self.submit_plan.get_present_rect_count()
+}
+
+///|
+pub fn RenderFrameSchedule::get_present_pixel_count(
+  self : RenderFrameSchedule,
+) -> Int {
+  self.submit_plan.get_present_pixel_count()
+}
+
+///|
+pub fn RenderFrameSchedule::get_present_byte_count(
+  self : RenderFrameSchedule,
+) -> Int {
+  self.submit_plan.get_present_byte_count()
+}
+
+///|
+pub fn RenderFrameSchedule::saves_full_present_pixels(
+  self : RenderFrameSchedule,
+) -> Bool {
+  self.submit_plan.saves_full_present_pixels()
+}
+
+///|
 fn render_frame_submit_plan(
   dirty_submit_plan : DirtySubmitPlan,
   strategy : DirtyPresentStrategy,
@@ -291,6 +398,19 @@ fn render_frame_submit_result(
   presented_rect_count : Int,
 ) -> RenderFrameSubmitResult {
   { submit_plan, presented_rect_count }
+}
+
+///|
+fn render_frame_schedule(
+  submit_plan : RenderFrameSubmitPlan,
+) -> RenderFrameSchedule {
+  let action = match submit_plan.get_state() {
+    DirtySubmitState::Clean => RenderFrameScheduleAction::Skip
+    DirtySubmitState::DirtyClippedAway =>
+      RenderFrameScheduleAction::SubmitWithoutPresent
+    DirtySubmitState::Present => RenderFrameScheduleAction::Present
+  }
+  { submit_plan, action }
 }
 
 ///|
@@ -610,6 +730,14 @@ pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(
         dirty_plan.get_present_byte_count(),
       )
   }
+}
+
+///|
+pub fn[S : Surface] RenderFrame::submit_schedule(
+  self : RenderFrame,
+  surface : S,
+) -> RenderFrameSchedule {
+  render_frame_schedule(self.submit_by_strategy_plan(surface))
 }
 
 ///|
