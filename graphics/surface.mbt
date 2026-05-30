@@ -17,6 +17,22 @@ pub(all) struct PresentRectInfo {
 } derive(Eq, Debug)
 
 ///|
+/// Packed source pixels for one rectangle present operation.
+pub struct PresentRectPayload {
+  rect : PixelRect
+  row_bytes : Int
+  pixels : FixedArray[Byte]
+} derive(Debug)
+
+///|
+/// A materialized batch of packed rectangle present payloads.
+pub struct PresentBatch {
+  payloads : Array[PresentRectPayload]
+  present_pixel_count : Int
+  present_byte_count : Int
+} derive(Debug)
+
+///|
 pub fn PresentRectInfo::required_row_bytes(self : PresentRectInfo) -> Int {
   self.required_row_bytes
 }
@@ -24,6 +40,94 @@ pub fn PresentRectInfo::required_row_bytes(self : PresentRectInfo) -> Int {
 ///|
 pub fn PresentRectInfo::required_len(self : PresentRectInfo) -> Int {
   self.required_len
+}
+
+///|
+pub fn PresentRectPayload::get_rect(self : PresentRectPayload) -> PixelRect {
+  self.rect
+}
+
+///|
+pub fn PresentRectPayload::get_row_bytes(self : PresentRectPayload) -> Int {
+  self.row_bytes
+}
+
+///|
+pub fn PresentRectPayload::get_pixels(
+  self : PresentRectPayload,
+) -> FixedArray[Byte] {
+  self.pixels
+}
+
+///|
+pub fn PresentRectPayload::get_present_pixel_count(
+  self : PresentRectPayload,
+) -> Int {
+  self.rect.area()
+}
+
+///|
+pub fn PresentRectPayload::get_present_byte_count(
+  self : PresentRectPayload,
+) -> Int {
+  self.row_bytes * self.rect.height
+}
+
+///|
+pub fn[S : Surface] PresentRectPayload::submit_to(
+  self : PresentRectPayload,
+  surface : S,
+) -> Result[Unit, PresentError] {
+  surface.present_pixels_rect(
+    self.rect.x,
+    self.rect.y,
+    self.rect.width,
+    self.rect.height,
+    self.row_bytes,
+    self.pixels,
+  )
+}
+
+///|
+pub fn PresentBatch::get_payloads(
+  self : PresentBatch,
+) -> Array[PresentRectPayload] {
+  self.payloads
+}
+
+///|
+pub fn PresentBatch::get_rect_count(self : PresentBatch) -> Int {
+  self.payloads.length()
+}
+
+///|
+pub fn PresentBatch::is_empty(self : PresentBatch) -> Bool {
+  self.payloads.length() == 0
+}
+
+///|
+pub fn PresentBatch::get_present_pixel_count(self : PresentBatch) -> Int {
+  self.present_pixel_count
+}
+
+///|
+pub fn PresentBatch::get_present_byte_count(self : PresentBatch) -> Int {
+  self.present_byte_count
+}
+
+///|
+pub fn[S : Surface] PresentBatch::submit_to(
+  self : PresentBatch,
+  surface : S,
+) -> Result[Int, PresentError] {
+  let mut presented = 0
+  for payload in self.payloads {
+    match payload.submit_to(surface) {
+      Ok(_) => presented = presented + 1
+      Err(error) => return Err(error)
+    }
+  }
+  Ok(presented)
 }
 
 ///|
@@ -275,33 +379,47 @@ pub fn[S : Surface] Pixmap::present_rect_to(
   surface : S,
   rect : PixelRect,
 ) -> Result[Unit, PresentError] {
-  guard !rect.is_empty() else {
-    return Err(PresentError::InvalidDimensions(rect.width, rect.height))
+  match self.present_rect_payload(rect) {
+    Ok(payload) => payload.submit_to(surface)
+    Err(error) => Err(error)
   }
-  guard rect.x >= 0 &&
-    rect.y >= 0 &&
-    rect.width <= self.get_width() - rect.x &&
-    rect.height <= self.get_height() - rect.y else {
-    return Err(
-      PresentError::RectOutOfBounds(
-        rect.x,
-        rect.y,
-        rect.width,
-        rect.height,
-        self.get_width(),
-        self.get_height(),
-      ),
-    )
+}
+
+///|
+pub fn Pixmap::present_rect_payload(
+  self : Pixmap,
+  rect : PixelRect,
+) -> Result[PresentRectPayload, PresentError] {
+  match validate_pixmap_present_rect(self, rect) {
+    Err(error) => Err(error)
+    Ok(_) => {
+      let row_bytes = rect.width * 4
+      Ok({ rect, row_bytes, pixels: copy_pixmap_rect(self, rect) })
+    }
   }
-  let row_bytes = rect.width * 4
-  surface.present_pixels_rect(
-    rect.x,
-    rect.y,
-    rect.width,
-    rect.height,
-    row_bytes,
-    copy_pixmap_rect(self, rect),
-  )
+}
+
+///|
+pub fn Pixmap::present_batch(
+  self : Pixmap,
+  plan : DirtyPresentPlan,
+) -> Result[PresentBatch, PresentError] {
+  let payloads = []
+  let mut present_pixel_count = 0
+  let mut present_byte_count = 0
+  for rect in plan.get_rects() {
+    match self.present_rect_payload(rect) {
+      Ok(payload) => {
+        present_pixel_count = present_pixel_count +
+          payload.get_present_pixel_count()
+        present_byte_count = present_byte_count +
+          payload.get_present_byte_count()
+        payloads.push(payload)
+      }
+      Err(error) => return Err(error)
+    }
+  }
+  Ok({ payloads, present_pixel_count, present_byte_count })
 }
 
 ///|
@@ -377,18 +495,40 @@ fn[S : Surface] Canvas::present_dirty_plan_to(
   plan : DirtyPresentPlan,
 ) -> Result[Int, PresentError] {
   guard !plan.is_empty() else { return Ok(0) }
-  let mut presented = 0
-  for rect in plan.get_rects() {
-    match self.get_pixmap().present_rect_to(surface, rect) {
-      Ok(_) => presented = presented + 1
-      Err(error) => return Err(error)
-    }
+  match self.get_pixmap().present_batch(plan) {
+    Ok(batch) => batch.submit_to(surface)
+    Err(error) => Err(error)
   }
-  Ok(presented)
 }
 
 ///|
 let default_dirty_present_rect_limit = 32
+
+///|
+fn validate_pixmap_present_rect(
+  pixmap : Pixmap,
+  rect : PixelRect,
+) -> Result[Unit, PresentError] {
+  guard !rect.is_empty() else {
+    return Err(PresentError::InvalidDimensions(rect.width, rect.height))
+  }
+  guard rect.x >= 0 &&
+    rect.y >= 0 &&
+    rect.width <= pixmap.get_width() - rect.x &&
+    rect.height <= pixmap.get_height() - rect.y else {
+    return Err(
+      PresentError::RectOutOfBounds(
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
+        pixmap.get_width(),
+        pixmap.get_height(),
+      ),
+    )
+  }
+  Ok(())
+}
 
 ///|
 fn copy_pixmap_rect(pixmap : Pixmap, rect : PixelRect) -> FixedArray[Byte] {

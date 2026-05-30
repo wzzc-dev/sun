@@ -147,6 +147,81 @@ test "Pixmap::present_rect_to presents a packed sub-rectangle" {
 }
 
 ///|
+test "Pixmap::present_rect_payload materializes packed pixels" {
+  let pixmap = Pixmap::new(3, 2)
+  pixmap.set_pixel(0, 0, Color::red())
+  pixmap.set_pixel(1, 0, Color::green())
+  pixmap.set_pixel(2, 0, Color::blue())
+  pixmap.set_pixel(0, 1, Color::white())
+  pixmap.set_pixel(1, 1, Color::black())
+  pixmap.set_pixel(2, 1, Color::transparent())
+
+  match
+    pixmap.present_rect_payload(PixelRect::new(x=1, y=0, width=2, height=2)) {
+    Ok(payload) => {
+      assert_true(
+        payload.get_rect() == PixelRect::new(x=1, y=0, width=2, height=2),
+      )
+      assert_eq(payload.get_row_bytes(), 8)
+      assert_eq(payload.get_present_pixel_count(), 4)
+      assert_eq(payload.get_present_byte_count(), 16)
+      let pixels = payload.get_pixels()
+      assert_eq(pixels.length(), 16)
+      assert_rgba(pixels, 0, Color::green())
+      assert_rgba(pixels, 4, Color::blue())
+      assert_rgba(pixels, 8, Color::black())
+      assert_rgba(pixels, 12, Color::transparent())
+    }
+    Err(_) => abort("expected packed present payload")
+  }
+}
+
+///|
+test "Pixmap::present_batch materializes dirty present plan" {
+  let pixmap = Pixmap::new(4, 2)
+  pixmap.set_pixel(0, 0, Color::red())
+  pixmap.set_pixel(2, 1, Color::blue())
+  let region = DirtyRegion::new()
+  region.add_rect(PixelRect::new(x=0, y=0, width=1, height=1))
+  region.add_rect(PixelRect::new(x=2, y=1, width=1, height=1))
+  let plan = region.present_plan(PixelRect::new(x=0, y=0, width=4, height=2), 4)
+
+  match pixmap.present_batch(plan) {
+    Ok(batch) => {
+      assert_true(!batch.is_empty())
+      assert_eq(batch.get_rect_count(), 2)
+      assert_eq(batch.get_present_pixel_count(), 2)
+      assert_eq(batch.get_present_byte_count(), 8)
+      let payloads = batch.get_payloads()
+      assert_true(
+        payloads[0].get_rect() == PixelRect::new(x=0, y=0, width=1, height=1),
+      )
+      assert_true(
+        payloads[1].get_rect() == PixelRect::new(x=2, y=1, width=1, height=1),
+      )
+      let surface = MemorySurface::new(4, 2)
+      assert_true(batch.submit_to(surface) == Ok(2))
+      assert_eq(surface.get_present_count(), 2)
+      assert_eq(surface.get_pixel(0, 0), Color::red())
+      assert_eq(surface.get_pixel(2, 1), Color::blue())
+    }
+    Err(_) => abort("expected dirty present batch")
+  }
+}
+
+///|
+test "Pixmap::present_batch rejects out-of-bounds rects" {
+  let pixmap = Pixmap::new(2, 2)
+  let region = DirtyRegion::new()
+  region.add_rect(PixelRect::new(x=1, y=1, width=2, height=1))
+  let plan = region.present_plan(PixelRect::new(x=0, y=0, width=3, height=2), 4)
+  match pixmap.present_batch(plan) {
+    Err(PresentError::RectOutOfBounds(1, 1, 2, 1, 2, 2)) => ()
+    _ => abort("expected out-of-bounds present batch error")
+  }
+}
+
+///|
 test "Canvas::present_to presents rendered canvas pixels to surface" {
   let canvas = Canvas::new(2, 1)
   canvas.clear(Color::white())
@@ -271,4 +346,16 @@ fn write_rgba(pixels : FixedArray[Byte], offset : Int, color : Color) -> Unit {
   pixels[offset + 1] = color.g
   pixels[offset + 2] = color.b
   pixels[offset + 3] = color.a
+}
+
+///|
+fn assert_rgba(
+  pixels : FixedArray[Byte],
+  offset : Int,
+  color : Color,
+) -> Unit raise {
+  assert_eq(pixels[offset], color.r)
+  assert_eq(pixels[offset + 1], color.g)
+  assert_eq(pixels[offset + 2], color.b)
+  assert_eq(pixels[offset + 3], color.a)
 }

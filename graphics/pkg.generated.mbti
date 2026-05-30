@@ -381,6 +381,8 @@ pub fn Pixmap::get_pixel(Self, Int, Int) -> Color
 pub fn Pixmap::get_pixels(Self) -> FixedArray[Byte]
 pub fn Pixmap::get_width(Self) -> Int
 pub fn Pixmap::new(Int, Int) -> Self
+pub fn Pixmap::present_batch(Self, DirtyPresentPlan) -> Result[PresentBatch, PresentError]
+pub fn Pixmap::present_rect_payload(Self, PixelRect) -> Result[PresentRectPayload, PresentError]
 pub fn[S : Surface] Pixmap::present_rect_to(Self, S, PixelRect) -> Result[Unit, PresentError]
 pub fn[S : Surface] Pixmap::present_to(Self, S) -> Result[Unit, PresentError]
 pub fn Pixmap::set_pixel(Self, Int, Int, Color) -> Unit
@@ -390,6 +392,18 @@ pub struct Point {
   y : Double
 } derive(Eq, @debug.Debug)
 pub fn Point::new(x~ : Double, y~ : Double) -> Self
+
+pub struct PresentBatch {
+  payloads : Array[PresentRectPayload]
+  present_pixel_count : Int
+  present_byte_count : Int
+} derive(@debug.Debug)
+pub fn PresentBatch::get_payloads(Self) -> Array[PresentRectPayload]
+pub fn PresentBatch::get_present_byte_count(Self) -> Int
+pub fn PresentBatch::get_present_pixel_count(Self) -> Int
+pub fn PresentBatch::get_rect_count(Self) -> Int
+pub fn PresentBatch::is_empty(Self) -> Bool
+pub fn[S : Surface] PresentBatch::submit_to(Self, S) -> Result[Int, PresentError]
 
 pub(all) enum PresentError {
   InvalidDimensions(Int, Int)
@@ -405,6 +419,18 @@ pub(all) struct PresentRectInfo {
 } derive(Eq, @debug.Debug)
 pub fn PresentRectInfo::required_len(Self) -> Int
 pub fn PresentRectInfo::required_row_bytes(Self) -> Int
+
+pub struct PresentRectPayload {
+  rect : PixelRect
+  row_bytes : Int
+  pixels : FixedArray[Byte]
+} derive(@debug.Debug)
+pub fn PresentRectPayload::get_pixels(Self) -> FixedArray[Byte]
+pub fn PresentRectPayload::get_present_byte_count(Self) -> Int
+pub fn PresentRectPayload::get_present_pixel_count(Self) -> Int
+pub fn PresentRectPayload::get_rect(Self) -> PixelRect
+pub fn PresentRectPayload::get_row_bytes(Self) -> Int
+pub fn[S : Surface] PresentRectPayload::submit_to(Self, S) -> Result[Unit, PresentError]
 
 pub struct Rect {
   x : Double

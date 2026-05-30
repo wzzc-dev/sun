@@ -113,6 +113,7 @@ Application / GUI
 - GUI/window 后端 build-only 验证策略
 - `headless_render` 示例走 `RenderFrame + LayerTree + MemorySurface`，无需窗口即可自校验离屏渲染与 dirty present 路径
 - `graphics.validate_present_rect` 标准化 Surface rect present 的 bounds、row stride 和 buffer 长度校验，`MemorySurface` 与 `softbuffer.NativeSurface` 共享同一错误语义
+- `PresentRectPayload`/`PresentBatch` 将 dirty present plan 物化为 packed rect payload，复用同一批量提交与成本统计语义
 - `DirtyRegion::present_plan` 将 dirty present 策略显式化为 Empty/Rects/Bounds，作为批量提交和事件循环调度的可测试基础
 - `Canvas::dirty_present_plan` 让提交前可查询同一份 dirty present plan，`Canvas::present_dirty_to_with_limit` 也按该 plan 执行提交
 - `LayerTree` 与 `RenderFrame` 暴露 dirty present plan 查询，合并 canvas 与 layer dirty 区域后再按统一计划提交
@@ -317,6 +318,7 @@ Application / GUI
 #### 4.3 渲染优化
 - [x] `PixelRect`/`DirtyRegion` 数据结构与 Canvas dirty tracking
 - [x] `Surface::present_pixels_rect`、`Pixmap::present_rect_to`、`Canvas::present_dirty_to` 基础 partial present 契约
+- [x] `PresentRectPayload`/`PresentBatch` 将 Pixmap dirty present plan 物化为可测试 packed rect payload，并让 Canvas dirty submit 复用批量提交路径
 - [x] Dirty rect 相交/相邻合并与 `Canvas::present_dirty_to_with_limit` 阈值提交策略
 - [x] `DirtyRegion::present_plan` 暴露 Empty/Rects/Bounds 提交计划，便于后续事件循环和后端批量 present 共享调度语义
 - [x] `Canvas::dirty_present_plan` 将查询计划和实际 dirty present 提交对齐，避免上层重复实现裁剪/阈值 fallback
