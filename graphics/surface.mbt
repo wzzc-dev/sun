@@ -147,6 +147,13 @@ pub fn MemoryPresentRecord::get_present_byte_count(
 }
 
 ///|
+pub fn MemoryPresentRecord::get_source_byte_count(
+  self : MemoryPresentRecord,
+) -> Int {
+  self.row_bytes * self.rect.height
+}
+
+///|
 pub fn[S : Surface] PresentBatch::submit_to(
   self : PresentBatch,
   surface : S,
@@ -225,6 +232,35 @@ pub fn MemorySurface::get_pixels(self : MemorySurface) -> FixedArray[Byte] {
 ///|
 pub fn MemorySurface::get_present_count(self : MemorySurface) -> Int {
   self.present_count
+}
+
+///|
+pub fn MemorySurface::get_present_pixel_count(self : MemorySurface) -> Int {
+  let mut pixels = 0
+  for record in self.present_records {
+    pixels = pixels + record.get_present_pixel_count()
+  }
+  pixels
+}
+
+///|
+pub fn MemorySurface::get_present_byte_count(self : MemorySurface) -> Int {
+  let mut bytes = 0
+  for record in self.present_records {
+    bytes = bytes + record.get_present_byte_count()
+  }
+  bytes
+}
+
+///|
+pub fn MemorySurface::get_present_source_byte_count(
+  self : MemorySurface,
+) -> Int {
+  let mut bytes = 0
+  for record in self.present_records {
+    bytes = bytes + record.get_source_byte_count()
+  }
+  bytes
 }
 
 ///|

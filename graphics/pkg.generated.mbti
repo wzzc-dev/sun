@@ -260,6 +260,7 @@ pub fn MemoryPresentRecord::get_present_byte_count(Self) -> Int
 pub fn MemoryPresentRecord::get_present_pixel_count(Self) -> Int
 pub fn MemoryPresentRecord::get_rect(Self) -> PixelRect
 pub fn MemoryPresentRecord::get_row_bytes(Self) -> Int
+pub fn MemoryPresentRecord::get_source_byte_count(Self) -> Int
 
 pub struct MemorySurface {
   width : Int
@@ -272,8 +273,11 @@ pub fn MemorySurface::get_height(Self) -> Int
 pub fn MemorySurface::get_last_present_record(Self) -> MemoryPresentRecord?
 pub fn MemorySurface::get_pixel(Self, Int, Int) -> Color
 pub fn MemorySurface::get_pixels(Self) -> FixedArray[Byte]
+pub fn MemorySurface::get_present_byte_count(Self) -> Int
 pub fn MemorySurface::get_present_count(Self) -> Int
+pub fn MemorySurface::get_present_pixel_count(Self) -> Int
 pub fn MemorySurface::get_present_records(Self) -> Array[MemoryPresentRecord]
+pub fn MemorySurface::get_present_source_byte_count(Self) -> Int
 pub fn MemorySurface::get_width(Self) -> Int
 pub fn MemorySurface::new(Int, Int) -> Self
 pub fn MemorySurface::present_pixels(Self, Int, Int, Int, FixedArray[Byte]) -> Result[Unit, PresentError]

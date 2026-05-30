@@ -9,6 +9,9 @@ test "MemorySurface::present_pixels copies RGBA rows" {
   let result = surface.present_pixels(2, 2, 8, pixels)
   assert_true(result == Ok(()))
   assert_eq(surface.get_present_count(), 1)
+  assert_eq(surface.get_present_pixel_count(), 4)
+  assert_eq(surface.get_present_byte_count(), 16)
+  assert_eq(surface.get_present_source_byte_count(), 16)
   assert_eq(surface.get_present_records().length(), 1)
   match surface.get_last_present_record() {
     Some(record) => {
@@ -18,6 +21,7 @@ test "MemorySurface::present_pixels copies RGBA rows" {
       assert_eq(record.get_row_bytes(), 8)
       assert_eq(record.get_present_pixel_count(), 4)
       assert_eq(record.get_present_byte_count(), 16)
+      assert_eq(record.get_source_byte_count(), 16)
     }
     None => abort("expected full present record")
   }
@@ -39,6 +43,9 @@ test "MemorySurface::present_pixels supports padded row bytes" {
   write_rgba(pixels, 8, Color::blue())
   let result = surface.present_pixels(1, 2, 8, pixels)
   assert_true(result == Ok(()))
+  assert_eq(surface.get_present_pixel_count(), 2)
+  assert_eq(surface.get_present_byte_count(), 8)
+  assert_eq(surface.get_present_source_byte_count(), 16)
   match surface.get_last_present_record() {
     Some(record) => {
       assert_true(
@@ -47,6 +54,7 @@ test "MemorySurface::present_pixels supports padded row bytes" {
       assert_eq(record.get_row_bytes(), 8)
       assert_eq(record.get_present_pixel_count(), 2)
       assert_eq(record.get_present_byte_count(), 8)
+      assert_eq(record.get_source_byte_count(), 16)
     }
     None => abort("expected padded present record")
   }
@@ -66,6 +74,9 @@ test "MemorySurface::present_pixels_rect updates only destination rectangle" {
   let result = surface.present_pixels_rect(1, 1, 2, 2, 8, pixels)
   assert_true(result == Ok(()))
   assert_eq(surface.get_present_count(), 1)
+  assert_eq(surface.get_present_pixel_count(), 4)
+  assert_eq(surface.get_present_byte_count(), 16)
+  assert_eq(surface.get_present_source_byte_count(), 16)
   match surface.get_last_present_record() {
     Some(record) => {
       assert_true(
@@ -74,6 +85,7 @@ test "MemorySurface::present_pixels_rect updates only destination rectangle" {
       assert_eq(record.get_row_bytes(), 8)
       assert_eq(record.get_present_pixel_count(), 4)
       assert_eq(record.get_present_byte_count(), 16)
+      assert_eq(record.get_source_byte_count(), 16)
     }
     None => abort("expected rect present record")
   }
@@ -97,6 +109,9 @@ test "MemorySurface::present_pixels_rect validates destination bounds" {
     Err(PresentError::RectOutOfBounds(-1, 0, 1, 1, 3, 3)),
   )
   assert_eq(surface.get_present_count(), 0)
+  assert_eq(surface.get_present_pixel_count(), 0)
+  assert_eq(surface.get_present_byte_count(), 0)
+  assert_eq(surface.get_present_source_byte_count(), 0)
   assert_eq(surface.get_present_records().length(), 0)
 }
 
@@ -238,6 +253,9 @@ test "Pixmap::present_batch materializes dirty present plan" {
       let surface = MemorySurface::new(4, 2)
       assert_true(batch.submit_to(surface) == Ok(2))
       assert_eq(surface.get_present_count(), 2)
+      assert_eq(surface.get_present_pixel_count(), 2)
+      assert_eq(surface.get_present_byte_count(), 8)
+      assert_eq(surface.get_present_source_byte_count(), 8)
       let records = surface.get_present_records()
       assert_eq(records.length(), 2)
       assert_true(
@@ -250,6 +268,8 @@ test "Pixmap::present_batch materializes dirty present plan" {
       assert_eq(records[1].get_row_bytes(), 4)
       assert_eq(records[0].get_present_pixel_count(), 1)
       assert_eq(records[1].get_present_byte_count(), 4)
+      assert_eq(records[0].get_source_byte_count(), 4)
+      assert_eq(records[1].get_source_byte_count(), 4)
       assert_eq(surface.get_pixel(0, 0), Color::red())
       assert_eq(surface.get_pixel(2, 1), Color::blue())
     }
@@ -320,6 +340,9 @@ test "Canvas::present_dirty_to_with_limit falls back to dirty bounds" {
   let result = canvas.present_dirty_to_with_limit(surface, 2)
   assert_true(result == Ok(1))
   assert_eq(surface.get_present_count(), 1)
+  assert_eq(surface.get_present_pixel_count(), 7)
+  assert_eq(surface.get_present_byte_count(), 28)
+  assert_eq(surface.get_present_source_byte_count(), 28)
   match surface.get_last_present_record() {
     Some(record) => {
       assert_true(
@@ -327,6 +350,7 @@ test "Canvas::present_dirty_to_with_limit falls back to dirty bounds" {
       )
       assert_eq(record.get_present_pixel_count(), 7)
       assert_eq(record.get_present_byte_count(), 28)
+      assert_eq(record.get_source_byte_count(), 28)
     }
     None => abort("expected dirty bounds present record")
   }
