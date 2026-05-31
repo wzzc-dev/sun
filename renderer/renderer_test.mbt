@@ -1794,6 +1794,89 @@ test "Renderer cached BMP transformed image path uses RendererResources" {
 }
 
 ///|
+test "Renderer cached RGBA transformed image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(4, 1)
+  canvas.clear(@graphics.Color::white())
+  canvas.set_transform(@graphics.Transform::translate(tx=1.0, ty=0.0))
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let tile = make_renderer_test_tile_source()
+  let src_rect = @graphics.PixelRect::new(x=0, y=0, width=2, height=1)
+
+  match
+    renderer.draw_transformed_sampled_rgba_bytes_cached_with_renderer_resources(
+      tile.to_rgba_bytes(),
+      2,
+      1,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "tile-transform-rgba",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached transformed RGBA draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_transformed_quality_rgba_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([]),
+      2,
+      1,
+      src_rect,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "tile-transform-rgba",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached transformed RGBA hit")
+  }
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_transformed_sampled_rgba_bytes_cached_with_renderer_resources(
+      Bytes::from_array([1, 2, 3, 4]),
+      2,
+      1,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "broken-transform-rgba",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ) {
+    Err(@graphics.PixmapDecodeError::RgbaByteLengthMismatch(8, 4)) => ()
+    _ => abort("expected cached transformed RGBA decode error")
+  }
+  assert_true(!resources.contains_image("broken-transform-rgba"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+}
+
+///|
 test "Renderer sampled cached image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(3, 1)
   canvas.clear(@graphics.Color::white())
