@@ -168,6 +168,7 @@ Application / GUI
 - Pixmap blit、source-rect atlas drawing、source-rect coverage-mask drawing、tiled Pixmap fills、nearest-neighbor/bilinear scaled blit、fast/balanced/high quality strategy、transform-aware sampled Pixmap drawing、`Paint` blend modes、Layer cache、LayerTree 与 straight-alpha 图层合成原语
 - `Pixmap::to_ppm_bytes` 提供无依赖的确定性 PPM(P6) 导出，`headless_render` 示例校验导出字节，作为后续离屏 fixture 输出基础
 - `Pixmap`/`MemorySurface` 提供无依赖的确定性 RGBA PNG 导出，使用 filter-0 scanline 与 uncompressed DEFLATE，作为更通用的离屏像素 fixture 输出基础
+- `Pixmap::from_png_bytes` 与 `PixmapCache::get_or_decode_png` 支持最小 RGBA PNG fixture 解码，覆盖 signature、CRC、zlib stored block、Adler 与 cache hit/error 路径
 - Nine-patch Pixmap 缩放合成，作为 GUI 面板、边框和背景图的基础图像缩放能力
 - `PixmapCache` 支持按 key 复用 image/layer pixmap，并通过像素拷贝隔离缓存内容，同时提供 membership 与 hit/insert telemetry，作为 GUI 图像资源缓存基础
 - Renderer/`RendererResources` 支持 cached Pixmap/BMP sampled full/source-rect draw path，让 GUI 图像调用方可直接选择 nearest/bilinear/bicubic 并复用 image cache
@@ -392,6 +393,7 @@ Application / GUI
 - [x] 增加 `Paint` blend mode（source-over/multiply/screen/add），覆盖 vector、mask、Pixmap blit、scaled image 与 transform-aware sampled image composition 回归
 - [x] 增加 `Pixmap::to_ppm_bytes` 与 `Pixmap::to_ppm_rect_bytes` 确定性 PPM(P6) 导出，覆盖 header、RGB 顺序、alpha 丢弃、空尺寸、局部矩形与 headless 示例输出路径
 - [x] 增加 `Pixmap`/`MemorySurface` full/rect 确定性 RGBA PNG 导出，覆盖 PNG signature/IHDR/IDAT/IEND、CRC/Adler、局部矩形与空尺寸错误路径
+- [x] 增加 `Pixmap::from_png_bytes` 与 `PixmapCache::get_or_decode_png` 最小 RGBA PNG fixture 解码，覆盖导出 PNG roundtrip、signature/CRC 结构错误、cache hit 与错误不污染 cache
 - [x] 增加 `Pixmap`/`MemorySurface` full/rect raw RGBA bytes 导出，覆盖字节顺序、packed rect 与非法 rect 错误路径
 - [x] 增加 `Pixmap`/`MemorySurface` full/rect 轻量 checksum API，覆盖 raw RGBA byte 摘要、非法 rect 错误与 benchmark 复用路径
 - [x] 增加 `Pixmap::from_rgba_bytes` 与 `PixmapCache::get_or_decode_rgba`，覆盖 packed RGBA 输入、空尺寸、长度/尺寸错误、缓存命中与拷贝隔离

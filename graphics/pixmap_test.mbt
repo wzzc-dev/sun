@@ -132,14 +132,8 @@ test "Pixmap::to_bmp_bytes encodes empty dimensions" {
 test "Pixmap::to_png_bytes encodes deterministic RGBA output" {
   let pixmap = Pixmap::new(1, 1)
   pixmap.set_pixel(0, 0, Color::new(r=255, g=0, b=0, a=255))
-  let expected : Array[Byte] = [
-    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0,
-    0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 16, 73, 68, 65, 84, 120, 1,
-    1, 5, 0, 250, 255, 0, 255, 0, 0, 255, 5, 0, 1, 255, 250, 92, 136, 209, 0, 0,
-    0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
-  ]
   match pixmap.to_png_bytes() {
-    Ok(png) => assert_eq(png, Bytes::from_array(expected))
+    Ok(png) => assert_eq(png, Bytes::from_array(make_pixmap_test_red_png()))
     Err(_) => abort("expected PNG encode")
   }
 }
@@ -149,6 +143,50 @@ test "Pixmap::to_png_bytes rejects empty dimensions" {
   match Pixmap::new(0, 0).to_png_bytes() {
     Err(PixmapEncodeError::InvalidPngDimensions(0, 0)) => ()
     _ => abort("expected PNG dimensions error")
+  }
+}
+
+///|
+test "Pixmap::from_png_bytes decodes exported RGBA PNG bytes" {
+  let pixmap = Pixmap::new(2, 2)
+  pixmap.set_pixel(0, 0, Color::new(r=255, g=0, b=0, a=255))
+  pixmap.set_pixel(1, 0, Color::new(r=0, g=255, b=0, a=128))
+  pixmap.set_pixel(0, 1, Color::new(r=0, g=0, b=255, a=64))
+  pixmap.set_pixel(1, 1, Color::new(r=10, g=20, b=30, a=40))
+
+  match pixmap.to_png_bytes() {
+    Ok(png) =>
+      match Pixmap::from_png_bytes(png) {
+        Ok(decoded) => {
+          assert_eq(decoded.get_width(), 2)
+          assert_eq(decoded.get_height(), 2)
+          assert_eq(decoded.to_rgba_bytes(), pixmap.to_rgba_bytes())
+        }
+        Err(_) => abort("expected PNG decode")
+      }
+    Err(_) => abort("expected PNG encode")
+  }
+}
+
+///|
+test "Pixmap::from_png_bytes reports structural errors" {
+  match Pixmap::from_png_bytes(Bytes::from_array([137, 80])) {
+    Err(PixmapDecodeError::UnexpectedEndOfData(0, 8, 2)) => ()
+    _ => abort("expected short PNG error")
+  }
+
+  let bad_signature = make_pixmap_test_red_png()
+  bad_signature[0] = 0
+  match Pixmap::from_png_bytes(Bytes::from_array(bad_signature)) {
+    Err(PixmapDecodeError::InvalidPngSignature) => ()
+    _ => abort("expected PNG signature error")
+  }
+
+  let bad_crc = make_pixmap_test_red_png()
+  bad_crc[32] = 0
+  match Pixmap::from_png_bytes(Bytes::from_array(bad_crc)) {
+    Err(PixmapDecodeError::PngCrcMismatch(0x1F15C400, 0x1F15C489)) => ()
+    _ => abort("expected PNG CRC mismatch")
   }
 }
 
@@ -409,11 +447,59 @@ test "PixmapCache::get_or_decode_rgba_result decodes misses and reports hits" {
 }
 
 ///|
+test "PixmapCache::get_or_decode_png_result decodes misses and reports hits" {
+  let cache = PixmapCache::new()
+  let source = Pixmap::new(1, 1)
+  source.set_pixel(0, 0, Color::green())
+
+  match source.to_png_bytes() {
+    Ok(png) =>
+      match cache.get_or_decode_png_result("icon", png) {
+        Ok(first) => {
+          assert_true(first.did_decode())
+          assert_true(!first.did_hit_cache())
+          assert_eq(first.get_pixmap().get_pixel(0, 0), Color::green())
+          let first_pixmap = first.get_pixmap()
+          first_pixmap.set_pixel(0, 0, Color::red())
+        }
+        Err(_) => abort("expected PNG cache decode")
+      }
+    Err(_) => abort("expected PNG encode")
+  }
+  assert_eq(cache.len(), 1)
+  match cache.get("icon") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), Color::green())
+    None => abort("expected cached decoded PNG pixmap")
+  }
+
+  match cache.get_or_decode_png_result("icon", Bytes::from_array([0, 0])) {
+    Ok(second) => {
+      assert_true(!second.did_decode())
+      assert_true(second.did_hit_cache())
+      assert_eq(second.get_pixmap().get_pixel(0, 0), Color::green())
+    }
+    Err(_) => abort("expected cached PNG pixmap hit")
+  }
+  assert_eq(cache.len(), 1)
+}
+
+///|
 test "PixmapCache::get_or_decode_rgba leaves cache unchanged on decode errors" {
   let cache = PixmapCache::new()
   match cache.get_or_decode_rgba("bad", 2, 1, Bytes::from_array([1, 2, 3, 4])) {
     Err(PixmapDecodeError::RgbaByteLengthMismatch(8, 4)) => ()
     _ => abort("expected RGBA cache decode error")
+  }
+  assert_true(cache.is_empty())
+  assert_true(!cache.contains("bad"))
+}
+
+///|
+test "PixmapCache::get_or_decode_png leaves cache unchanged on decode errors" {
+  let cache = PixmapCache::new()
+  match cache.get_or_decode_png("bad", Bytes::from_array([137, 80])) {
+    Err(PixmapDecodeError::UnexpectedEndOfData(0, 8, 2)) => ()
+    _ => abort("expected PNG cache decode error")
   }
   assert_true(cache.is_empty())
   assert_true(!cache.contains("bad"))
@@ -1086,4 +1172,14 @@ fn make_pixmap_test_bicubic_rect_source() -> Pixmap {
   src.set_pixel(4, 0, Color::red())
   src.set_pixel(5, 0, Color::black())
   src
+}
+
+///|
+fn make_pixmap_test_red_png() -> Array[Byte] {
+  [
+    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0,
+    0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 16, 73, 68, 65, 84, 120, 1,
+    1, 5, 0, 250, 255, 0, 255, 0, 0, 255, 5, 0, 1, 255, 250, 92, 136, 209, 0, 0,
+    0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+  ]
 }

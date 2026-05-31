@@ -451,6 +451,7 @@ pub fn Pixmap::copy(Self) -> Self
 pub fn Pixmap::copy_rect(Self, PixelRect) -> Result[Self, PresentError]
 pub fn Pixmap::fill_rect(Self, Int, Int, Int, Int, Color) -> Unit
 pub fn Pixmap::from_bmp_bytes(Bytes) -> Result[Self, PixmapDecodeError]
+pub fn Pixmap::from_png_bytes(Bytes) -> Result[Self, PixmapDecodeError]
 pub fn Pixmap::from_rgba_bytes(Int, Int, Bytes) -> Result[Self, PixmapDecodeError]
 pub fn Pixmap::get_height(Self) -> Int
 pub fn Pixmap::get_pixel(Self, Int, Int) -> Color
@@ -483,6 +484,8 @@ pub fn PixmapCache::contains(Self, String) -> Bool
 pub fn PixmapCache::get(Self, String) -> Pixmap?
 pub fn PixmapCache::get_or_decode_bmp(Self, String, Bytes) -> Result[Pixmap, PixmapDecodeError]
 pub fn PixmapCache::get_or_decode_bmp_result(Self, String, Bytes) -> Result[PixmapCacheDecodeResult, PixmapDecodeError]
+pub fn PixmapCache::get_or_decode_png(Self, String, Bytes) -> Result[Pixmap, PixmapDecodeError]
+pub fn PixmapCache::get_or_decode_png_result(Self, String, Bytes) -> Result[PixmapCacheDecodeResult, PixmapDecodeError]
 pub fn PixmapCache::get_or_decode_rgba(Self, String, Int, Int, Bytes) -> Result[Pixmap, PixmapDecodeError]
 pub fn PixmapCache::get_or_decode_rgba_result(Self, String, Int, Int, Bytes) -> Result[PixmapCacheDecodeResult, PixmapDecodeError]
 pub fn PixmapCache::get_or_insert(Self, String, Pixmap) -> Pixmap
@@ -522,11 +525,37 @@ pub(all) enum PixmapDecodeError {
   UnsupportedBmpCompression(Int)
   InvalidBmpDimensions(Int, Int)
   BmpPixelDataOutOfBounds(Int, Int, Int)
+  InvalidPngSignature
+  MissingPngImageHeader
+  MissingPngImageData
+  MissingPngImageEnd
+  UnsupportedPngHeaderSize(Int)
+  UnsupportedPngBitDepth(Int)
+  UnsupportedPngColorType(Int)
+  UnsupportedPngCompression(Int)
+  UnsupportedPngFilter(Int)
+  UnsupportedPngInterlace(Int)
+  UnsupportedPngChunk(Int, Int, Int, Int)
+  UnsupportedPngDeflateCompression(Int)
+  UnsupportedPngDeflatePresetDictionary
+  UnsupportedPngDeflateBlockType(Int)
+  UnsupportedPngFilterType(Int)
+  InvalidPngDimensions(Int, Int)
+  InvalidPngZlibHeader(Int, Int)
+  PngCrcMismatch(UInt, UInt)
+  PngAdlerMismatch(UInt, UInt)
+  PngStoredBlockLengthMismatch(Int, Int)
+  PngInflateLengthMismatch(Int, Int)
+  PngScanlineLengthMismatch(Int, Int)
 } derive(Eq, @debug.Debug)
 
 pub(all) enum PixmapEncodeError {
   InvalidPngDimensions(Int, Int)
 } derive(Eq, @debug.Debug)
+
+type PngHeader derive(@debug.Debug)
+
+type PngInfo derive(@debug.Debug)
 
 pub struct Point {
   x : Double

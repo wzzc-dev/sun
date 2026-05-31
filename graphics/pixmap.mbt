@@ -36,6 +36,28 @@ pub(all) enum PixmapDecodeError {
   UnsupportedBmpCompression(Int)
   InvalidBmpDimensions(Int, Int)
   BmpPixelDataOutOfBounds(Int, Int, Int)
+  InvalidPngSignature
+  MissingPngImageHeader
+  MissingPngImageData
+  MissingPngImageEnd
+  UnsupportedPngHeaderSize(Int)
+  UnsupportedPngBitDepth(Int)
+  UnsupportedPngColorType(Int)
+  UnsupportedPngCompression(Int)
+  UnsupportedPngFilter(Int)
+  UnsupportedPngInterlace(Int)
+  UnsupportedPngChunk(Int, Int, Int, Int)
+  UnsupportedPngDeflateCompression(Int)
+  UnsupportedPngDeflatePresetDictionary
+  UnsupportedPngDeflateBlockType(Int)
+  UnsupportedPngFilterType(Int)
+  InvalidPngDimensions(Int, Int)
+  InvalidPngZlibHeader(Int, Int)
+  PngCrcMismatch(UInt, UInt)
+  PngAdlerMismatch(UInt, UInt)
+  PngStoredBlockLengthMismatch(Int, Int)
+  PngInflateLengthMismatch(Int, Int)
+  PngScanlineLengthMismatch(Int, Int)
 } derive(Eq, Debug)
 
 ///|
@@ -241,6 +263,25 @@ pub fn Pixmap::from_bmp_bytes(
 }
 
 ///|
+/// Decode a deterministic 8-bit RGBA PNG image into a pixmap.
+///
+/// This minimal decoder supports non-interlaced PNGs with RGBA color, filter-0
+/// scanlines, and zlib streams made of uncompressed DEFLATE blocks. It is
+/// intentionally paired with `to_png_bytes` for portable fixture roundtrips.
+pub fn Pixmap::from_png_bytes(
+  data : Bytes,
+) -> Result[Pixmap, PixmapDecodeError] {
+  match decode_png_info(data) {
+    Err(error) => Err(error)
+    Ok(info) =>
+      match png_zlib_stored_stream_decode(info.idat) {
+        Err(error) => Err(error)
+        Ok(scanlines) => decode_png_rgba_filter0_pixmap(info, scanlines)
+      }
+  }
+}
+
+///|
 /// Small keyed cache for reusable pixmap resources.
 pub struct PixmapCache {
   mut pixmaps : Map[String, Pixmap]
@@ -426,6 +467,39 @@ pub fn PixmapCache::get_or_decode_bmp_result(
     Some(cached) => Ok({ pixmap: cached, did_decode: false })
     None =>
       match Pixmap::from_bmp_bytes(data) {
+        Ok(decoded) => {
+          let pixmap = self.insert(key, decoded)
+          Ok({ pixmap, did_decode: true })
+        }
+        Err(error) => Err(error)
+      }
+  }
+}
+
+///|
+/// Return a cached pixmap or decode PNG bytes and cache the decoded pixmap.
+pub fn PixmapCache::get_or_decode_png(
+  self : PixmapCache,
+  key : String,
+  data : Bytes,
+) -> Result[Pixmap, PixmapDecodeError] {
+  match self.get_or_decode_png_result(key, data) {
+    Ok(result) => Ok(result.get_pixmap())
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Return a cached pixmap or decode PNG bytes, reporting cache hits.
+pub fn PixmapCache::get_or_decode_png_result(
+  self : PixmapCache,
+  key : String,
+  data : Bytes,
+) -> Result[PixmapCacheDecodeResult, PixmapDecodeError] {
+  match self.get(key) {
+    Some(cached) => Ok({ pixmap: cached, did_decode: false })
+    None =>
+      match Pixmap::from_png_bytes(data) {
         Ok(decoded) => {
           let pixmap = self.insert(key, decoded)
           Ok({ pixmap, did_decode: true })
@@ -750,6 +824,357 @@ fn png_crc32_update(crc : UInt, byte : Byte) -> UInt {
     c = if (c & 1) != 0 { (c >> 1) ^ 0xEDB88320 } else { c >> 1 }
   }
   c
+}
+
+///|
+struct PngInfo {
+  width : Int
+  height : Int
+  idat : Array[Byte]
+} derive(Debug)
+
+///|
+struct PngHeader {
+  width : Int
+  height : Int
+} derive(Debug)
+
+///|
+fn decode_png_info(data : Bytes) -> Result[PngInfo, PixmapDecodeError] {
+  match require_png_available(data, 0, 8) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  guard has_png_signature(data) else {
+    return Err(PixmapDecodeError::InvalidPngSignature)
+  }
+
+  let mut offset = 8
+  let mut seen_ihdr = false
+  let mut seen_iend = false
+  let mut width = 0
+  let mut height = 0
+  let idat : Array[Byte] = []
+  while offset < data.length() && !seen_iend {
+    match require_png_available(data, offset, 8) {
+      Err(error) => return Err(error)
+      Ok(_) => ()
+    }
+    let length = read_png_u32_be_int_at(data, offset)
+    let type_offset = offset + 4
+    let data_offset = offset + 8
+    let crc_offset = data_offset + length
+    match require_png_available(data, data_offset, length + 4) {
+      Err(error) => return Err(error)
+      Ok(_) => ()
+    }
+    let expected_crc = read_png_u32_be_uint_at(data, crc_offset)
+    let actual_crc = png_crc32_chunk_at(data, type_offset, data_offset, length)
+    guard expected_crc == actual_crc else {
+      return Err(PixmapDecodeError::PngCrcMismatch(expected_crc, actual_crc))
+    }
+
+    if png_chunk_type_is(data, type_offset, 73, 72, 68, 82) {
+      match decode_png_header(data, data_offset, length) {
+        Err(error) => return Err(error)
+        Ok(header) => {
+          seen_ihdr = true
+          width = header.width
+          height = header.height
+        }
+      }
+    } else if !seen_ihdr {
+      return Err(PixmapDecodeError::MissingPngImageHeader)
+    } else if png_chunk_type_is(data, type_offset, 73, 68, 65, 84) {
+      append_png_chunk_data(idat, data, data_offset, length)
+    } else if png_chunk_type_is(data, type_offset, 73, 69, 78, 68) {
+      seen_iend = true
+    } else if png_chunk_is_unsupported_critical(data, type_offset) {
+      return Err(
+        PixmapDecodeError::UnsupportedPngChunk(
+          data[type_offset].to_int(),
+          data[type_offset + 1].to_int(),
+          data[type_offset + 2].to_int(),
+          data[type_offset + 3].to_int(),
+        ),
+      )
+    }
+    offset = crc_offset + 4
+  }
+
+  guard seen_ihdr else { return Err(PixmapDecodeError::MissingPngImageHeader) }
+  guard seen_iend else { return Err(PixmapDecodeError::MissingPngImageEnd) }
+  guard idat.length() > 0 else {
+    return Err(PixmapDecodeError::MissingPngImageData)
+  }
+  Ok({ width, height, idat })
+}
+
+///|
+fn decode_png_header(
+  data : Bytes,
+  offset : Int,
+  length : Int,
+) -> Result[PngHeader, PixmapDecodeError] {
+  guard length == 13 else {
+    return Err(PixmapDecodeError::UnsupportedPngHeaderSize(length))
+  }
+  let width = read_png_u32_be_int_at(data, offset)
+  let height = read_png_u32_be_int_at(data, offset + 4)
+  guard width > 0 && height > 0 else {
+    return Err(PixmapDecodeError::InvalidPngDimensions(width, height))
+  }
+  let bit_depth = data[offset + 8].to_int()
+  let color_type = data[offset + 9].to_int()
+  let compression = data[offset + 10].to_int()
+  let filter = data[offset + 11].to_int()
+  let interlace = data[offset + 12].to_int()
+  guard bit_depth == 8 else {
+    return Err(PixmapDecodeError::UnsupportedPngBitDepth(bit_depth))
+  }
+  guard color_type == 6 else {
+    return Err(PixmapDecodeError::UnsupportedPngColorType(color_type))
+  }
+  guard compression == 0 else {
+    return Err(PixmapDecodeError::UnsupportedPngCompression(compression))
+  }
+  guard filter == 0 else {
+    return Err(PixmapDecodeError::UnsupportedPngFilter(filter))
+  }
+  guard interlace == 0 else {
+    return Err(PixmapDecodeError::UnsupportedPngInterlace(interlace))
+  }
+  Ok({ width, height })
+}
+
+///|
+fn png_zlib_stored_stream_decode(
+  data : Array[Byte],
+) -> Result[Array[Byte], PixmapDecodeError] {
+  match require_png_array_available(data, 0, 6) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let cmf = data[0].to_int()
+  let flg = data[1].to_int()
+  guard (cmf * 256 + flg) % 31 == 0 else {
+    return Err(PixmapDecodeError::InvalidPngZlibHeader(cmf, flg))
+  }
+  let compression = cmf.land(0x0F)
+  guard compression == 8 else {
+    return Err(PixmapDecodeError::UnsupportedPngDeflateCompression(compression))
+  }
+  guard flg.land(0x20) == 0 else {
+    return Err(PixmapDecodeError::UnsupportedPngDeflatePresetDictionary)
+  }
+
+  let stream_end = data.length() - 4
+  let out : Array[Byte] = []
+  let mut offset = 2
+  let mut is_final = false
+  while !is_final {
+    match require_png_array_available(data, offset, 1) {
+      Err(error) => return Err(error)
+      Ok(_) => ()
+    }
+    guard offset < stream_end else {
+      return Err(
+        PixmapDecodeError::UnexpectedEndOfData(offset, 1, data.length()),
+      )
+    }
+    let header = data[offset].to_int()
+    offset = offset + 1
+    is_final = header.land(1) != 0
+    let block_type = (header >> 1).land(0x03)
+    guard block_type == 0 else {
+      return Err(PixmapDecodeError::UnsupportedPngDeflateBlockType(block_type))
+    }
+    match require_png_array_available(data, offset, 4) {
+      Err(error) => return Err(error)
+      Ok(_) => ()
+    }
+    let block_len = read_png_u16_le_array_at(data, offset)
+    let inverse_len = read_png_u16_le_array_at(data, offset + 2)
+    offset = offset + 4
+    guard block_len + inverse_len == 0xFFFF else {
+      return Err(
+        PixmapDecodeError::PngStoredBlockLengthMismatch(block_len, inverse_len),
+      )
+    }
+    guard offset + block_len <= stream_end else {
+      return Err(
+        PixmapDecodeError::UnexpectedEndOfData(offset, block_len, data.length()),
+      )
+    }
+    for i in 0..<block_len {
+      out.push(data[offset + i])
+    }
+    offset = offset + block_len
+  }
+  guard offset == stream_end else {
+    return Err(PixmapDecodeError::PngInflateLengthMismatch(stream_end, offset))
+  }
+  let expected_adler = read_png_u32_be_uint_array_at(data, stream_end)
+  let actual_adler = png_adler32(out)
+  guard expected_adler == actual_adler else {
+    return Err(
+      PixmapDecodeError::PngAdlerMismatch(expected_adler, actual_adler),
+    )
+  }
+  Ok(out)
+}
+
+///|
+fn decode_png_rgba_filter0_pixmap(
+  info : PngInfo,
+  scanlines : Array[Byte],
+) -> Result[Pixmap, PixmapDecodeError] {
+  let row_bytes = info.width * 4
+  let source_row_bytes = row_bytes + 1
+  let expected_len = source_row_bytes * info.height
+  guard scanlines.length() == expected_len else {
+    return Err(
+      PixmapDecodeError::PngScanlineLengthMismatch(
+        expected_len,
+        scanlines.length(),
+      ),
+    )
+  }
+  let pixmap = Pixmap::new(info.width, info.height)
+  let dst = pixmap.get_pixels()
+  for y in 0..<info.height {
+    let source_row = y * source_row_bytes
+    let filter_type = scanlines[source_row].to_int()
+    guard filter_type == 0 else {
+      return Err(PixmapDecodeError::UnsupportedPngFilterType(filter_type))
+    }
+    let dst_row = y * row_bytes
+    for i in 0..<row_bytes {
+      dst[dst_row + i] = scanlines[source_row + 1 + i]
+    }
+  }
+  Ok(pixmap)
+}
+
+///|
+fn has_png_signature(data : Bytes) -> Bool {
+  data[0] == 137 &&
+  data[1] == 80 &&
+  data[2] == 78 &&
+  data[3] == 71 &&
+  data[4] == 13 &&
+  data[5] == 10 &&
+  data[6] == 26 &&
+  data[7] == 10
+}
+
+///|
+fn append_png_chunk_data(
+  out : Array[Byte],
+  data : Bytes,
+  offset : Int,
+  length : Int,
+) -> Unit {
+  for i in 0..<length {
+    out.push(data[offset + i])
+  }
+}
+
+///|
+fn png_chunk_type_is(
+  data : Bytes,
+  offset : Int,
+  b0 : Int,
+  b1 : Int,
+  b2 : Int,
+  b3 : Int,
+) -> Bool {
+  data[offset].to_int() == b0 &&
+  data[offset + 1].to_int() == b1 &&
+  data[offset + 2].to_int() == b2 &&
+  data[offset + 3].to_int() == b3
+}
+
+///|
+fn png_chunk_is_unsupported_critical(data : Bytes, offset : Int) -> Bool {
+  let is_critical = data[offset].to_int().land(0x20) == 0
+  is_critical && !png_chunk_type_is(data, offset, 80, 76, 84, 69)
+}
+
+///|
+fn png_crc32_chunk_at(
+  data : Bytes,
+  type_offset : Int,
+  data_offset : Int,
+  length : Int,
+) -> UInt {
+  let mut crc : UInt = 0xFFFFFFFF
+  for i in 0..<4 {
+    crc = png_crc32_update(crc, data[type_offset + i])
+  }
+  for i in 0..<length {
+    crc = png_crc32_update(crc, data[data_offset + i])
+  }
+  crc ^ 0xFFFFFFFF
+}
+
+///|
+fn require_png_available(
+  data : Bytes,
+  offset : Int,
+  length : Int,
+) -> Result[Unit, PixmapDecodeError] {
+  guard offset >= 0 && length >= 0 && offset + length <= data.length() else {
+    return Err(
+      PixmapDecodeError::UnexpectedEndOfData(offset, length, data.length()),
+    )
+  }
+  Ok(())
+}
+
+///|
+fn require_png_array_available(
+  data : Array[Byte],
+  offset : Int,
+  length : Int,
+) -> Result[Unit, PixmapDecodeError] {
+  guard offset >= 0 && length >= 0 && offset + length <= data.length() else {
+    return Err(
+      PixmapDecodeError::UnexpectedEndOfData(offset, length, data.length()),
+    )
+  }
+  Ok(())
+}
+
+///|
+fn read_png_u16_le_array_at(data : Array[Byte], offset : Int) -> Int {
+  data[offset].to_int() + data[offset + 1].to_int() * 256
+}
+
+///|
+fn read_png_u32_be_int_at(data : Bytes, offset : Int) -> Int {
+  data[offset].to_int() * 16777216 +
+  data[offset + 1].to_int() * 65536 +
+  data[offset + 2].to_int() * 256 +
+  data[offset + 3].to_int()
+}
+
+///|
+fn read_png_u32_be_uint_at(data : Bytes, offset : Int) -> UInt {
+  let b0 = data[offset].to_uint()
+  let b1 = data[offset + 1].to_uint()
+  let b2 = data[offset + 2].to_uint()
+  let b3 = data[offset + 3].to_uint()
+  (b0 << 24) | (b1 << 16) | (b2 << 8) | b3
+}
+
+///|
+fn read_png_u32_be_uint_array_at(data : Array[Byte], offset : Int) -> UInt {
+  let b0 = data[offset].to_uint()
+  let b1 = data[offset + 1].to_uint()
+  let b2 = data[offset + 2].to_uint()
+  let b3 = data[offset + 3].to_uint()
+  (b0 << 24) | (b1 << 16) | (b2 << 8) | b3
 }
 
 ///|
