@@ -384,6 +384,14 @@ pub fn MemorySurface::to_bmp_bytes(self : MemorySurface) -> Bytes {
 }
 
 ///|
+/// Encode the current surface pixels as deterministic 8-bit RGBA PNG bytes.
+pub fn MemorySurface::to_png_bytes(
+  self : MemorySurface,
+) -> Result[Bytes, PixmapEncodeError] {
+  self.to_pixmap().to_png_bytes()
+}
+
+///|
 /// Return an isolated copy of the current surface RGBA pixel bytes.
 pub fn MemorySurface::to_rgba_bytes(self : MemorySurface) -> Bytes {
   rgba_bytes_from_pixels(self.pixels)
@@ -434,6 +442,22 @@ pub fn MemorySurface::to_bmp_rect_bytes(
 ) -> Result[Bytes, PresentError] {
   match self.to_pixmap_rect(rect) {
     Ok(pixmap) => Ok(pixmap.to_bmp_bytes())
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Encode a rectangle of this surface as deterministic 8-bit RGBA PNG bytes.
+pub fn MemorySurface::to_png_rect_bytes(
+  self : MemorySurface,
+  rect : PixelRect,
+) -> Result[Bytes, PresentError] {
+  match self.to_pixmap_rect(rect) {
+    Ok(pixmap) =>
+      match pixmap.to_png_bytes() {
+        Ok(bytes) => Ok(bytes)
+        Err(_) => Err(PresentError::InvalidDimensions(rect.width, rect.height))
+      }
     Err(error) => Err(error)
   }
 }
@@ -718,6 +742,22 @@ pub fn Pixmap::to_bmp_rect_bytes(
 ) -> Result[Bytes, PresentError] {
   match self.copy_rect(rect) {
     Ok(pixmap) => Ok(pixmap.to_bmp_bytes())
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Encode a rectangle of this pixmap as deterministic 8-bit RGBA PNG bytes.
+pub fn Pixmap::to_png_rect_bytes(
+  self : Pixmap,
+  rect : PixelRect,
+) -> Result[Bytes, PresentError] {
+  match self.copy_rect(rect) {
+    Ok(pixmap) =>
+      match pixmap.to_png_bytes() {
+        Ok(bytes) => Ok(bytes)
+        Err(_) => Err(PresentError::InvalidDimensions(rect.width, rect.height))
+      }
     Err(error) => Err(error)
   }
 }

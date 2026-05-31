@@ -39,6 +39,12 @@ pub(all) enum PixmapDecodeError {
 } derive(Eq, Debug)
 
 ///|
+/// Error returned when encoding pixmap bytes.
+pub(all) enum PixmapEncodeError {
+  InvalidPngDimensions(Int, Int)
+} derive(Eq, Debug)
+
+///|
 /// Return the concrete sampling mode selected by this quality strategy.
 pub fn ImageQuality::to_sampling(self : ImageQuality) -> ImageSampling {
   match self {
@@ -161,6 +167,35 @@ pub fn Pixmap::to_bmp_bytes(self : Pixmap) -> Bytes {
     }
   }
   Bytes::from_array(out)
+}
+
+///|
+/// Encode this pixmap as a deterministic 8-bit RGBA PNG image.
+///
+/// The encoder writes filter-0 scanlines into uncompressed DEFLATE blocks, so
+/// the output is dependency-free and stable for headless render fixtures.
+pub fn Pixmap::to_png_bytes(self : Pixmap) -> Result[Bytes, PixmapEncodeError] {
+  guard self.width > 0 && self.height > 0 else {
+    return Err(PixmapEncodeError::InvalidPngDimensions(self.width, self.height))
+  }
+  let out : Array[Byte] = []
+  append_png_signature(out)
+
+  let ihdr : Array[Byte] = []
+  append_png_u32_be(ihdr, self.width.reinterpret_as_uint())
+  append_png_u32_be(ihdr, self.height.reinterpret_as_uint())
+  ihdr.push(8) // bit depth
+  ihdr.push(6) // RGBA truecolor with alpha
+  ihdr.push(0) // compression method
+  ihdr.push(0) // filter method
+  ihdr.push(0) // no interlace
+  append_png_chunk(out, [73, 72, 68, 82], ihdr) // IHDR
+
+  let scanlines = png_rgba_filter0_scanlines(self)
+  let idat = png_zlib_stored_stream(scanlines)
+  append_png_chunk(out, [73, 68, 65, 84], idat) // IDAT
+  append_png_chunk(out, [73, 69, 78, 68], []) // IEND
+  Ok(Bytes::from_array(out))
 }
 
 ///|
@@ -597,6 +632,124 @@ fn append_bmp_u32_le(out : Array[Byte], value : Int) -> Unit {
   out.push((value / 256).land(0xFF).to_byte())
   out.push((value / 65536).land(0xFF).to_byte())
   out.push((value / 16777216).land(0xFF).to_byte())
+}
+
+///|
+fn append_png_signature(out : Array[Byte]) -> Unit {
+  let signature : Array[Byte] = [137, 80, 78, 71, 13, 10, 26, 10]
+  append_png_bytes(out, signature)
+}
+
+///|
+fn append_png_chunk(
+  out : Array[Byte],
+  chunk_type : Array[Byte],
+  data : Array[Byte],
+) -> Unit {
+  append_png_u32_be(out, data.length().reinterpret_as_uint())
+  append_png_bytes(out, chunk_type)
+  append_png_bytes(out, data)
+  append_png_u32_be(out, png_crc32_chunk(chunk_type, data))
+}
+
+///|
+fn append_png_bytes(out : Array[Byte], bytes : Array[Byte]) -> Unit {
+  for byte in bytes {
+    out.push(byte)
+  }
+}
+
+///|
+fn append_png_u16_le(out : Array[Byte], value : Int) -> Unit {
+  out.push(value.land(0xFF).to_byte())
+  out.push((value >> 8).land(0xFF).to_byte())
+}
+
+///|
+fn append_png_u32_be(out : Array[Byte], value : UInt) -> Unit {
+  out.push((value >> 24).to_byte())
+  out.push((value >> 16).to_byte())
+  out.push((value >> 8).to_byte())
+  out.push(value.to_byte())
+}
+
+///|
+fn png_rgba_filter0_scanlines(pixmap : Pixmap) -> Array[Byte] {
+  let out : Array[Byte] = []
+  for y in 0..<pixmap.height {
+    out.push(0)
+    let row = y * pixmap.width * 4
+    for x in 0..<pixmap.width {
+      let offset = row + x * 4
+      out.push(pixmap.pixels[offset])
+      out.push(pixmap.pixels[offset + 1])
+      out.push(pixmap.pixels[offset + 2])
+      out.push(pixmap.pixels[offset + 3])
+    }
+  }
+  out
+}
+
+///|
+fn png_zlib_stored_stream(data : Array[Byte]) -> Array[Byte] {
+  let out : Array[Byte] = []
+  out.push(0x78)
+  out.push(0x01)
+  if data.length() == 0 {
+    out.push(1)
+    append_png_u16_le(out, 0)
+    append_png_u16_le(out, 0xFFFF)
+    append_png_u32_be(out, png_adler32(data))
+    return out
+  }
+  let mut offset = 0
+  while offset < data.length() {
+    let remaining = data.length() - offset
+    let block_len = remaining.min(65535)
+    let is_final = offset + block_len >= data.length()
+    out.push(if is_final { 1 } else { 0 })
+    append_png_u16_le(out, block_len)
+    append_png_u16_le(out, 0xFFFF - block_len)
+    for i in 0..<block_len {
+      out.push(data[offset + i])
+    }
+    offset = offset + block_len
+  }
+  append_png_u32_be(out, png_adler32(data))
+  out
+}
+
+///|
+fn png_adler32(data : Array[Byte]) -> UInt {
+  let mod_adler = 65521
+  let mut s1 = 1
+  let mut s2 = 0
+  for byte in data {
+    s1 = (s1 + byte.to_int()) % mod_adler
+    s2 = (s2 + s1) % mod_adler
+  }
+  (s2.reinterpret_as_uint() << 16) | s1.reinterpret_as_uint()
+}
+
+///|
+fn png_crc32_chunk(chunk_type : Array[Byte], data : Array[Byte]) -> UInt {
+  let mut crc : UInt = 0xFFFFFFFF
+  for byte in chunk_type {
+    crc = png_crc32_update(crc, byte)
+  }
+  for byte in data {
+    crc = png_crc32_update(crc, byte)
+  }
+  crc ^ 0xFFFFFFFF
+}
+
+///|
+fn png_crc32_update(crc : UInt, byte : Byte) -> UInt {
+  let mut c = crc ^ byte.to_uint()
+  for _ in 0..<8 {
+    c = if (c & 1) != 0 { (c >> 1) ^ 0xEDB88320 } else { c >> 1 }
+  }
+  c
 }
 
 ///|

@@ -169,6 +169,33 @@ test "MemorySurface::to_bmp_bytes exports current BGRA pixels" {
 }
 
 ///|
+test "MemorySurface::to_png_bytes exports current RGBA pixels" {
+  let surface = MemorySurface::new(1, 1)
+  let pixels : FixedArray[Byte] = FixedArray::make(4, 0)
+  write_rgba(pixels, 0, Color::new(r=255, g=0, b=0, a=255))
+  assert_true(surface.present_pixels(1, 1, 4, pixels) == Ok(()))
+
+  let expected = Pixmap::new(1, 1)
+  expected.set_pixel(0, 0, Color::red())
+  match expected.to_png_bytes() {
+    Ok(expected_png) =>
+      match surface.to_png_bytes() {
+        Ok(png) => assert_eq(png, expected_png)
+        Err(_) => abort("expected surface PNG")
+      }
+    Err(_) => abort("expected pixmap PNG")
+  }
+}
+
+///|
+test "MemorySurface::to_png_bytes rejects empty dimensions" {
+  match MemorySurface::new(0, 0).to_png_bytes() {
+    Err(PixmapEncodeError::InvalidPngDimensions(0, 0)) => ()
+    _ => abort("expected surface PNG dimensions error")
+  }
+}
+
+///|
 test "MemorySurface::checksum reports deterministic raw byte checksum" {
   let surface = MemorySurface::new(2, 1)
   let pixels : FixedArray[Byte] = FixedArray::make(8, 0)
@@ -256,6 +283,28 @@ test "MemorySurface::to_bmp_rect_bytes exports a surface rectangle" {
 }
 
 ///|
+test "MemorySurface::to_png_rect_bytes exports a surface rectangle" {
+  let surface = MemorySurface::new(3, 1)
+  let pixels : FixedArray[Byte] = FixedArray::make(12, 0)
+  write_rgba(pixels, 0, Color::red())
+  write_rgba(pixels, 4, Color::green())
+  write_rgba(pixels, 8, Color::blue())
+  assert_true(surface.present_pixels(3, 1, 12, pixels) == Ok(()))
+
+  let expected = Pixmap::new(1, 1)
+  expected.set_pixel(0, 0, Color::green())
+  match expected.to_png_bytes() {
+    Ok(expected_png) =>
+      match
+        surface.to_png_rect_bytes(PixelRect::new(x=1, y=0, width=1, height=1)) {
+        Ok(png) => assert_eq(png, expected_png)
+        Err(_) => abort("expected surface rect png")
+      }
+    Err(_) => abort("expected pixmap png")
+  }
+}
+
+///|
 test "MemorySurface::to_rgba_rect_bytes exports packed surface rectangle" {
   let surface = MemorySurface::new(3, 1)
   let pixels : FixedArray[Byte] = FixedArray::make(12, 0)
@@ -301,6 +350,10 @@ test "MemorySurface rect snapshots reject invalid rectangles" {
   match surface.to_bmp_rect_bytes(PixelRect::new(x=0, y=0, width=0, height=1)) {
     Err(PresentError::InvalidDimensions(0, 1)) => ()
     _ => abort("expected surface rect bmp dimension error")
+  }
+  match surface.to_png_rect_bytes(PixelRect::new(x=0, y=0, width=0, height=1)) {
+    Err(PresentError::InvalidDimensions(0, 1)) => ()
+    _ => abort("expected surface rect png dimension error")
   }
   match
     surface.to_rgba_rect_bytes(PixelRect::new(x=0, y=0, width=1, height=0)) {
@@ -504,6 +557,26 @@ test "Pixmap::to_bmp_rect_bytes exports a source rectangle" {
 }
 
 ///|
+test "Pixmap::to_png_rect_bytes exports a source rectangle" {
+  let pixmap = Pixmap::new(3, 1)
+  pixmap.set_pixel(0, 0, Color::red())
+  pixmap.set_pixel(1, 0, Color::green())
+  pixmap.set_pixel(2, 0, Color::blue())
+
+  let expected = Pixmap::new(1, 1)
+  expected.set_pixel(0, 0, Color::green())
+  match expected.to_png_bytes() {
+    Ok(expected_png) =>
+      match
+        pixmap.to_png_rect_bytes(PixelRect::new(x=1, y=0, width=1, height=1)) {
+        Ok(png) => assert_eq(png, expected_png)
+        Err(_) => abort("expected pixmap rect png")
+      }
+    Err(_) => abort("expected pixmap png")
+  }
+}
+
+///|
 test "Pixmap::checksum_rect reports deterministic rect checksum" {
   let pixmap = Pixmap::new(3, 1)
   pixmap.set_pixel(0, 0, Color::red())
@@ -544,6 +617,10 @@ test "Pixmap rect snapshots reuse present rect validation" {
   match pixmap.to_bmp_rect_bytes(PixelRect::new(x=0, y=0, width=1, height=0)) {
     Err(PresentError::InvalidDimensions(1, 0)) => ()
     _ => abort("expected pixmap rect bmp dimension error")
+  }
+  match pixmap.to_png_rect_bytes(PixelRect::new(x=0, y=0, width=1, height=0)) {
+    Err(PresentError::InvalidDimensions(1, 0)) => ()
+    _ => abort("expected pixmap rect png dimension error")
   }
   match
     pixmap.to_rgba_rect_bytes(PixelRect::new(x=-1, y=0, width=1, height=1)) {

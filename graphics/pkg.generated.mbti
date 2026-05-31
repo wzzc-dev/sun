@@ -320,6 +320,8 @@ pub fn MemorySurface::to_bmp_bytes(Self) -> Bytes
 pub fn MemorySurface::to_bmp_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
 pub fn MemorySurface::to_pixmap(Self) -> Pixmap
 pub fn MemorySurface::to_pixmap_rect(Self, PixelRect) -> Result[Pixmap, PresentError]
+pub fn MemorySurface::to_png_bytes(Self) -> Result[Bytes, PixmapEncodeError]
+pub fn MemorySurface::to_png_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
 pub fn MemorySurface::to_ppm_bytes(Self) -> Bytes
 pub fn MemorySurface::to_ppm_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
 pub fn MemorySurface::to_rgba_bytes(Self) -> Bytes
@@ -462,6 +464,8 @@ pub fn[S : Surface] Pixmap::present_to(Self, S) -> Result[Unit, PresentError]
 pub fn Pixmap::set_pixel(Self, Int, Int, Color) -> Unit
 pub fn Pixmap::to_bmp_bytes(Self) -> Bytes
 pub fn Pixmap::to_bmp_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
+pub fn Pixmap::to_png_bytes(Self) -> Result[Bytes, PixmapEncodeError]
+pub fn Pixmap::to_png_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
 pub fn Pixmap::to_ppm_bytes(Self) -> Bytes
 pub fn Pixmap::to_ppm_rect_bytes(Self, PixelRect) -> Result[Bytes, PresentError]
 pub fn Pixmap::to_rgba_bytes(Self) -> Bytes
@@ -518,6 +522,10 @@ pub(all) enum PixmapDecodeError {
   UnsupportedBmpCompression(Int)
   InvalidBmpDimensions(Int, Int)
   BmpPixelDataOutOfBounds(Int, Int, Int)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PixmapEncodeError {
+  InvalidPngDimensions(Int, Int)
 } derive(Eq, @debug.Debug)
 
 pub struct Point {

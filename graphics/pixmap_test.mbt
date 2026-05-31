@@ -129,6 +129,30 @@ test "Pixmap::to_bmp_bytes encodes empty dimensions" {
 }
 
 ///|
+test "Pixmap::to_png_bytes encodes deterministic RGBA output" {
+  let pixmap = Pixmap::new(1, 1)
+  pixmap.set_pixel(0, 0, Color::new(r=255, g=0, b=0, a=255))
+  let expected : Array[Byte] = [
+    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0,
+    0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 16, 73, 68, 65, 84, 120, 1,
+    1, 5, 0, 250, 255, 0, 255, 0, 0, 255, 5, 0, 1, 255, 250, 92, 136, 209, 0, 0,
+    0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+  ]
+  match pixmap.to_png_bytes() {
+    Ok(png) => assert_eq(png, Bytes::from_array(expected))
+    Err(_) => abort("expected PNG encode")
+  }
+}
+
+///|
+test "Pixmap::to_png_bytes rejects empty dimensions" {
+  match Pixmap::new(0, 0).to_png_bytes() {
+    Err(PixmapEncodeError::InvalidPngDimensions(0, 0)) => ()
+    _ => abort("expected PNG dimensions error")
+  }
+}
+
+///|
 test "Pixmap::from_bmp_bytes decodes exported 32-bit BMP bytes" {
   let pixmap = Pixmap::new(2, 2)
   pixmap.set_pixel(0, 0, Color::new(r=255, g=0, b=0, a=255))
