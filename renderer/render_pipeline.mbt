@@ -40,6 +40,16 @@ pub enum RenderCommand {
     @text.LayoutConfig,
     @graphics.Paint
   )
+  DrawFontBytesKeyed(
+    String,
+    Bytes,
+    String,
+    String,
+    Double,
+    Double,
+    @text.LayoutConfig,
+    @graphics.Paint
+  )
 } derive(Debug)
 
 ///|
@@ -63,6 +73,9 @@ pub struct RenderPipelineReplayResult {
 /// Telemetry returned after replaying a pipeline through RendererResources.
 pub struct RenderPipelineResourceReplayResult {
   replay_result : RenderPipelineReplayResult
+  keyed_font_count : Int
+  font_cache_hit_count : Int
+  font_parse_count : Int
   keyed_image_count : Int
   image_cache_hit_count : Int
   image_cache_insert_count : Int
@@ -145,9 +158,18 @@ pub struct RenderPipelineTextDependency {
 } derive(Debug)
 
 ///|
+/// One font-byte resource use discovered before replaying a pipeline.
+pub struct RenderPipelineFontDependency {
+  command_index : Int
+  font_key : String
+  font_byte_count : Int
+} derive(Debug)
+
+///|
 /// Resource dependencies that can be pre-resolved from existing commands.
 pub struct RenderPipelineResourcePlan {
   command_count : Int
+  font_dependencies : Array[RenderPipelineFontDependency]
   image_dependencies : Array[RenderPipelineImageDependency]
   text_dependencies : Array[RenderPipelineTextDependency]
 } derive(Debug)
@@ -339,6 +361,26 @@ pub fn RenderPipeline::draw_text_face_keyed(
 }
 
 ///|
+/// Queue a keyed font-byte text command for RendererResources-backed replay.
+pub fn RenderPipeline::draw_font_bytes_keyed(
+  self : RenderPipeline,
+  font_key : String,
+  font_data : Bytes,
+  text_key : String,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  paint : @graphics.Paint,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawFontBytesKeyed(
+      font_key, font_data, text_key, text, x, y, config, paint,
+    ),
+  )
+}
+
+///|
 /// Return the number of commands replayed.
 pub fn RenderPipelineReplayResult::get_command_count(
   self : RenderPipelineReplayResult,
@@ -443,6 +485,14 @@ pub fn RenderPipelineResourceReplayResult::get_text_count(
 }
 
 ///|
+/// Return the number of keyed font-byte commands replayed through the font cache.
+pub fn RenderPipelineResourceReplayResult::get_keyed_font_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.keyed_font_count
+}
+
+///|
 /// Return the number of keyed image commands replayed through the image cache.
 pub fn RenderPipelineResourceReplayResult::get_keyed_image_count(
   self : RenderPipelineResourceReplayResult,
@@ -463,7 +513,23 @@ pub fn RenderPipelineResourceReplayResult::get_keyed_text_count(
 pub fn RenderPipelineResourceReplayResult::get_keyed_resource_count(
   self : RenderPipelineResourceReplayResult,
 ) -> Int {
-  self.keyed_image_count + self.keyed_text_count
+  self.keyed_font_count + self.keyed_image_count + self.keyed_text_count
+}
+
+///|
+/// Return the number of keyed font-byte commands that reused a cached font face.
+pub fn RenderPipelineResourceReplayResult::get_font_cache_hit_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.font_cache_hit_count
+}
+
+///|
+/// Return the number of keyed font-byte commands that parsed a new font face.
+pub fn RenderPipelineResourceReplayResult::get_font_parse_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.font_parse_count
 }
 
 ///|
@@ -503,7 +569,9 @@ pub fn RenderPipelineResourceReplayResult::get_text_mask_render_count(
 pub fn RenderPipelineResourceReplayResult::get_resource_cache_hit_count(
   self : RenderPipelineResourceReplayResult,
 ) -> Int {
-  self.image_cache_hit_count + self.text_cache_hit_count
+  self.font_cache_hit_count +
+  self.image_cache_hit_count +
+  self.text_cache_hit_count
 }
 
 ///|
@@ -511,7 +579,9 @@ pub fn RenderPipelineResourceReplayResult::get_resource_cache_hit_count(
 pub fn RenderPipelineResourceReplayResult::get_resource_cache_miss_count(
   self : RenderPipelineResourceReplayResult,
 ) -> Int {
-  self.image_cache_insert_count + self.text_mask_render_count
+  self.font_parse_count +
+  self.image_cache_insert_count +
+  self.text_mask_render_count
 }
 
 ///|
@@ -951,11 +1021,51 @@ pub fn RenderPipelineTextDependency::get_layout_height(
 }
 
 ///|
+/// Return the command index for this font dependency.
+pub fn RenderPipelineFontDependency::get_command_index(
+  self : RenderPipelineFontDependency,
+) -> Int {
+  self.command_index
+}
+
+///|
+/// Return the stable font resource key for this dependency.
+pub fn RenderPipelineFontDependency::get_font_key(
+  self : RenderPipelineFontDependency,
+) -> String {
+  self.font_key
+}
+
+///|
+/// Return the number of bytes in the queued font data.
+pub fn RenderPipelineFontDependency::get_font_byte_count(
+  self : RenderPipelineFontDependency,
+) -> Int {
+  self.font_byte_count
+}
+
+///|
 /// Return the number of commands scanned for resources.
 pub fn RenderPipelineResourcePlan::get_command_count(
   self : RenderPipelineResourcePlan,
 ) -> Int {
   self.command_count
+}
+
+///|
+/// Return the number of discovered font-byte resource uses.
+pub fn RenderPipelineResourcePlan::get_font_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  self.font_dependencies.length()
+}
+
+///|
+/// Return the number of font-byte resource uses with stable keys.
+pub fn RenderPipelineResourcePlan::get_keyed_font_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  self.font_dependencies.length()
 }
 
 ///|
@@ -1007,7 +1117,7 @@ pub fn RenderPipelineResourcePlan::get_keyed_text_count(
 pub fn RenderPipelineResourcePlan::get_resource_count(
   self : RenderPipelineResourcePlan,
 ) -> Int {
-  self.get_image_count() + self.get_text_count()
+  self.get_font_count() + self.get_image_count() + self.get_text_count()
 }
 
 ///|
@@ -1015,7 +1125,9 @@ pub fn RenderPipelineResourcePlan::get_resource_count(
 pub fn RenderPipelineResourcePlan::get_keyed_resource_count(
   self : RenderPipelineResourcePlan,
 ) -> Int {
-  self.get_keyed_image_count() + self.get_keyed_text_count()
+  self.get_keyed_font_count() +
+  self.get_keyed_image_count() +
+  self.get_keyed_text_count()
 }
 
 ///|
@@ -1024,6 +1136,14 @@ pub fn RenderPipelineResourcePlan::has_resources(
   self : RenderPipelineResourcePlan,
 ) -> Bool {
   self.get_resource_count() > 0
+}
+
+///|
+/// Return pre-resolved font-byte resource uses.
+pub fn RenderPipelineResourcePlan::get_font_dependencies(
+  self : RenderPipelineResourcePlan,
+) -> Array[RenderPipelineFontDependency] {
+  self.font_dependencies
 }
 
 ///|
@@ -1050,6 +1170,18 @@ pub fn RenderPipelineResourcePlan::get_image_source_pixel_count(
   let mut count = 0
   for dependency in self.image_dependencies {
     count += dependency.source_pixel_count
+  }
+  count
+}
+
+///|
+/// Return the total queued font byte count.
+pub fn RenderPipelineResourcePlan::get_font_byte_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  let mut count = 0
+  for dependency in self.font_dependencies {
+    count += dependency.font_byte_count
   }
   count
 }
@@ -1107,6 +1239,16 @@ pub fn Renderer::draw_pipeline_with_renderer_resources(
   resources : RendererResources,
 ) -> RenderPipelineResourceReplayResult {
   pipeline.replay_with_renderer_resources(self, resources)
+}
+
+///|
+/// Replay a pipeline through resources, preserving font-byte parse errors.
+pub fn Renderer::draw_pipeline_with_renderer_resources_result(
+  self : Renderer,
+  pipeline : RenderPipeline,
+  resources : RendererResources,
+) -> Result[RenderPipelineResourceReplayResult, @text.FontParseError] {
+  pipeline.replay_with_renderer_resources_result(self, resources)
 }
 
 ///|
@@ -1176,7 +1318,9 @@ pub fn RenderPipeline::analyze(
       | RenderCommand::DrawPixmapRect(_, _, _, _, _)
       | RenderCommand::DrawPixmapRectKeyed(_, _, _, _, _, _) => image_count += 1
       RenderCommand::DrawTextFace(_, _, _, _, _, _)
-      | RenderCommand::DrawTextFaceKeyed(_, _, _, _, _, _, _) => text_count += 1
+      | RenderCommand::DrawTextFaceKeyed(_, _, _, _, _, _, _)
+      | RenderCommand::DrawFontBytesKeyed(_, _, _, _, _, _, _, _) =>
+        text_count += 1
     }
     match render_command_estimated_dirty_rect(command, width, height) {
       Some(rect) => dirty_region.add_clipped_rect(rect, canvas_bounds)
@@ -1266,6 +1410,7 @@ pub fn RenderPipeline::batch_plan(
 pub fn RenderPipeline::resource_plan(
   self : RenderPipeline,
 ) -> RenderPipelineResourcePlan {
+  let font_dependencies = []
   let image_dependencies = []
   let text_dependencies = []
   for index in 0..<self.commands.length() {
@@ -1336,11 +1481,31 @@ pub fn RenderPipeline::resource_plan(
             config,
           ),
         )
+      RenderCommand::DrawFontBytesKeyed(
+        font_key,
+        font_data,
+        text_key,
+        text,
+        _,
+        _,
+        config,
+        _
+      ) => {
+        font_dependencies.push(
+          render_pipeline_make_font_dependency(index, font_key, font_data),
+        )
+        text_dependencies.push(
+          render_pipeline_make_font_bytes_text_dependency(
+            index, text_key, font_data, text, config,
+          ),
+        )
+      }
       _ => ()
     }
   }
   {
     command_count: self.commands.length(),
+    font_dependencies,
     image_dependencies,
     text_dependencies,
   }
@@ -1471,6 +1636,22 @@ pub fn RenderPipeline::replay(
         renderer.draw_text_face(face, text, x, y, config, paint)
         text_count += 1
       }
+      RenderCommand::DrawFontBytesKeyed(
+        _,
+        font_data,
+        _,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        match @text.FontFace::from_bytes(font_data) {
+          Ok(face) => renderer.draw_text_face(face, text, x, y, config, paint)
+          Err(_) => abort("failed to parse pipeline font bytes")
+        }
+        text_count += 1
+      }
     }
   }
   {
@@ -1490,12 +1671,28 @@ pub fn RenderPipeline::replay_with_renderer_resources(
   renderer : Renderer,
   resources : RendererResources,
 ) -> RenderPipelineResourceReplayResult {
+  match self.replay_with_renderer_resources_result(renderer, resources) {
+    Ok(result) => result
+    Err(_) => abort("failed to parse pipeline font bytes")
+  }
+}
+
+///|
+/// Replay all queued commands through resources, preserving font parse errors.
+pub fn RenderPipeline::replay_with_renderer_resources_result(
+  self : RenderPipeline,
+  renderer : Renderer,
+  resources : RendererResources,
+) -> Result[RenderPipelineResourceReplayResult, @text.FontParseError] {
   let canvas = renderer.get_canvas()
   let mut clear_count = 0
   let mut fill_count = 0
   let mut stroke_count = 0
   let mut image_count = 0
   let mut text_count = 0
+  let mut keyed_font_count = 0
+  let mut font_cache_hit_count = 0
+  let mut font_parse_count = 0
   let mut keyed_image_count = 0
   let mut image_cache_hit_count = 0
   let mut image_cache_insert_count = 0
@@ -1587,9 +1784,41 @@ pub fn RenderPipeline::replay_with_renderer_resources(
         keyed_text_count += 1
         text_count += 1
       }
+      RenderCommand::DrawFontBytesKeyed(
+        font_key,
+        font_data,
+        text_key,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        match
+          renderer.draw_font_bytes_cached_with_renderer_resources(
+            font_data, text, x, y, config, resources, font_key, text_key, paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_font_cache() {
+              font_cache_hit_count += 1
+            } else {
+              font_parse_count += 1
+            }
+            if result.did_hit_text_cache() {
+              text_cache_hit_count += 1
+            } else {
+              text_mask_render_count += 1
+            }
+          }
+          Err(error) => return Err(error)
+        }
+        keyed_font_count += 1
+        keyed_text_count += 1
+        text_count += 1
+      }
     }
   }
-  {
+  Ok({
     replay_result: {
       command_count: self.commands.length(),
       clear_count,
@@ -1598,13 +1827,16 @@ pub fn RenderPipeline::replay_with_renderer_resources(
       image_count,
       text_count,
     },
+    keyed_font_count,
+    font_cache_hit_count,
+    font_parse_count,
     keyed_image_count,
     image_cache_hit_count,
     image_cache_insert_count,
     keyed_text_count,
     text_cache_hit_count,
     text_mask_render_count,
-  }
+  })
 }
 
 ///|
@@ -1674,6 +1906,15 @@ fn render_pipeline_make_rect_image_dependency(
 }
 
 ///|
+fn render_pipeline_make_font_dependency(
+  command_index : Int,
+  font_key : String,
+  font_data : Bytes,
+) -> RenderPipelineFontDependency {
+  { command_index, font_key, font_byte_count: font_data.length() }
+}
+
+///|
 fn render_pipeline_make_text_dependency(
   command_index : Int,
   resource_key : String?,
@@ -1706,6 +1947,36 @@ fn render_pipeline_make_text_dependency(
 }
 
 ///|
+fn render_pipeline_make_font_bytes_text_dependency(
+  command_index : Int,
+  resource_key : String,
+  font_data : Bytes,
+  text : String,
+  config : @text.LayoutConfig,
+) -> RenderPipelineTextDependency {
+  match @text.FontFace::from_bytes(font_data) {
+    Ok(face) =>
+      render_pipeline_make_text_dependency(
+        command_index,
+        Some(resource_key),
+        face,
+        text,
+        config,
+      )
+    Err(_) =>
+      {
+        command_index,
+        resource_key: Some(resource_key),
+        text_byte_count: text.length(),
+        run_count: 0,
+        glyph_count: 0,
+        layout_width: 0.0,
+        layout_height: 0.0,
+      }
+  }
+}
+
+///|
 fn render_command_batch_kind(
   command : RenderCommand,
 ) -> RenderPipelineBatchKind {
@@ -1723,6 +1994,8 @@ fn render_command_batch_kind(
     RenderCommand::DrawTextFace(_, _, _, _, _, _) =>
       RenderPipelineBatchKind::Text
     RenderCommand::DrawTextFaceKeyed(_, _, _, _, _, _, _) =>
+      RenderPipelineBatchKind::Text
+    RenderCommand::DrawFontBytesKeyed(_, _, _, _, _, _, _, _) =>
       RenderPipelineBatchKind::Text
   }
 }
@@ -1829,6 +2102,27 @@ fn render_command_estimated_dirty_rect(
         y + layout.get_height(),
       )
     }
+    RenderCommand::DrawFontBytesKeyed(_, font_data, _, text, x, y, config, _) => {
+      guard text.length() > 0 else { return None }
+      match @text.FontFace::from_bytes(font_data) {
+        Ok(face) => {
+          let layout = @text.TextLayout::layout(face, text, config)
+          pixel_rect_from_double_bounds(
+            x,
+            y,
+            x + layout.get_width(),
+            y + layout.get_height(),
+          )
+        }
+        Err(_) =>
+          pixel_rect_from_double_bounds(
+            x,
+            y,
+            x + render_pipeline_fallback_text_width(text, config),
+            y + config.line_height.max(config.font_size),
+          )
+      }
+    }
   }
 }
 
@@ -1924,7 +2218,48 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
       ay == by &&
       render_layout_config_is_same(a_config, b_config) &&
       render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::DrawFontBytesKeyed(
+        a_font_key,
+        _,
+        a_text_key,
+        a_text,
+        ax,
+        ay,
+        a_config,
+        a_paint
+      ),
+      RenderCommand::DrawFontBytesKeyed(
+        b_font_key,
+        _,
+        b_text_key,
+        b_text,
+        bx,
+        by,
+        b_config,
+        b_paint
+      ),
+    ) =>
+      a_font_key == b_font_key &&
+      a_text_key == b_text_key &&
+      a_text == b_text &&
+      ax == bx &&
+      ay == by &&
+      render_layout_config_is_same(a_config, b_config) &&
+      render_paint_is_same(a_paint, b_paint)
     _ => false
+  }
+}
+
+///|
+fn render_pipeline_fallback_text_width(
+  text : String,
+  config : @text.LayoutConfig,
+) -> Double {
+  if config.max_width > 0.0 {
+    config.max_width
+  } else {
+    text.length().to_double() * config.font_size.max(1.0)
   }
 }
 

@@ -142,6 +142,7 @@ pub enum RenderCommand {
   DrawPixmapRectKeyed(String, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawTextFace(@text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
   DrawTextFaceKeyed(String, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
+  DrawFontBytesKeyed(String, Bytes, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
 } derive(@debug.Debug)
 
 pub struct RenderPipeline {
@@ -153,6 +154,7 @@ pub fn RenderPipeline::clear_canvas(Self, @graphics.Color) -> Self
 pub fn RenderPipeline::clear_commands(Self) -> Unit
 pub fn RenderPipeline::diff(Self, Self, Int, Int) -> RenderPipelineDiffResult
 pub fn RenderPipeline::dirty_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
+pub fn RenderPipeline::draw_font_bytes_keyed(Self, String, Bytes, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap(Self, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_keyed(Self, String, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_rect(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
@@ -168,6 +170,7 @@ pub fn RenderPipeline::new() -> Self
 pub fn RenderPipeline::push(Self, RenderCommand) -> Self
 pub fn RenderPipeline::replay(Self, Renderer) -> RenderPipelineReplayResult
 pub fn RenderPipeline::replay_with_renderer_resources(Self, Renderer, RendererResources) -> RenderPipelineResourceReplayResult
+pub fn RenderPipeline::replay_with_renderer_resources_result(Self, Renderer, RendererResources) -> Result[RenderPipelineResourceReplayResult, @text.FontParseError]
 pub fn RenderPipeline::resource_plan(Self) -> RenderPipelineResourcePlan
 pub fn RenderPipeline::stroke_path(Self, @graphics.Path, @graphics.Paint) -> Self
 pub fn RenderPipeline::stroke_rect(Self, Double, Double, Double, Double, @graphics.Paint) -> Self
@@ -251,6 +254,15 @@ pub fn RenderPipelineDiffResult::get_retained_command_count(Self) -> Int
 pub fn RenderPipelineDiffResult::has_changes(Self) -> Bool
 pub fn RenderPipelineDiffResult::has_dirty(Self) -> Bool
 
+pub struct RenderPipelineFontDependency {
+  command_index : Int
+  font_key : String
+  font_byte_count : Int
+} derive(@debug.Debug)
+pub fn RenderPipelineFontDependency::get_command_index(Self) -> Int
+pub fn RenderPipelineFontDependency::get_font_byte_count(Self) -> Int
+pub fn RenderPipelineFontDependency::get_font_key(Self) -> String
+
 pub struct RenderPipelineImageDependency {
   command_index : Int
   resource_key : String?
@@ -282,13 +294,18 @@ pub fn RenderPipelineReplayResult::get_text_count(Self) -> Int
 
 pub struct RenderPipelineResourcePlan {
   command_count : Int
+  font_dependencies : Array[RenderPipelineFontDependency]
   image_dependencies : Array[RenderPipelineImageDependency]
   text_dependencies : Array[RenderPipelineTextDependency]
 } derive(@debug.Debug)
 pub fn RenderPipelineResourcePlan::get_command_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_font_byte_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_font_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_font_dependencies(Self) -> Array[RenderPipelineFontDependency]
 pub fn RenderPipelineResourcePlan::get_image_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_image_dependencies(Self) -> Array[RenderPipelineImageDependency]
 pub fn RenderPipelineResourcePlan::get_image_source_pixel_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_keyed_font_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_keyed_image_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_keyed_resource_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_keyed_text_count(Self) -> Int
@@ -302,6 +319,9 @@ pub fn RenderPipelineResourcePlan::has_resources(Self) -> Bool
 
 pub struct RenderPipelineResourceReplayResult {
   replay_result : RenderPipelineReplayResult
+  keyed_font_count : Int
+  font_cache_hit_count : Int
+  font_parse_count : Int
   keyed_image_count : Int
   image_cache_hit_count : Int
   image_cache_insert_count : Int
@@ -312,9 +332,12 @@ pub struct RenderPipelineResourceReplayResult {
 pub fn RenderPipelineResourceReplayResult::get_clear_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_command_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_fill_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_font_cache_hit_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_font_parse_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_image_cache_hit_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_image_cache_insert_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_image_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_keyed_font_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_keyed_image_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_keyed_resource_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_keyed_text_count(Self) -> Int
@@ -371,6 +394,7 @@ pub fn Renderer::draw_nine_patch_rgba_bytes_cached(Self, Bytes, Int, Int, Int, I
 pub fn Renderer::draw_nine_patch_rgba_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, Int, Int, Int, Int, @graphics.NinePatchInsets, RendererResources, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_pipeline(Self, RenderPipeline) -> RenderPipelineReplayResult
 pub fn Renderer::draw_pipeline_with_renderer_resources(Self, RenderPipeline, RendererResources) -> RenderPipelineResourceReplayResult
+pub fn Renderer::draw_pipeline_with_renderer_resources_result(Self, RenderPipeline, RendererResources) -> Result[RenderPipelineResourceReplayResult, @text.FontParseError]
 pub fn Renderer::draw_pixmap_cached(Self, @graphics.Pixmap, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::draw_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, RendererResources, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::draw_pixmap_rect_cached(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
