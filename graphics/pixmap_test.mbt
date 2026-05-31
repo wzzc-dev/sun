@@ -128,6 +128,27 @@ test "Pixmap::from_bmp_bytes accepts top-down BMP row order" {
 }
 
 ///|
+test "Pixmap::from_bmp_bytes decodes padded 24-bit BMP rows" {
+  let bmp : Array[Byte] = [
+    66, 77, 70, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 2, 0, 0, 0, 2, 0,
+    0, 0, 1, 0, 24, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 255, 0, 0, 255, 255, 255, 12, 34, 0, 0, 255, 0, 255, 0, 56, 78,
+  ]
+
+  match Pixmap::from_bmp_bytes(Bytes::from_array(bmp)) {
+    Ok(decoded) => {
+      assert_eq(decoded.get_width(), 2)
+      assert_eq(decoded.get_height(), 2)
+      assert_eq(decoded.get_pixel(0, 0), Color::red())
+      assert_eq(decoded.get_pixel(1, 0), Color::green())
+      assert_eq(decoded.get_pixel(0, 1), Color::blue())
+      assert_eq(decoded.get_pixel(1, 1), Color::white())
+    }
+    Err(_) => abort("expected padded 24-bit BMP decode")
+  }
+}
+
+///|
 test "Pixmap::from_bmp_bytes reports structural errors" {
   match Pixmap::from_bmp_bytes(Bytes::from_array([66, 77])) {
     Err(PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
@@ -146,11 +167,11 @@ test "Pixmap::from_bmp_bytes reports structural errors" {
 
   let unsupported_bpp : Array[Byte] = [
     66, 77, 54, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 0, 0, 1, 0,
-    0, 0, 1, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 1, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0,
   ]
   match Pixmap::from_bmp_bytes(Bytes::from_array(unsupported_bpp)) {
-    Err(PixmapDecodeError::UnsupportedBmpBitsPerPixel(24)) => ()
+    Err(PixmapDecodeError::UnsupportedBmpBitsPerPixel(16)) => ()
     _ => abort("expected BMP bits-per-pixel error")
   }
 

@@ -162,11 +162,10 @@ pub fn Pixmap::to_bmp_bytes(self : Pixmap) -> Bytes {
 }
 
 ///|
-/// Decode a 32-bit BMP image into an RGBA pixmap.
+/// Decode a 24-bit or 32-bit BMP image into an RGBA pixmap.
 ///
-/// This intentionally supports the dependency-free format emitted by
-/// `to_bmp_bytes`: uncompressed BMP with BGRA pixels. Both bottom-up and
-/// top-down BMP row order are accepted.
+/// This intentionally supports uncompressed BMP images with BGR/BGRA pixels.
+/// Both bottom-up and top-down BMP row order are accepted.
 pub fn Pixmap::from_bmp_bytes(
   data : Bytes,
 ) -> Result[Pixmap, PixmapDecodeError] {
@@ -475,6 +474,8 @@ struct BmpInfo {
   width : Int
   height : Int
   is_top_down : Bool
+  bytes_per_pixel : Int
+  source_row_bytes : Int
 } derive(Debug)
 
 ///|
@@ -500,7 +501,7 @@ fn decode_bmp_info(data : Bytes) -> Result[BmpInfo, PixmapDecodeError] {
     return Err(PixmapDecodeError::UnsupportedBmpColorPlanes(color_planes))
   }
   let bits_per_pixel = read_u16_le_at(data, 28)
-  guard bits_per_pixel == 32 else {
+  guard bits_per_pixel == 24 || bits_per_pixel == 32 else {
     return Err(PixmapDecodeError::UnsupportedBmpBitsPerPixel(bits_per_pixel))
   }
   let compression = read_u32_le_at(data, 30)
@@ -508,7 +509,9 @@ fn decode_bmp_info(data : Bytes) -> Result[BmpInfo, PixmapDecodeError] {
     return Err(PixmapDecodeError::UnsupportedBmpCompression(compression))
   }
   let height = raw_height.abs()
-  let required_len = pixel_offset + width * height * 4
+  let bytes_per_pixel = bits_per_pixel / 8
+  let source_row_bytes = (width * bits_per_pixel + 31) / 32 * 4
+  let required_len = pixel_offset + source_row_bytes * height
   guard data.length() >= required_len else {
     return Err(
       PixmapDecodeError::BmpPixelDataOutOfBounds(
@@ -518,25 +521,36 @@ fn decode_bmp_info(data : Bytes) -> Result[BmpInfo, PixmapDecodeError] {
       ),
     )
   }
-  Ok({ pixel_offset, width, height, is_top_down: raw_height < 0 })
+  Ok({
+    pixel_offset,
+    width,
+    height,
+    is_top_down: raw_height < 0,
+    bytes_per_pixel,
+    source_row_bytes,
+  })
 }
 
 ///|
 fn decode_bmp_pixmap(data : Bytes, info : BmpInfo) -> Pixmap {
   let pixmap = Pixmap::new(info.width, info.height)
   let dst = pixmap.get_pixels()
-  let row_bytes = info.width * 4
+  let dst_row_bytes = info.width * 4
   for y in 0..<info.height {
     let source_y = if info.is_top_down { y } else { info.height - 1 - y }
-    let source_row = info.pixel_offset + source_y * row_bytes
-    let dst_row = y * row_bytes
+    let source_row = info.pixel_offset + source_y * info.source_row_bytes
+    let dst_row = y * dst_row_bytes
     for x in 0..<info.width {
-      let source_offset = source_row + x * 4
+      let source_offset = source_row + x * info.bytes_per_pixel
       let dst_offset = dst_row + x * 4
       dst[dst_offset] = data[source_offset + 2]
       dst[dst_offset + 1] = data[source_offset + 1]
       dst[dst_offset + 2] = data[source_offset]
-      dst[dst_offset + 3] = data[source_offset + 3]
+      dst[dst_offset + 3] = if info.bytes_per_pixel == 4 {
+        data[source_offset + 3]
+      } else {
+        255
+      }
     }
   }
   pixmap
