@@ -10,6 +10,22 @@ pub enum RenderCommand {
   DrawPixmapKeyed(String, @graphics.Pixmap, Int, Int, @graphics.Paint)
   DrawBmpBytesKeyed(String, Bytes, Int, Int, @graphics.Paint)
   DrawPngBytesKeyed(String, Bytes, Int, Int, @graphics.Paint)
+  DrawBmpBytesRectKeyed(
+    String,
+    Bytes,
+    @graphics.PixelRect,
+    Int,
+    Int,
+    @graphics.Paint
+  )
+  DrawPngBytesRectKeyed(
+    String,
+    Bytes,
+    @graphics.PixelRect,
+    Int,
+    Int,
+    @graphics.Paint
+  )
   DrawPixmapRect(
     @graphics.Pixmap,
     @graphics.PixelRect,
@@ -395,6 +411,42 @@ pub fn RenderPipeline::draw_png_bytes_keyed(
 ) -> RenderPipeline {
   self.push(
     RenderCommand::DrawPngBytesKeyed(resource_key, image_data, x, y, paint),
+  )
+}
+
+///|
+/// Queue a keyed BMP-bytes source-rectangle command for RendererResources replay.
+pub fn RenderPipeline::draw_bmp_bytes_rect_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  paint : @graphics.Paint,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawBmpBytesRectKeyed(
+      resource_key, image_data, src_rect, x, y, paint,
+    ),
+  )
+}
+
+///|
+/// Queue a keyed PNG-bytes source-rectangle command for RendererResources replay.
+pub fn RenderPipeline::draw_png_bytes_rect_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  paint : @graphics.Paint,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawPngBytesRectKeyed(
+      resource_key, image_data, src_rect, x, y, paint,
+    ),
   )
 }
 
@@ -1630,6 +1682,8 @@ pub fn RenderPipeline::analyze(
       | RenderCommand::DrawPixmapKeyed(_, _, _, _, _)
       | RenderCommand::DrawBmpBytesKeyed(_, _, _, _, _)
       | RenderCommand::DrawPngBytesKeyed(_, _, _, _, _)
+      | RenderCommand::DrawBmpBytesRectKeyed(_, _, _, _, _, _)
+      | RenderCommand::DrawPngBytesRectKeyed(_, _, _, _, _, _)
       | RenderCommand::DrawPixmapRect(_, _, _, _, _)
       | RenderCommand::DrawPixmapRectKeyed(_, _, _, _, _, _) => image_count += 1
       RenderCommand::DrawTextFace(_, _, _, _, _, _)
@@ -1766,6 +1820,32 @@ pub fn RenderPipeline::resource_plan(
         image_dependencies.push(
           render_pipeline_make_png_bytes_image_dependency(
             index, resource_key, image_data,
+          ),
+        )
+      RenderCommand::DrawBmpBytesRectKeyed(
+        resource_key,
+        image_data,
+        src_rect,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_bmp_bytes_rect_image_dependency(
+            index, resource_key, image_data, src_rect,
+          ),
+        )
+      RenderCommand::DrawPngBytesRectKeyed(
+        resource_key,
+        image_data,
+        src_rect,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_png_bytes_rect_image_dependency(
+            index, resource_key, image_data, src_rect,
           ),
         )
       RenderCommand::DrawPixmapRect(pixmap, src_rect, _, _, _) =>
@@ -2115,6 +2195,20 @@ pub fn RenderPipeline::replay(
         }
         image_count += 1
       }
+      RenderCommand::DrawBmpBytesRectKeyed(_, image_data, src_rect, x, y, paint) => {
+        match @graphics.Pixmap::from_bmp_bytes(image_data) {
+          Ok(pixmap) => canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
+          Err(_) => abort("failed to decode pipeline BMP bytes")
+        }
+        image_count += 1
+      }
+      RenderCommand::DrawPngBytesRectKeyed(_, image_data, src_rect, x, y, paint) => {
+        match @graphics.Pixmap::from_png_bytes(image_data) {
+          Ok(pixmap) => canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
+          Err(_) => abort("failed to decode pipeline PNG bytes")
+        }
+        image_count += 1
+      }
       RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, paint) => {
         canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
         image_count += 1
@@ -2320,6 +2414,52 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
         match
           renderer.draw_png_bytes_cached_with_renderer_resources(
             image_data, x, y, resources, resource_key, paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline PNG bytes")
+        }
+      RenderCommand::DrawBmpBytesRectKeyed(
+        resource_key,
+        image_data,
+        src_rect,
+        x,
+        y,
+        paint
+      ) =>
+        match
+          renderer.draw_bmp_bytes_rect_cached_with_renderer_resources(
+            image_data, src_rect, x, y, resources, resource_key, paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline BMP bytes")
+        }
+      RenderCommand::DrawPngBytesRectKeyed(
+        resource_key,
+        image_data,
+        src_rect,
+        x,
+        y,
+        paint
+      ) =>
+        match
+          renderer.draw_png_bytes_rect_cached_with_renderer_resources(
+            image_data, src_rect, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
             if result.did_hit_cache() {
@@ -2642,6 +2782,52 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         match
           renderer.draw_png_bytes_cached_with_renderer_resources(
             image_data, x, y, resources, resource_key, paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline PNG bytes")
+        }
+      RenderCommand::DrawBmpBytesRectKeyed(
+        resource_key,
+        image_data,
+        src_rect,
+        x,
+        y,
+        paint
+      ) =>
+        match
+          renderer.draw_bmp_bytes_rect_cached_with_renderer_resources(
+            image_data, src_rect, x, y, resources, resource_key, paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline BMP bytes")
+        }
+      RenderCommand::DrawPngBytesRectKeyed(
+        resource_key,
+        image_data,
+        src_rect,
+        x,
+        y,
+        paint
+      ) =>
+        match
+          renderer.draw_png_bytes_rect_cached_with_renderer_resources(
+            image_data, src_rect, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
             if result.did_hit_cache() {
@@ -3150,6 +3336,56 @@ fn render_pipeline_make_png_bytes_image_dependency(
 }
 
 ///|
+fn render_pipeline_make_bmp_bytes_rect_image_dependency(
+  command_index : Int,
+  resource_key : String,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+) -> RenderPipelineImageDependency {
+  match @graphics.Pixmap::from_bmp_bytes(image_data) {
+    Ok(pixmap) =>
+      render_pipeline_make_rect_image_dependency(
+        command_index,
+        Some(resource_key),
+        pixmap,
+        src_rect,
+      )
+    Err(_) =>
+      render_pipeline_make_image_dependency(
+        command_index,
+        Some(resource_key),
+        0,
+        0,
+      )
+  }
+}
+
+///|
+fn render_pipeline_make_png_bytes_rect_image_dependency(
+  command_index : Int,
+  resource_key : String,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+) -> RenderPipelineImageDependency {
+  match @graphics.Pixmap::from_png_bytes(image_data) {
+    Ok(pixmap) =>
+      render_pipeline_make_rect_image_dependency(
+        command_index,
+        Some(resource_key),
+        pixmap,
+        src_rect,
+      )
+    Err(_) =>
+      render_pipeline_make_image_dependency(
+        command_index,
+        Some(resource_key),
+        0,
+        0,
+      )
+  }
+}
+
+///|
 fn render_pipeline_make_font_dependency(
   command_index : Int,
   font_key : String,
@@ -3255,6 +3491,8 @@ fn render_command_batch_kind(
     | RenderCommand::DrawPixmapKeyed(_, _, _, _, _)
     | RenderCommand::DrawBmpBytesKeyed(_, _, _, _, _)
     | RenderCommand::DrawPngBytesKeyed(_, _, _, _, _)
+    | RenderCommand::DrawBmpBytesRectKeyed(_, _, _, _, _, _)
+    | RenderCommand::DrawPngBytesRectKeyed(_, _, _, _, _, _)
     | RenderCommand::DrawPixmapRect(_, _, _, _, _)
     | RenderCommand::DrawPixmapRectKeyed(_, _, _, _, _, _) =>
       RenderPipelineBatchKind::Image
@@ -3349,46 +3587,22 @@ fn render_command_estimated_dirty_rect(
           )
         Err(_) => None
       }
-    RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, _) => {
-      let src_bounds = @graphics.PixelRect::new(
-        x=0,
-        y=0,
-        width=pixmap.get_width(),
-        height=pixmap.get_height(),
-      )
-      match src_rect.clip_to(src_bounds) {
-        Some(clipped_src) =>
-          non_empty_pixel_rect(
-            @graphics.PixelRect::new(
-              x=x + clipped_src.x - src_rect.x,
-              y=y + clipped_src.y - src_rect.y,
-              width=clipped_src.width,
-              height=clipped_src.height,
-            ),
-          )
-        None => None
+    RenderCommand::DrawBmpBytesRectKeyed(_, image_data, src_rect, x, y, _) =>
+      match @graphics.Pixmap::from_bmp_bytes(image_data) {
+        Ok(pixmap) =>
+          render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
+        Err(_) => None
       }
-    }
-    RenderCommand::DrawPixmapRectKeyed(_, pixmap, src_rect, x, y, _) => {
-      let src_bounds = @graphics.PixelRect::new(
-        x=0,
-        y=0,
-        width=pixmap.get_width(),
-        height=pixmap.get_height(),
-      )
-      match src_rect.clip_to(src_bounds) {
-        Some(clipped_src) =>
-          non_empty_pixel_rect(
-            @graphics.PixelRect::new(
-              x=x + clipped_src.x - src_rect.x,
-              y=y + clipped_src.y - src_rect.y,
-              width=clipped_src.width,
-              height=clipped_src.height,
-            ),
-          )
-        None => None
+    RenderCommand::DrawPngBytesRectKeyed(_, image_data, src_rect, x, y, _) =>
+      match @graphics.Pixmap::from_png_bytes(image_data) {
+        Ok(pixmap) =>
+          render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
+        Err(_) => None
       }
-    }
+    RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, _) =>
+      render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
+    RenderCommand::DrawPixmapRectKeyed(_, pixmap, src_rect, x, y, _) =>
+      render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
     RenderCommand::DrawTextFace(face, text, x, y, config, _) => {
       guard text.length() > 0 else { return None }
       let layout = @text.TextLayout::layout(face, text, config)
@@ -3518,6 +3732,33 @@ fn render_command_estimated_dirty_rect(
 }
 
 ///|
+fn render_pixmap_rect_estimated_dirty_rect(
+  pixmap : @graphics.Pixmap,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+) -> @graphics.PixelRect? {
+  let src_bounds = @graphics.PixelRect::new(
+    x=0,
+    y=0,
+    width=pixmap.get_width(),
+    height=pixmap.get_height(),
+  )
+  match src_rect.clip_to(src_bounds) {
+    Some(clipped_src) =>
+      non_empty_pixel_rect(
+        @graphics.PixelRect::new(
+          x=x + clipped_src.x - src_rect.x,
+          y=y + clipped_src.y - src_rect.y,
+          width=clipped_src.width,
+          height=clipped_src.height,
+        ),
+      )
+    None => None
+  }
+}
+
+///|
 fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
   match (a, b) {
     (RenderCommand::Clear(a_color), RenderCommand::Clear(b_color)) =>
@@ -3579,6 +3820,24 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
       RenderCommand::DrawPngBytesKeyed(b_key, _, bx, by, b_paint),
     ) =>
       a_key == b_key &&
+      ax == bx &&
+      ay == by &&
+      render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::DrawBmpBytesRectKeyed(a_key, _, a_src, ax, ay, a_paint),
+      RenderCommand::DrawBmpBytesRectKeyed(b_key, _, b_src, bx, by, b_paint),
+    ) =>
+      a_key == b_key &&
+      a_src == b_src &&
+      ax == bx &&
+      ay == by &&
+      render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::DrawPngBytesRectKeyed(a_key, _, a_src, ax, ay, a_paint),
+      RenderCommand::DrawPngBytesRectKeyed(b_key, _, b_src, bx, by, b_paint),
+    ) =>
+      a_key == b_key &&
+      a_src == b_src &&
       ax == bx &&
       ay == by &&
       render_paint_is_same(a_paint, b_paint)
