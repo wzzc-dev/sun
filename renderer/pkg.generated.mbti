@@ -161,6 +161,7 @@ pub fn RenderPipeline::len(Self) -> Int
 pub fn RenderPipeline::new() -> Self
 pub fn RenderPipeline::push(Self, RenderCommand) -> Self
 pub fn RenderPipeline::replay(Self, Renderer) -> RenderPipelineReplayResult
+pub fn RenderPipeline::resource_plan(Self) -> RenderPipelineResourcePlan
 pub fn RenderPipeline::stroke_path(Self, @graphics.Path, @graphics.Paint) -> Self
 pub fn RenderPipeline::stroke_rect(Self, Double, Double, Double, Double, @graphics.Paint) -> Self
 
@@ -243,6 +244,17 @@ pub fn RenderPipelineDiffResult::get_retained_command_count(Self) -> Int
 pub fn RenderPipelineDiffResult::has_changes(Self) -> Bool
 pub fn RenderPipelineDiffResult::has_dirty(Self) -> Bool
 
+pub struct RenderPipelineImageDependency {
+  command_index : Int
+  source_width : Int
+  source_height : Int
+  source_pixel_count : Int
+} derive(@debug.Debug)
+pub fn RenderPipelineImageDependency::get_command_index(Self) -> Int
+pub fn RenderPipelineImageDependency::get_source_height(Self) -> Int
+pub fn RenderPipelineImageDependency::get_source_pixel_count(Self) -> Int
+pub fn RenderPipelineImageDependency::get_source_width(Self) -> Int
+
 pub struct RenderPipelineReplayResult {
   command_count : Int
   clear_count : Int
@@ -257,6 +269,38 @@ pub fn RenderPipelineReplayResult::get_fill_count(Self) -> Int
 pub fn RenderPipelineReplayResult::get_image_count(Self) -> Int
 pub fn RenderPipelineReplayResult::get_stroke_count(Self) -> Int
 pub fn RenderPipelineReplayResult::get_text_count(Self) -> Int
+
+pub struct RenderPipelineResourcePlan {
+  command_count : Int
+  image_dependencies : Array[RenderPipelineImageDependency]
+  text_dependencies : Array[RenderPipelineTextDependency]
+} derive(@debug.Debug)
+pub fn RenderPipelineResourcePlan::get_command_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_image_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_image_dependencies(Self) -> Array[RenderPipelineImageDependency]
+pub fn RenderPipelineResourcePlan::get_image_source_pixel_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_resource_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_text_byte_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_text_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_text_dependencies(Self) -> Array[RenderPipelineTextDependency]
+pub fn RenderPipelineResourcePlan::get_text_glyph_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_text_run_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::has_resources(Self) -> Bool
+
+pub struct RenderPipelineTextDependency {
+  command_index : Int
+  text_byte_count : Int
+  run_count : Int
+  glyph_count : Int
+  layout_width : Double
+  layout_height : Double
+} derive(@debug.Debug)
+pub fn RenderPipelineTextDependency::get_command_index(Self) -> Int
+pub fn RenderPipelineTextDependency::get_glyph_count(Self) -> Int
+pub fn RenderPipelineTextDependency::get_layout_height(Self) -> Double
+pub fn RenderPipelineTextDependency::get_layout_width(Self) -> Double
+pub fn RenderPipelineTextDependency::get_run_count(Self) -> Int
+pub fn RenderPipelineTextDependency::get_text_byte_count(Self) -> Int
 
 pub struct Renderer {
   canvas : @graphics.Canvas
@@ -394,6 +438,7 @@ pub fn Renderer::draw_transformed_sampled_rgba_bytes_rect_cached_with_renderer_r
 pub fn Renderer::get_canvas(Self) -> @graphics.Canvas
 pub fn Renderer::new(@graphics.Canvas) -> Self
 pub fn Renderer::plan_pipeline_batches(Self, RenderPipeline) -> RenderPipelineBatchPlan
+pub fn Renderer::plan_pipeline_resources(Self, RenderPipeline) -> RenderPipelineResourcePlan
 
 pub struct RendererResources {
   font_cache : @text.FontFaceCache

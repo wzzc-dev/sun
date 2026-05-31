@@ -93,6 +93,34 @@ pub struct RenderPipelineBatchPlan {
 } derive(Debug)
 
 ///|
+/// One image resource use discovered before replaying a render pipeline.
+pub struct RenderPipelineImageDependency {
+  command_index : Int
+  source_width : Int
+  source_height : Int
+  source_pixel_count : Int
+} derive(Debug)
+
+///|
+/// One parsed-font text resource use discovered before replaying a pipeline.
+pub struct RenderPipelineTextDependency {
+  command_index : Int
+  text_byte_count : Int
+  run_count : Int
+  glyph_count : Int
+  layout_width : Double
+  layout_height : Double
+} derive(Debug)
+
+///|
+/// Resource dependencies that can be pre-resolved from existing commands.
+pub struct RenderPipelineResourcePlan {
+  command_count : Int
+  image_dependencies : Array[RenderPipelineImageDependency]
+  text_dependencies : Array[RenderPipelineTextDependency]
+} derive(Debug)
+
+///|
 /// Create an empty render pipeline.
 pub fn RenderPipeline::new() -> RenderPipeline {
   { commands: [] }
@@ -601,6 +629,190 @@ pub fn RenderPipelineBatchPlan::get_present_plan(
 }
 
 ///|
+/// Return the command index that owns this image dependency.
+pub fn RenderPipelineImageDependency::get_command_index(
+  self : RenderPipelineImageDependency,
+) -> Int {
+  self.command_index
+}
+
+///|
+/// Return the clipped source width read from the image resource.
+pub fn RenderPipelineImageDependency::get_source_width(
+  self : RenderPipelineImageDependency,
+) -> Int {
+  self.source_width
+}
+
+///|
+/// Return the clipped source height read from the image resource.
+pub fn RenderPipelineImageDependency::get_source_height(
+  self : RenderPipelineImageDependency,
+) -> Int {
+  self.source_height
+}
+
+///|
+/// Return the clipped source pixel count read from the image resource.
+pub fn RenderPipelineImageDependency::get_source_pixel_count(
+  self : RenderPipelineImageDependency,
+) -> Int {
+  self.source_pixel_count
+}
+
+///|
+/// Return the command index that owns this text dependency.
+pub fn RenderPipelineTextDependency::get_command_index(
+  self : RenderPipelineTextDependency,
+) -> Int {
+  self.command_index
+}
+
+///|
+/// Return the number of bytes in the queued text string.
+pub fn RenderPipelineTextDependency::get_text_byte_count(
+  self : RenderPipelineTextDependency,
+) -> Int {
+  self.text_byte_count
+}
+
+///|
+/// Return the number of layout runs precomputed for this text command.
+pub fn RenderPipelineTextDependency::get_run_count(
+  self : RenderPipelineTextDependency,
+) -> Int {
+  self.run_count
+}
+
+///|
+/// Return the number of positioned glyphs precomputed for this text command.
+pub fn RenderPipelineTextDependency::get_glyph_count(
+  self : RenderPipelineTextDependency,
+) -> Int {
+  self.glyph_count
+}
+
+///|
+/// Return the precomputed text layout width.
+pub fn RenderPipelineTextDependency::get_layout_width(
+  self : RenderPipelineTextDependency,
+) -> Double {
+  self.layout_width
+}
+
+///|
+/// Return the precomputed text layout height.
+pub fn RenderPipelineTextDependency::get_layout_height(
+  self : RenderPipelineTextDependency,
+) -> Double {
+  self.layout_height
+}
+
+///|
+/// Return the number of commands scanned for resources.
+pub fn RenderPipelineResourcePlan::get_command_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  self.command_count
+}
+
+///|
+/// Return the number of discovered image resource uses.
+pub fn RenderPipelineResourcePlan::get_image_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  self.image_dependencies.length()
+}
+
+///|
+/// Return the number of discovered text resource uses.
+pub fn RenderPipelineResourcePlan::get_text_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  self.text_dependencies.length()
+}
+
+///|
+/// Return the number of discovered resource uses.
+pub fn RenderPipelineResourcePlan::get_resource_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  self.get_image_count() + self.get_text_count()
+}
+
+///|
+/// Return whether the plan discovered at least one resource use.
+pub fn RenderPipelineResourcePlan::has_resources(
+  self : RenderPipelineResourcePlan,
+) -> Bool {
+  self.get_resource_count() > 0
+}
+
+///|
+/// Return pre-resolved image resource uses.
+pub fn RenderPipelineResourcePlan::get_image_dependencies(
+  self : RenderPipelineResourcePlan,
+) -> Array[RenderPipelineImageDependency] {
+  self.image_dependencies
+}
+
+///|
+/// Return pre-resolved text resource uses.
+pub fn RenderPipelineResourcePlan::get_text_dependencies(
+  self : RenderPipelineResourcePlan,
+) -> Array[RenderPipelineTextDependency] {
+  self.text_dependencies
+}
+
+///|
+/// Return the total clipped source pixels read by image commands.
+pub fn RenderPipelineResourcePlan::get_image_source_pixel_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  let mut count = 0
+  for dependency in self.image_dependencies {
+    count += dependency.source_pixel_count
+  }
+  count
+}
+
+///|
+/// Return the total queued text byte count.
+pub fn RenderPipelineResourcePlan::get_text_byte_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  let mut count = 0
+  for dependency in self.text_dependencies {
+    count += dependency.text_byte_count
+  }
+  count
+}
+
+///|
+/// Return the total precomputed text layout run count.
+pub fn RenderPipelineResourcePlan::get_text_run_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  let mut count = 0
+  for dependency in self.text_dependencies {
+    count += dependency.run_count
+  }
+  count
+}
+
+///|
+/// Return the total precomputed positioned glyph count.
+pub fn RenderPipelineResourcePlan::get_text_glyph_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  let mut count = 0
+  for dependency in self.text_dependencies {
+    count += dependency.glyph_count
+  }
+  count
+}
+
+///|
 /// Replay all queued commands through this renderer.
 pub fn Renderer::draw_pipeline(
   self : Renderer,
@@ -638,6 +850,16 @@ pub fn Renderer::plan_pipeline_batches(
 ) -> RenderPipelineBatchPlan {
   let pixmap = self.get_canvas().get_pixmap()
   pipeline.batch_plan(pixmap.get_width(), pixmap.get_height())
+}
+
+///|
+/// Pre-resolve image and parsed-font text resource uses for a pipeline.
+pub fn Renderer::plan_pipeline_resources(
+  self : Renderer,
+  pipeline : RenderPipeline,
+) -> RenderPipelineResourcePlan {
+  ignore(self)
+  pipeline.resource_plan()
 }
 
 ///|
@@ -745,6 +967,42 @@ pub fn RenderPipeline::batch_plan(
     command_count: self.commands.length(),
     batches,
     dirty_region: plan_dirty_region,
+  }
+}
+
+///|
+/// Pre-resolve image and parsed-font text resource uses before replay.
+pub fn RenderPipeline::resource_plan(
+  self : RenderPipeline,
+) -> RenderPipelineResourcePlan {
+  let image_dependencies = []
+  let text_dependencies = []
+  for index in 0..<self.commands.length() {
+    let command = self.commands[index]
+    match command {
+      RenderCommand::DrawPixmap(pixmap, _, _, _) =>
+        image_dependencies.push(
+          render_pipeline_make_image_dependency(
+            index,
+            pixmap.get_width(),
+            pixmap.get_height(),
+          ),
+        )
+      RenderCommand::DrawPixmapRect(pixmap, src_rect, _, _, _) =>
+        image_dependencies.push(
+          render_pipeline_make_rect_image_dependency(index, pixmap, src_rect),
+        )
+      RenderCommand::DrawTextFace(face, text, _, _, config, _) =>
+        text_dependencies.push(
+          render_pipeline_make_text_dependency(index, face, text, config),
+        )
+      _ => ()
+    }
+  }
+  {
+    command_count: self.commands.length(),
+    image_dependencies,
+    text_dependencies,
   }
 }
 
@@ -895,6 +1153,73 @@ fn render_pipeline_make_batch(
   dirty_region : @graphics.DirtyRegion,
 ) -> RenderPipelineBatch {
   { kind, start_index, command_count, dirty_region }
+}
+
+///|
+fn render_pipeline_make_image_dependency(
+  command_index : Int,
+  source_width : Int,
+  source_height : Int,
+) -> RenderPipelineImageDependency {
+  {
+    command_index,
+    source_width,
+    source_height,
+    source_pixel_count: source_width * source_height,
+  }
+}
+
+///|
+fn render_pipeline_make_rect_image_dependency(
+  command_index : Int,
+  pixmap : @graphics.Pixmap,
+  src_rect : @graphics.PixelRect,
+) -> RenderPipelineImageDependency {
+  let src_bounds = @graphics.PixelRect::new(
+    x=0,
+    y=0,
+    width=pixmap.get_width(),
+    height=pixmap.get_height(),
+  )
+  match src_rect.clip_to(src_bounds) {
+    Some(clipped) =>
+      render_pipeline_make_image_dependency(
+        command_index,
+        clipped.width,
+        clipped.height,
+      )
+    None => render_pipeline_make_image_dependency(command_index, 0, 0)
+  }
+}
+
+///|
+fn render_pipeline_make_text_dependency(
+  command_index : Int,
+  face : @text.FontFace,
+  text : String,
+  config : @text.LayoutConfig,
+) -> RenderPipelineTextDependency {
+  let mut run_count = 0
+  let mut glyph_count = 0
+  let mut layout_width = 0.0
+  let mut layout_height = 0.0
+  if text.length() > 0 {
+    let layout = @text.TextLayout::layout(face, text, config)
+    run_count = layout.run_count()
+    layout_width = layout.get_width()
+    layout_height = layout.get_height()
+    for run in layout.get_runs() {
+      glyph_count += run.glyph_count()
+    }
+  }
+  {
+    command_index,
+    text_byte_count: text.length(),
+    run_count,
+    glyph_count,
+    layout_width,
+    layout_height,
+  }
 }
 
 ///|

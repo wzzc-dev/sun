@@ -361,6 +361,114 @@ test "Renderer batch plan uses canvas bounds for present planning" {
 }
 
 ///|
+test "RenderPipeline resource plan pre-resolves image and text dependencies" {
+  let icon = @graphics.Pixmap::new(4, 3)
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let plan = RenderPipeline::new()
+    .fill_rect(0.0, 0.0, 1.0, 1.0, @graphics.Paint::new())
+    .draw_pixmap(icon, 0, 0, @graphics.Paint::new())
+    .draw_pixmap_rect(
+      icon,
+      @graphics.PixelRect::new(x=2, y=1, width=4, height=3),
+      0,
+      0,
+      @graphics.Paint::new(),
+    )
+    .draw_text_face(
+      face,
+      "AA",
+      1.0,
+      1.0,
+      config,
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    )
+    .resource_plan()
+
+  assert_eq(plan.get_command_count(), 4)
+  assert_true(plan.has_resources())
+  assert_eq(plan.get_resource_count(), 3)
+  assert_eq(plan.get_image_count(), 2)
+  assert_eq(plan.get_text_count(), 1)
+  assert_eq(plan.get_image_source_pixel_count(), 16)
+  assert_eq(plan.get_text_byte_count(), 2)
+  assert_eq(plan.get_text_run_count(), 1)
+  assert_eq(plan.get_text_glyph_count(), 2)
+
+  let images = plan.get_image_dependencies()
+  assert_eq(images[0].get_command_index(), 1)
+  assert_eq(images[0].get_source_width(), 4)
+  assert_eq(images[0].get_source_height(), 3)
+  assert_eq(images[0].get_source_pixel_count(), 12)
+  assert_eq(images[1].get_command_index(), 2)
+  assert_eq(images[1].get_source_width(), 2)
+  assert_eq(images[1].get_source_height(), 2)
+  assert_eq(images[1].get_source_pixel_count(), 4)
+
+  let texts = plan.get_text_dependencies()
+  assert_eq(texts[0].get_command_index(), 3)
+  assert_eq(texts[0].get_text_byte_count(), 2)
+  assert_eq(texts[0].get_run_count(), 1)
+  assert_eq(texts[0].get_glyph_count(), 2)
+  assert_eq(texts[0].get_layout_width(), 20.0)
+  assert_true(texts[0].get_layout_height() > 0.0)
+}
+
+///|
+test "Renderer resource plan reports empty and clipped-away dependencies" {
+  let renderer = Renderer::new(@graphics.Canvas::new(2, 2))
+  let empty = renderer.plan_pipeline_resources(RenderPipeline::new())
+  assert_eq(empty.get_command_count(), 0)
+  assert_eq(empty.get_resource_count(), 0)
+  assert_true(!empty.has_resources())
+
+  let icon = @graphics.Pixmap::new(2, 2)
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let plan = renderer.plan_pipeline_resources(
+    RenderPipeline::new()
+    .draw_pixmap_rect(
+      icon,
+      @graphics.PixelRect::new(x=4, y=4, width=2, height=2),
+      0,
+      0,
+      @graphics.Paint::new(),
+    )
+    .draw_text_face(
+      face,
+      "",
+      0.0,
+      0.0,
+      config,
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ),
+  )
+
+  assert_eq(plan.get_command_count(), 2)
+  assert_eq(plan.get_resource_count(), 2)
+  assert_eq(plan.get_image_count(), 1)
+  assert_eq(plan.get_text_count(), 1)
+  assert_eq(plan.get_image_source_pixel_count(), 0)
+  assert_eq(plan.get_text_byte_count(), 0)
+  assert_eq(plan.get_text_run_count(), 0)
+  assert_eq(plan.get_text_glyph_count(), 0)
+  let images = plan.get_image_dependencies()
+  assert_eq(images[0].get_source_width(), 0)
+  assert_eq(images[0].get_source_height(), 0)
+  let texts = plan.get_text_dependencies()
+  assert_eq(texts[0].get_layout_width(), 0.0)
+  assert_eq(texts[0].get_layout_height(), 0.0)
+}
+
+///|
 test "RenderPipeline replays parsed text commands and can be cleared" {
   let pipeline = RenderPipeline::new().clear_canvas(@graphics.Color::white())
   assert_eq(pipeline.len(), 1)
