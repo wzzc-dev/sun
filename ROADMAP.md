@@ -309,6 +309,7 @@ Application / GUI
 - [x] 增加 `RenderPipeline` keyed BMP/PNG bytes source-rect image command，display-list 可直接携带 atlas/sprite resource bytes 并复用 decoded image cache
 - [x] 增加 `RenderPipeline` keyed BMP/PNG bytes tiled source-rect image command，display-list 可直接携带 pattern/background resource bytes 并复用 decoded image cache
 - [x] 增加 `RenderPipeline` keyed BMP/PNG bytes nine-patch image command，display-list 可直接携带 GUI panel/border resource bytes 并复用 decoded image cache
+- [x] 增加 `RenderPipeline` keyed BMP/PNG bytes sampled image command，display-list 可携带缩放目标与采样模式并复用 decoded image cache
 - [x] 增加 `RenderPipeline` keyed font-byte text command，resource plan 可预解析 font/text 依赖，RendererResources replay 复用 font/text cache 并通过 Result 保留解析错误
 - [x] 增加 `RenderPipeline` loader-backed keyed font text command，display-list 可只携带 font/text key 并在 replay 时通过 `FontLoader` + `RendererResources` 复用字体与文本缓存、保留加载错误
 - [x] 增加 `RenderPipeline` loader-backed atlas text command，replay 时复用 font/glyph/atlas resources 并暴露 glyph cache、atlas hit/insert/clear telemetry
@@ -546,7 +547,7 @@ Application / GUI
 ### 架构改进
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [x] 抽象字体加载接口
-- [ ] 实现渲染管线（Render Pipeline）：已有 `RenderPipeline` CPU command list、renderer replay telemetry、dirty/present preflight、retained display-list diff、batch scheduling baseline、resource dependency preflight、keyed resource identity/replay baseline、RendererResources-backed keyed replay、BMP/PNG bytes full/source-rect/tiled/nine-patch image command、font-byte pipeline command、font-byte atlas command、font-byte fallback text/atlas command、loader-backed font command、loader-backed fallback text/atlas command 与 loader-backed atlas command，后续补更多 image/resource pipeline commands
+- [ ] 实现渲染管线（Render Pipeline）：已有 `RenderPipeline` CPU command list、renderer replay telemetry、dirty/present preflight、retained display-list diff、batch scheduling baseline、resource dependency preflight、keyed resource identity/replay baseline、RendererResources-backed keyed replay、BMP/PNG bytes full/source-rect/tiled/nine-patch/sampled image command、font-byte pipeline command、font-byte atlas command、font-byte fallback text/atlas command、loader-backed font command、loader-backed fallback text/atlas command 与 loader-backed atlas command，后续补更多 image/resource pipeline commands
 - [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，并接入 `FontLoader` memory/file-backed loader、loader-backed cache helper 与 RendererResources text/atlas draw path；glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert/decode telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态并暴露 residency 查询和 snapshot telemetry，并接入 checked font-byte text draw path、cached image draw path、raw RGBA/BMP/PNG bytes cached full/source-rect/tiled/nine-patch/sampled/quality/transform-aware draw path，PNG decode 已支持 scanline filters 0-4 与 zlib DEFLATE stored/fixed/dynamic Huffman blocks，后续补 JPEG
 
 ---
