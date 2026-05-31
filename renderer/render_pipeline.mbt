@@ -50,6 +50,16 @@ pub enum RenderCommand {
     @text.LayoutConfig,
     @graphics.Paint
   )
+  DrawFontBytesAtlasKeyed(
+    String,
+    Bytes,
+    String,
+    String,
+    Double,
+    Double,
+    @text.LayoutConfig,
+    @graphics.Paint
+  )
   DrawLoadedFontKeyed(
     String,
     String,
@@ -400,6 +410,26 @@ pub fn RenderPipeline::draw_font_bytes_keyed(
   self.push(
     RenderCommand::DrawFontBytesKeyed(
       font_key, font_data, text_key, text, x, y, config, paint,
+    ),
+  )
+}
+
+///|
+/// Queue a keyed font-byte atlas text command for RendererResources replay.
+pub fn RenderPipeline::draw_font_bytes_atlas_keyed(
+  self : RenderPipeline,
+  font_key : String,
+  font_data : Bytes,
+  glyph_key_prefix : String,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  paint : @graphics.Paint,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawFontBytesAtlasKeyed(
+      font_key, font_data, glyph_key_prefix, text, x, y, config, paint,
     ),
   )
 }
@@ -1459,6 +1489,7 @@ pub fn RenderPipeline::analyze(
       RenderCommand::DrawTextFace(_, _, _, _, _, _)
       | RenderCommand::DrawTextFaceKeyed(_, _, _, _, _, _, _)
       | RenderCommand::DrawFontBytesKeyed(_, _, _, _, _, _, _, _)
+      | RenderCommand::DrawFontBytesAtlasKeyed(_, _, _, _, _, _, _, _)
       | RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _)
       | RenderCommand::DrawLoadedFontAtlasKeyed(_, _, _, _, _, _, _) =>
         text_count += 1
@@ -1638,6 +1669,25 @@ pub fn RenderPipeline::resource_plan(
         text_dependencies.push(
           render_pipeline_make_font_bytes_text_dependency(
             index, text_key, font_data, text, config,
+          ),
+        )
+      }
+      RenderCommand::DrawFontBytesAtlasKeyed(
+        font_key,
+        font_data,
+        glyph_key_prefix,
+        text,
+        _,
+        _,
+        config,
+        _
+      ) => {
+        font_dependencies.push(
+          render_pipeline_make_font_dependency(index, font_key, font_data),
+        )
+        text_dependencies.push(
+          render_pipeline_make_font_bytes_text_dependency(
+            index, glyph_key_prefix, font_data, text, config,
           ),
         )
       }
@@ -1825,6 +1875,22 @@ pub fn RenderPipeline::replay(
         }
         text_count += 1
       }
+      RenderCommand::DrawFontBytesAtlasKeyed(
+        _,
+        font_data,
+        _,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        match @text.FontFace::from_bytes(font_data) {
+          Ok(face) => renderer.draw_text_face(face, text, x, y, config, paint)
+          Err(_) => abort("failed to parse pipeline font bytes")
+        }
+        text_count += 1
+      }
       RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _) =>
         abort("pipeline loaded font command requires a font loader")
       RenderCommand::DrawLoadedFontAtlasKeyed(_, _, _, _, _, _, _) =>
@@ -1876,12 +1942,12 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
   let mut keyed_text_count = 0
   let mut text_cache_hit_count = 0
   let mut text_mask_render_count = 0
-  let keyed_atlas_text_count = 0
-  let glyph_cache_hit_count = 0
-  let glyph_mask_render_count = 0
-  let atlas_cache_hit_count = 0
-  let atlas_insert_count = 0
-  let atlas_clear_count = 0
+  let mut keyed_atlas_text_count = 0
+  let mut glyph_cache_hit_count = 0
+  let mut glyph_mask_render_count = 0
+  let mut atlas_cache_hit_count = 0
+  let mut atlas_insert_count = 0
+  let mut atlas_clear_count = 0
   for command in self.commands {
     match command {
       RenderCommand::Clear(color) => {
@@ -1997,6 +2063,41 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
         }
         keyed_font_count += 1
         keyed_text_count += 1
+        text_count += 1
+      }
+      RenderCommand::DrawFontBytesAtlasKeyed(
+        font_key,
+        font_data,
+        glyph_key_prefix,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        match
+          renderer.draw_font_bytes_atlas_with_renderer_resources(
+            font_data, text, x, y, config, resources, font_key, glyph_key_prefix,
+            paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_font_cache() {
+              font_cache_hit_count += 1
+            } else {
+              font_parse_count += 1
+            }
+            glyph_cache_hit_count += result.get_cache_hit_count()
+            glyph_mask_render_count += result.get_rasterized_glyph_count()
+            atlas_cache_hit_count += result.get_atlas_hit_count()
+            atlas_insert_count += result.get_atlas_inserted_count()
+            if result.did_clear_atlas() {
+              atlas_clear_count += 1
+            }
+          }
+          Err(error) => return Err(error)
+        }
+        keyed_font_count += 1
+        keyed_atlas_text_count += 1
         text_count += 1
       }
       RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _) =>
@@ -2192,6 +2293,42 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         }
         keyed_font_count += 1
         keyed_text_count += 1
+        text_count += 1
+      }
+      RenderCommand::DrawFontBytesAtlasKeyed(
+        font_key,
+        font_data,
+        glyph_key_prefix,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        match
+          renderer.draw_font_bytes_atlas_with_renderer_resources(
+            font_data, text, x, y, config, resources, font_key, glyph_key_prefix,
+            paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_font_cache() {
+              font_cache_hit_count += 1
+            } else {
+              font_parse_count += 1
+            }
+            glyph_cache_hit_count += result.get_cache_hit_count()
+            glyph_mask_render_count += result.get_rasterized_glyph_count()
+            atlas_cache_hit_count += result.get_atlas_hit_count()
+            atlas_insert_count += result.get_atlas_inserted_count()
+            if result.did_clear_atlas() {
+              atlas_clear_count += 1
+            }
+          }
+          Err(error) =>
+            return Err(@text.FontLoadError::FontParseFailed(font_key, error))
+        }
+        keyed_font_count += 1
+        keyed_atlas_text_count += 1
         text_count += 1
       }
       RenderCommand::DrawLoadedFontKeyed(
@@ -2466,6 +2603,8 @@ fn render_command_batch_kind(
       RenderPipelineBatchKind::Text
     RenderCommand::DrawFontBytesKeyed(_, _, _, _, _, _, _, _) =>
       RenderPipelineBatchKind::Text
+    RenderCommand::DrawFontBytesAtlasKeyed(_, _, _, _, _, _, _, _) =>
+      RenderPipelineBatchKind::Text
     RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _) =>
       RenderPipelineBatchKind::Text
     RenderCommand::DrawLoadedFontAtlasKeyed(_, _, _, _, _, _, _) =>
@@ -2576,6 +2715,36 @@ fn render_command_estimated_dirty_rect(
       )
     }
     RenderCommand::DrawFontBytesKeyed(_, font_data, _, text, x, y, config, _) => {
+      guard text.length() > 0 else { return None }
+      match @text.FontFace::from_bytes(font_data) {
+        Ok(face) => {
+          let layout = @text.TextLayout::layout(face, text, config)
+          pixel_rect_from_double_bounds(
+            x,
+            y,
+            x + layout.get_width(),
+            y + layout.get_height(),
+          )
+        }
+        Err(_) =>
+          pixel_rect_from_double_bounds(
+            x,
+            y,
+            x + render_pipeline_fallback_text_width(text, config),
+            y + config.line_height.max(config.font_size),
+          )
+      }
+    }
+    RenderCommand::DrawFontBytesAtlasKeyed(
+      _,
+      font_data,
+      _,
+      text,
+      x,
+      y,
+      config,
+      _
+    ) => {
       guard text.length() > 0 else { return None }
       match @text.FontFace::from_bytes(font_data) {
         Ok(face) => {
@@ -2733,6 +2902,35 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     ) =>
       a_font_key == b_font_key &&
       a_text_key == b_text_key &&
+      a_text == b_text &&
+      ax == bx &&
+      ay == by &&
+      render_layout_config_is_same(a_config, b_config) &&
+      render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::DrawFontBytesAtlasKeyed(
+        a_font_key,
+        _,
+        a_glyph_key_prefix,
+        a_text,
+        ax,
+        ay,
+        a_config,
+        a_paint
+      ),
+      RenderCommand::DrawFontBytesAtlasKeyed(
+        b_font_key,
+        _,
+        b_glyph_key_prefix,
+        b_text,
+        bx,
+        by,
+        b_config,
+        b_paint
+      ),
+    ) =>
+      a_font_key == b_font_key &&
+      a_glyph_key_prefix == b_glyph_key_prefix &&
       a_text == b_text &&
       ax == bx &&
       ay == by &&
