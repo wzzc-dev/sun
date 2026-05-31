@@ -147,6 +147,7 @@ pub enum RenderCommand {
   DrawFontBytesFallbackKeyed(Array[FontBytesFallbackSource], String, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
   DrawFontBytesFallbackAtlasKeyed(Array[FontBytesFallbackSource], String, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
   DrawLoadedFontKeyed(String, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
+  DrawLoadedFontFallbackKeyed(Array[String], String, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
   DrawLoadedFontAtlasKeyed(String, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
 } derive(@debug.Debug)
 
@@ -164,6 +165,7 @@ pub fn RenderPipeline::draw_font_bytes_fallback_atlas_keyed(Self, Array[FontByte
 pub fn RenderPipeline::draw_font_bytes_fallback_keyed(Self, Array[FontBytesFallbackSource], String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_font_bytes_keyed(Self, String, Bytes, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_loaded_font_atlas_keyed(Self, String, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_loaded_font_fallback_keyed(Self, Array[String], String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_loaded_font_keyed(Self, String, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap(Self, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_keyed(Self, String, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
