@@ -55,6 +55,19 @@ pub enum RenderCommand {
     @graphics.Paint,
     @graphics.ImageQuality
   )
+  DrawQualityRgbaBytesRectKeyed(
+    String,
+    Bytes,
+    Int,
+    Int,
+    @graphics.PixelRect,
+    Int,
+    Int,
+    Int,
+    Int,
+    @graphics.Paint,
+    @graphics.ImageQuality
+  )
   DrawSampledBmpBytesRectKeyed(
     String,
     Bytes,
@@ -672,6 +685,30 @@ pub fn RenderPipeline::draw_quality_rgba_bytes_keyed(
     RenderCommand::DrawQualityRgbaBytesKeyed(
       resource_key, image_data, image_width, image_height, x, y, width, height, paint,
       quality,
+    ),
+  )
+}
+
+///|
+/// Queue a keyed quality-scaled raw RGBA-bytes source-rectangle command.
+pub fn RenderPipeline::draw_quality_rgba_bytes_rect_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawQualityRgbaBytesRectKeyed(
+      resource_key, image_data, image_width, image_height, src_rect, x, y, width,
+      height, paint, quality,
     ),
   )
 }
@@ -2164,6 +2201,19 @@ pub fn RenderPipeline::analyze(
       | RenderCommand::DrawSampledPngBytesKeyed(_, _, _, _, _, _, _, _)
       | RenderCommand::DrawSampledRgbaBytesKeyed(_, _, _, _, _, _, _, _, _, _)
       | RenderCommand::DrawQualityRgbaBytesKeyed(_, _, _, _, _, _, _, _, _, _)
+      | RenderCommand::DrawQualityRgbaBytesRectKeyed(
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _
+      )
       | RenderCommand::DrawSampledBmpBytesRectKeyed(_, _, _, _, _, _, _, _, _)
       | RenderCommand::DrawSampledPngBytesRectKeyed(_, _, _, _, _, _, _, _, _)
       | RenderCommand::DrawSampledRgbaBytesRectKeyed(
@@ -2414,6 +2464,24 @@ pub fn RenderPipeline::resource_plan(
         image_dependencies.push(
           render_pipeline_make_rgba_bytes_image_dependency(
             index, resource_key, image_data, image_width, image_height,
+          ),
+        )
+      RenderCommand::DrawQualityRgbaBytesRectKeyed(
+        resource_key,
+        image_data,
+        image_width,
+        image_height,
+        src_rect,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_rgba_bytes_rect_image_dependency(
+            index, resource_key, image_data, image_width, image_height, src_rect,
           ),
         )
       RenderCommand::DrawSampledBmpBytesRectKeyed(
@@ -3055,6 +3123,31 @@ pub fn RenderPipeline::replay(
         }
         image_count += 1
       }
+      RenderCommand::DrawQualityRgbaBytesRectKeyed(
+        _,
+        image_data,
+        image_width,
+        image_height,
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) => {
+        match
+          @graphics.Pixmap::from_rgba_bytes(
+            image_width, image_height, image_data,
+          ) {
+          Ok(pixmap) =>
+            canvas.draw_quality_pixmap_rect(
+              pixmap, src_rect, x, y, width, height, paint, quality,
+            )
+          Err(_) => abort("failed to decode pipeline RGBA bytes")
+        }
+        image_count += 1
+      }
       RenderCommand::DrawSampledBmpBytesRectKeyed(
         _,
         image_data,
@@ -3616,6 +3709,35 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
           renderer.draw_quality_rgba_bytes_cached_with_renderer_resources(
             image_data, image_width, image_height, x, y, width, height, resources,
             resource_key, paint, quality,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline RGBA bytes")
+        }
+      RenderCommand::DrawQualityRgbaBytesRectKeyed(
+        resource_key,
+        image_data,
+        image_width,
+        image_height,
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        match
+          renderer.draw_quality_rgba_bytes_rect_cached_with_renderer_resources(
+            image_data, image_width, image_height, src_rect, x, y, width, height,
+            resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
             if result.did_hit_cache() {
@@ -4385,6 +4507,35 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
           renderer.draw_quality_rgba_bytes_cached_with_renderer_resources(
             image_data, image_width, image_height, x, y, width, height, resources,
             resource_key, paint, quality,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline RGBA bytes")
+        }
+      RenderCommand::DrawQualityRgbaBytesRectKeyed(
+        resource_key,
+        image_data,
+        image_width,
+        image_height,
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        match
+          renderer.draw_quality_rgba_bytes_rect_cached_with_renderer_resources(
+            image_data, image_width, image_height, src_rect, x, y, width, height,
+            resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
             if result.did_hit_cache() {
@@ -5424,6 +5575,19 @@ fn render_command_batch_kind(
     | RenderCommand::DrawSampledPngBytesKeyed(_, _, _, _, _, _, _, _)
     | RenderCommand::DrawSampledRgbaBytesKeyed(_, _, _, _, _, _, _, _, _, _)
     | RenderCommand::DrawQualityRgbaBytesKeyed(_, _, _, _, _, _, _, _, _, _)
+    | RenderCommand::DrawQualityRgbaBytesRectKeyed(
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _
+    )
     | RenderCommand::DrawSampledBmpBytesRectKeyed(_, _, _, _, _, _, _, _, _)
     | RenderCommand::DrawSampledPngBytesRectKeyed(_, _, _, _, _, _, _, _, _)
     | RenderCommand::DrawSampledRgbaBytesRectKeyed(
@@ -5640,6 +5804,27 @@ fn render_command_estimated_dirty_rect(
         @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
         Ok(pixmap) =>
           render_scaled_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
+        Err(_) => None
+      }
+    RenderCommand::DrawQualityRgbaBytesRectKeyed(
+      _,
+      image_data,
+      image_width,
+      image_height,
+      src_rect,
+      x,
+      y,
+      width,
+      height,
+      _,
+      _
+    ) =>
+      match
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
+        Ok(pixmap) =>
+          render_scaled_pixmap_rect_estimated_dirty_rect(
+            pixmap, src_rect, x, y, width, height,
+          )
         Err(_) => None
       }
     RenderCommand::DrawSampledBmpBytesRectKeyed(
@@ -6290,6 +6475,44 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
       a_key == b_key &&
       a_image_width == b_image_width &&
       a_image_height == b_image_height &&
+      ax == bx &&
+      ay == by &&
+      aw == bw &&
+      ah == bh &&
+      render_paint_is_same(a_paint, b_paint) &&
+      a_quality == b_quality
+    (
+      RenderCommand::DrawQualityRgbaBytesRectKeyed(
+        a_key,
+        _,
+        a_image_width,
+        a_image_height,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_quality
+      ),
+      RenderCommand::DrawQualityRgbaBytesRectKeyed(
+        b_key,
+        _,
+        b_image_width,
+        b_image_height,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_quality
+      ),
+    ) =>
+      a_key == b_key &&
+      a_image_width == b_image_width &&
+      a_image_height == b_image_height &&
+      a_src == b_src &&
       ax == bx &&
       ay == by &&
       aw == bw &&
