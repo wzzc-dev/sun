@@ -2480,6 +2480,65 @@ pub fn Renderer::draw_tiled_bmp_bytes_rect_cached_with_renderer_resources(
 }
 
 ///|
+/// Decode PNG bytes through a pixmap cache and draw a tiled source rectangle.
+pub fn Renderer::draw_tiled_png_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_png_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_tiled_pixmap_rect(
+        result.get_pixmap(),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a tiled source
+/// rectangle.
+pub fn Renderer::draw_tiled_png_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_tiled_png_bytes_rect_cached(
+    image_data,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+  )
+}
+
+///|
 /// Decode raw RGBA bytes through a pixmap cache and draw a tiled source
 /// rectangle.
 pub fn Renderer::draw_tiled_rgba_bytes_rect_cached(
@@ -2598,6 +2657,69 @@ pub fn Renderer::draw_nine_patch_bmp_bytes_cached_with_renderer_resources(
   sampling : @graphics.ImageSampling,
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_nine_patch_bmp_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    insets,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
+/// Decode PNG bytes through a pixmap cache and draw with nine-patch scaling.
+pub fn Renderer::draw_nine_patch_png_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_png_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_nine_patch_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        sampling,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw with nine-patch
+/// scaling.
+pub fn Renderer::draw_nine_patch_png_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_nine_patch_png_bytes_cached(
     image_data,
     x,
     y,
@@ -2858,6 +2980,65 @@ pub fn Renderer::draw_sampled_bmp_bytes_cached_with_renderer_resources(
 }
 
 ///|
+/// Decode PNG bytes through a pixmap cache and draw a sampled scaled image.
+pub fn Renderer::draw_sampled_png_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_png_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_sampled_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        paint,
+        sampling,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a sampled scaled
+/// image.
+pub fn Renderer::draw_sampled_png_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_sampled_png_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
 /// Decode raw RGBA bytes through a pixmap cache and draw a sampled scaled image.
 pub fn Renderer::draw_sampled_rgba_bytes_cached(
   self : Renderer,
@@ -2976,6 +3157,70 @@ pub fn Renderer::draw_sampled_bmp_bytes_rect_cached_with_renderer_resources(
   sampling : @graphics.ImageSampling,
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_sampled_bmp_bytes_rect_cached(
+    image_data,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
+/// Decode PNG bytes through a pixmap cache and draw a sampled scaled source
+/// rectangle.
+pub fn Renderer::draw_sampled_png_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_png_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_sampled_pixmap_rect(
+        result.get_pixmap(),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        sampling,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a sampled scaled
+/// source rectangle.
+pub fn Renderer::draw_sampled_png_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_sampled_png_bytes_rect_cached(
     image_data,
     src_rect,
     x,
@@ -3298,6 +3543,70 @@ pub fn Renderer::draw_quality_nine_patch_bmp_bytes_cached_with_renderer_resource
 }
 
 ///|
+/// Decode PNG bytes through a pixmap cache and draw with nine-patch quality
+/// scaling.
+pub fn Renderer::draw_quality_nine_patch_png_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_png_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_quality_nine_patch_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        quality,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw with nine-patch
+/// quality scaling.
+pub fn Renderer::draw_quality_nine_patch_png_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_quality_nine_patch_png_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    insets,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
 /// Decode raw RGBA bytes through a pixmap cache and draw with nine-patch
 /// quality scaling.
 pub fn Renderer::draw_quality_nine_patch_rgba_bytes_cached(
@@ -3429,6 +3738,62 @@ pub fn Renderer::draw_quality_bmp_bytes_cached_with_renderer_resources(
 }
 
 ///|
+/// Decode PNG bytes through a caller-owned pixmap cache and draw a scaled image
+/// with a quality policy.
+pub fn Renderer::draw_quality_png_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_sampled_png_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    image_cache,
+    image_key,
+    paint,
+    quality.to_sampling(),
+  )
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a scaled image
+/// with a quality policy.
+pub fn Renderer::draw_quality_png_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_quality_png_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
 /// Decode raw RGBA bytes through a caller-owned pixmap cache and draw a scaled
 /// image with a quality policy.
 pub fn Renderer::draw_quality_rgba_bytes_cached(
@@ -3542,6 +3907,66 @@ pub fn Renderer::draw_quality_bmp_bytes_rect_cached_with_renderer_resources(
   quality : @graphics.ImageQuality,
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_quality_bmp_bytes_rect_cached(
+    image_data,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
+/// Decode PNG bytes through a pixmap cache and draw a scaled source rectangle
+/// with a quality policy.
+pub fn Renderer::draw_quality_png_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_sampled_png_bytes_rect_cached(
+    image_data,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    image_cache,
+    image_key,
+    paint,
+    quality.to_sampling(),
+  )
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a scaled source
+/// rectangle with a quality policy.
+pub fn Renderer::draw_quality_png_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_quality_png_bytes_rect_cached(
     image_data,
     src_rect,
     x,
@@ -3913,6 +4338,65 @@ pub fn Renderer::draw_transformed_sampled_bmp_bytes_cached_with_renderer_resourc
 }
 
 ///|
+/// Decode PNG bytes through a pixmap cache and draw a transformed sampled image.
+pub fn Renderer::draw_transformed_sampled_png_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_png_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_transformed_sampled_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        paint,
+        sampling,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a transformed
+/// sampled image.
+pub fn Renderer::draw_transformed_sampled_png_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_transformed_sampled_png_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
 /// Decode raw RGBA bytes through a pixmap cache and draw a transformed sampled
 /// image.
 pub fn Renderer::draw_transformed_sampled_rgba_bytes_cached(
@@ -4032,6 +4516,70 @@ pub fn Renderer::draw_transformed_sampled_bmp_bytes_rect_cached_with_renderer_re
   sampling : @graphics.ImageSampling,
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_transformed_sampled_bmp_bytes_rect_cached(
+    image_data,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
+/// Decode PNG bytes through a pixmap cache and draw a transformed sampled
+/// source rectangle.
+pub fn Renderer::draw_transformed_sampled_png_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_png_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_transformed_sampled_pixmap_rect(
+        result.get_pixmap(),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        sampling,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a transformed
+/// sampled source rectangle.
+pub fn Renderer::draw_transformed_sampled_png_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_transformed_sampled_png_bytes_rect_cached(
     image_data,
     src_rect,
     x,
@@ -4175,6 +4723,62 @@ pub fn Renderer::draw_transformed_quality_bmp_bytes_cached_with_renderer_resourc
 }
 
 ///|
+/// Decode PNG bytes through a pixmap cache and draw a transformed image with a
+/// quality policy.
+pub fn Renderer::draw_transformed_quality_png_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_transformed_sampled_png_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    image_cache,
+    image_key,
+    paint,
+    quality.to_sampling(),
+  )
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a transformed
+/// image with a quality policy.
+pub fn Renderer::draw_transformed_quality_png_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_transformed_quality_png_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
 /// Decode raw RGBA bytes through a pixmap cache and draw a transformed image
 /// with a quality policy.
 pub fn Renderer::draw_transformed_quality_rgba_bytes_cached(
@@ -4285,6 +4889,66 @@ pub fn Renderer::draw_transformed_quality_bmp_bytes_rect_cached_with_renderer_re
   quality : @graphics.ImageQuality,
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_transformed_quality_bmp_bytes_rect_cached(
+    image_data,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
+/// Decode PNG bytes through a pixmap cache and draw a transformed source
+/// rectangle with a quality policy.
+pub fn Renderer::draw_transformed_quality_png_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_transformed_sampled_png_bytes_rect_cached(
+    image_data,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    image_cache,
+    image_key,
+    paint,
+    quality.to_sampling(),
+  )
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a transformed
+/// source rectangle with a quality policy.
+pub fn Renderer::draw_transformed_quality_png_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_transformed_quality_png_bytes_rect_cached(
     image_data,
     src_rect,
     x,
