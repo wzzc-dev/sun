@@ -915,6 +915,65 @@ test "Renderer cached image source rect path uses RendererResources" {
 }
 
 ///|
+test "Renderer cached nine-patch image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(5, 5)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let panel = make_renderer_test_nine_patch_source()
+  let insets = @graphics.NinePatchInsets::new(left=1, top=1, right=1, bottom=1)
+
+  let first = renderer.draw_nine_patch_pixmap_cached_with_renderer_resources(
+    panel,
+    0,
+    0,
+    5,
+    5,
+    insets,
+    resources,
+    "panel",
+    @graphics.Paint::new(),
+    @graphics.ImageSampling::Nearest,
+  )
+  assert_true(first.did_insert_pixmap())
+  assert_true(!first.did_hit_cache())
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    canvas.get_pixmap().get_pixel(0, 0),
+    @graphics.Color::new(r=10, g=0, b=0),
+  )
+  assert_eq(
+    canvas.get_pixmap().get_pixel(2, 2),
+    @graphics.Color::new(r=50, g=0, b=0),
+  )
+  assert_eq(
+    canvas.get_pixmap().get_pixel(4, 4),
+    @graphics.Color::new(r=90, g=0, b=0),
+  )
+
+  panel.set_pixel(1, 1, @graphics.Color::blue())
+  canvas.clear(@graphics.Color::white())
+  let second = renderer.draw_quality_nine_patch_pixmap_cached_with_renderer_resources(
+    panel,
+    0,
+    0,
+    5,
+    5,
+    insets,
+    resources,
+    "panel",
+    @graphics.Paint::new(),
+    @graphics.ImageQuality::Fast,
+  )
+  assert_true(!second.did_insert_pixmap())
+  assert_true(second.did_hit_cache())
+  assert_eq(
+    canvas.get_pixmap().get_pixel(2, 2),
+    @graphics.Color::new(r=50, g=0, b=0),
+  )
+}
+
+///|
 test "Renderer cached BMP image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(3, 1)
   canvas.clear(@graphics.Color::white())
@@ -1154,6 +1213,84 @@ test "Renderer quality cached BMP image path uses RendererResources" {
   }
   assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
   assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+}
+
+///|
+test "Renderer cached BMP nine-patch image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(5, 5)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let panel = make_renderer_test_nine_patch_source()
+  let insets = @graphics.NinePatchInsets::new(left=1, top=1, right=1, bottom=1)
+
+  match
+    renderer.draw_nine_patch_bmp_bytes_cached_with_renderer_resources(
+      panel.to_bmp_bytes(),
+      0,
+      0,
+      5,
+      5,
+      insets,
+      resources,
+      "panel",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached BMP nine-patch draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    canvas.get_pixmap().get_pixel(2, 2),
+    @graphics.Color::new(r=50, g=0, b=0),
+  )
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_quality_nine_patch_bmp_bytes_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      0,
+      0,
+      5,
+      5,
+      insets,
+      resources,
+      "panel",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached BMP nine-patch hit")
+  }
+  assert_eq(
+    canvas.get_pixmap().get_pixel(4, 4),
+    @graphics.Color::new(r=90, g=0, b=0),
+  )
+
+  match
+    renderer.draw_nine_patch_bmp_bytes_cached_with_renderer_resources(
+      Bytes::from_array([66, 77]),
+      0,
+      0,
+      5,
+      5,
+      insets,
+      resources,
+      "broken",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
+    _ => abort("expected cached BMP nine-patch decode error")
+  }
+  assert_true(!resources.contains_image("broken"))
 }
 
 ///|
@@ -2006,6 +2143,21 @@ test "Renderer::draw_text covers printable ASCII from parsed TTF bytes" {
     glyph_count = glyph_count + 1
   }
   assert_eq(glyph_count, printable_ascii_count())
+}
+
+///|
+fn make_renderer_test_nine_patch_source() -> @graphics.Pixmap {
+  let src = @graphics.Pixmap::new(3, 3)
+  src.set_pixel(0, 0, @graphics.Color::new(r=10, g=0, b=0))
+  src.set_pixel(1, 0, @graphics.Color::new(r=20, g=0, b=0))
+  src.set_pixel(2, 0, @graphics.Color::new(r=30, g=0, b=0))
+  src.set_pixel(0, 1, @graphics.Color::new(r=40, g=0, b=0))
+  src.set_pixel(1, 1, @graphics.Color::new(r=50, g=0, b=0))
+  src.set_pixel(2, 1, @graphics.Color::new(r=60, g=0, b=0))
+  src.set_pixel(0, 2, @graphics.Color::new(r=70, g=0, b=0))
+  src.set_pixel(1, 2, @graphics.Color::new(r=80, g=0, b=0))
+  src.set_pixel(2, 2, @graphics.Color::new(r=90, g=0, b=0))
+  src
 }
 
 ///|

@@ -1943,6 +1943,64 @@ pub fn Renderer::draw_pixmap_rect_cached_with_renderer_resources(
 }
 
 ///|
+/// Draw an image through a pixmap cache using nine-patch scaling.
+pub fn Renderer::draw_nine_patch_pixmap_cached(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> CachedPixmapDrawResult {
+  let result = image_cache.get_or_insert_result(image_key, pixmap)
+  self.canvas.draw_nine_patch_pixmap(
+    result.get_pixmap(),
+    x,
+    y,
+    width,
+    height,
+    insets,
+    paint,
+    sampling,
+  )
+  { did_insert_pixmap: result.did_insert() }
+}
+
+///|
+/// Draw an image through renderer-owned resources using nine-patch scaling.
+pub fn Renderer::draw_nine_patch_pixmap_cached_with_renderer_resources(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> CachedPixmapDrawResult {
+  self.draw_nine_patch_pixmap_cached(
+    pixmap,
+    x,
+    y,
+    width,
+    height,
+    insets,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
 /// Decode BMP bytes through a caller-owned pixmap cache and draw the image.
 pub fn Renderer::draw_bmp_bytes_cached(
   self : Renderer,
@@ -2028,6 +2086,69 @@ pub fn Renderer::draw_bmp_bytes_rect_cached_with_renderer_resources(
 }
 
 ///|
+/// Decode BMP bytes through a pixmap cache and draw with nine-patch scaling.
+pub fn Renderer::draw_nine_patch_bmp_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_bmp_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_nine_patch_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        sampling,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode BMP bytes through renderer-owned resources and draw with nine-patch
+/// scaling.
+pub fn Renderer::draw_nine_patch_bmp_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_nine_patch_bmp_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    insets,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
 /// Draw a scaled image through a caller-owned pixmap cache and quality policy.
 pub fn Renderer::draw_quality_pixmap_cached(
   self : Renderer,
@@ -2074,6 +2195,65 @@ pub fn Renderer::draw_quality_pixmap_cached_with_renderer_resources(
     y,
     width,
     height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
+/// Draw an image through a pixmap cache using nine-patch quality scaling.
+pub fn Renderer::draw_quality_nine_patch_pixmap_cached(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> CachedPixmapDrawResult {
+  let result = image_cache.get_or_insert_result(image_key, pixmap)
+  self.canvas.draw_quality_nine_patch_pixmap(
+    result.get_pixmap(),
+    x,
+    y,
+    width,
+    height,
+    insets,
+    paint,
+    quality,
+  )
+  { did_insert_pixmap: result.did_insert() }
+}
+
+///|
+/// Draw an image through renderer-owned resources using nine-patch quality
+/// scaling.
+pub fn Renderer::draw_quality_nine_patch_pixmap_cached_with_renderer_resources(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> CachedPixmapDrawResult {
+  self.draw_quality_nine_patch_pixmap_cached(
+    pixmap,
+    x,
+    y,
+    width,
+    height,
+    insets,
     resources.get_image_cache(),
     image_key,
     paint,
@@ -2132,6 +2312,70 @@ pub fn Renderer::draw_quality_pixmap_rect_cached_with_renderer_resources(
     y,
     width,
     height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
+/// Decode BMP bytes through a pixmap cache and draw with nine-patch quality
+/// scaling.
+pub fn Renderer::draw_quality_nine_patch_bmp_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_bmp_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_quality_nine_patch_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        quality,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode BMP bytes through renderer-owned resources and draw with nine-patch
+/// quality scaling.
+pub fn Renderer::draw_quality_nine_patch_bmp_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_quality_nine_patch_bmp_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    insets,
     resources.get_image_cache(),
     image_key,
     paint,
