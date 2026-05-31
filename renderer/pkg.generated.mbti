@@ -29,6 +29,12 @@ pub fn draw_text_fallback_line_cached(@graphics.Canvas, Array[@text.FontFace], S
 // Errors
 
 // Types and methods
+pub struct CachedBmpPixmapDrawResult {
+  did_decode_pixmap : Bool
+} derive(@debug.Debug)
+pub fn CachedBmpPixmapDrawResult::did_decode_pixmap(Self) -> Bool
+pub fn CachedBmpPixmapDrawResult::did_hit_cache(Self) -> Bool
+
 pub struct CachedFontAtlasDrawResult {
   did_parse_font : Bool
   atlas_result : TextAtlasDrawResult
@@ -115,6 +121,8 @@ pub fn FontBytesFallbackSource::new(String, Bytes) -> Self
 pub struct Renderer {
   canvas : @graphics.Canvas
 } derive(@debug.Debug)
+pub fn Renderer::draw_bmp_bytes_cached(Self, Bytes, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
+pub fn Renderer::draw_bmp_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, RendererResources, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_coverage_mask(Self, @text.CoverageMask, @graphics.Paint) -> Unit
 pub fn Renderer::draw_font_bytes_atlas_with_renderer_resources(Self, Bytes, String, Double, Double, @text.LayoutConfig, RendererResources, String, String, @graphics.Paint) -> Result[CachedFontAtlasDrawResult, @text.FontParseError]
 pub fn Renderer::draw_font_bytes_cached_with_renderer_resources(Self, Bytes, String, Double, Double, @text.LayoutConfig, RendererResources, String, String, @graphics.Paint) -> Result[CachedFontTextDrawResult, @text.FontParseError]
@@ -123,6 +131,8 @@ pub fn Renderer::draw_font_bytes_fallback_line_cached_with_renderer_resources(Se
 pub fn Renderer::draw_glyph_atlas_entry(Self, @text.CoverageMask, @text.GlyphAtlasEntry, Int, Int, @graphics.Paint) -> Unit
 pub fn Renderer::draw_pixmap_cached(Self, @graphics.Pixmap, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::draw_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, RendererResources, String, @graphics.Paint) -> CachedPixmapDrawResult
+pub fn Renderer::draw_quality_bmp_bytes_cached(Self, Bytes, Int, Int, Int, Int, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageQuality) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
+pub fn Renderer::draw_quality_bmp_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, Int, Int, RendererResources, String, @graphics.Paint, @graphics.ImageQuality) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_quality_pixmap_cached(Self, @graphics.Pixmap, Int, Int, Int, Int, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageQuality) -> CachedPixmapDrawResult
 pub fn Renderer::draw_quality_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, Int, Int, RendererResources, String, @graphics.Paint, @graphics.ImageQuality) -> CachedPixmapDrawResult
 pub fn Renderer::draw_text(Self, @text.Font, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Unit
@@ -157,6 +167,8 @@ pub fn RendererResources::get_font_face_cache(Self) -> @text.FontFaceCache
 pub fn RendererResources::get_glyph_mask_atlas(Self) -> @text.GlyphMaskAtlas
 pub fn RendererResources::get_glyph_mask_cache(Self) -> @text.GlyphMaskCache
 pub fn RendererResources::get_image_cache(Self) -> @graphics.PixmapCache
+pub fn RendererResources::get_or_decode_bmp_image(Self, String, Bytes) -> Result[@graphics.Pixmap, @graphics.PixmapDecodeError]
+pub fn RendererResources::get_or_decode_bmp_image_result(Self, String, Bytes) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError]
 pub fn RendererResources::get_text_mask_cache(Self) -> @text.TextMaskCache
 pub fn RendererResources::get_text_resources(Self) -> RendererTextResources
 pub fn RendererResources::new(Int, Int) -> Self

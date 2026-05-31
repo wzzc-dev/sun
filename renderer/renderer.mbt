@@ -138,6 +138,12 @@ pub struct CachedPixmapDrawResult {
 } derive(Debug)
 
 ///|
+/// Result of decoding BMP bytes through a pixmap cache and drawing them.
+pub struct CachedBmpPixmapDrawResult {
+  did_decode_pixmap : Bool
+} derive(Debug)
+
+///|
 priv struct GlyphAtlasMaskPlacement {
   width : Int
   height : Int
@@ -517,6 +523,26 @@ pub fn RendererResources::get_image_cache(
   self : RendererResources,
 ) -> @graphics.PixmapCache {
   self.image_cache
+}
+
+///|
+/// Return a cached image pixmap or decode BMP bytes into the image cache.
+pub fn RendererResources::get_or_decode_bmp_image(
+  self : RendererResources,
+  image_key : String,
+  image_data : Bytes,
+) -> Result[@graphics.Pixmap, @graphics.PixmapDecodeError] {
+  self.image_cache.get_or_decode_bmp(image_key, image_data)
+}
+
+///|
+/// Return a cached image pixmap or decode BMP bytes, reporting cache hits.
+pub fn RendererResources::get_or_decode_bmp_image_result(
+  self : RendererResources,
+  image_key : String,
+  image_data : Bytes,
+) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError] {
+  self.image_cache.get_or_decode_bmp_result(image_key, image_data)
 }
 
 ///|
@@ -1284,6 +1310,22 @@ pub fn CachedPixmapDrawResult::did_hit_cache(
 }
 
 ///|
+/// Return whether this draw decoded BMP bytes into the image cache.
+pub fn CachedBmpPixmapDrawResult::did_decode_pixmap(
+  self : CachedBmpPixmapDrawResult,
+) -> Bool {
+  self.did_decode_pixmap
+}
+
+///|
+/// Return whether this draw reused a cached decoded pixmap.
+pub fn CachedBmpPixmapDrawResult::did_hit_cache(
+  self : CachedBmpPixmapDrawResult,
+) -> Bool {
+  !self.did_decode_pixmap
+}
+
+///|
 /// Draw text through the real text rasterization pipeline.
 pub fn Renderer::draw_text(
   self : Renderer,
@@ -1861,6 +1903,47 @@ pub fn Renderer::draw_pixmap_cached_with_renderer_resources(
 }
 
 ///|
+/// Decode BMP bytes through a caller-owned pixmap cache and draw the image.
+pub fn Renderer::draw_bmp_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_bmp_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_pixmap(result.get_pixmap(), x, y, paint)
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode BMP bytes through renderer-owned resources and draw the image.
+pub fn Renderer::draw_bmp_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_bmp_bytes_cached(
+    image_data,
+    x,
+    y,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+  )
+}
+
+///|
 /// Draw a scaled image through a caller-owned pixmap cache and quality policy.
 pub fn Renderer::draw_quality_pixmap_cached(
   self : Renderer,
@@ -1903,6 +1986,64 @@ pub fn Renderer::draw_quality_pixmap_cached_with_renderer_resources(
 ) -> CachedPixmapDrawResult {
   self.draw_quality_pixmap_cached(
     pixmap,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
+/// Decode BMP bytes through a caller-owned pixmap cache and draw a scaled image.
+pub fn Renderer::draw_quality_bmp_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_bmp_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_quality_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode BMP bytes through renderer-owned resources and draw a scaled image.
+pub fn Renderer::draw_quality_bmp_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_quality_bmp_bytes_cached(
+    image_data,
     x,
     y,
     width,

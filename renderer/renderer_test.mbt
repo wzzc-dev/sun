@@ -759,6 +759,30 @@ test "RendererResources snapshots unified resource telemetry" {
 }
 
 ///|
+test "RendererResources decodes BMP images into image cache" {
+  let resources = RendererResources::new(16, 16)
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::green())
+
+  match resources.get_or_decode_bmp_image_result("icon", icon.to_bmp_bytes()) {
+    Ok(first) => {
+      assert_true(first.did_decode())
+      assert_true(!first.did_hit_cache())
+      assert_eq(first.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+    }
+    Err(_) => abort("expected renderer resources BMP decode")
+  }
+  assert_true(resources.contains_image("icon"))
+  assert_eq(resources.snapshot().get_image_count(), 1)
+
+  match resources.get_or_decode_bmp_image("icon", Bytes::from_array([0, 0])) {
+    Ok(second) => assert_eq(second.get_pixel(0, 0), @graphics.Color::green())
+    Err(_) => abort("expected renderer resources BMP cache hit")
+  }
+  assert_eq(resources.snapshot().get_image_count(), 1)
+}
+
+///|
 test "Renderer::draw_pixmap_cached reuses cached pixmap copies" {
   let canvas = @graphics.Canvas::new(3, 1)
   canvas.clear(@graphics.Color::white())
@@ -834,6 +858,69 @@ test "Renderer cached image path uses RendererResources" {
 }
 
 ///|
+test "Renderer cached BMP image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(3, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 2)
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::green())
+
+  match
+    renderer.draw_bmp_bytes_cached_with_renderer_resources(
+      icon.to_bmp_bytes(),
+      0,
+      0,
+      resources,
+      "icon",
+      @graphics.Paint::new(),
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached BMP draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_bmp_bytes_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      1,
+      0,
+      resources,
+      "icon",
+      @graphics.Paint::new(),
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached BMP hit")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+
+  match
+    renderer.draw_bmp_bytes_cached_with_renderer_resources(
+      Bytes::from_array([66, 77]),
+      2,
+      0,
+      resources,
+      "broken",
+      @graphics.Paint::new(),
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
+    _ => abort("expected cached BMP draw decode error")
+  }
+  assert_true(!resources.contains_image("broken"))
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::white())
+}
+
+///|
 test "Renderer quality cached image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(4, 2)
   canvas.clear(@graphics.Color::white())
@@ -895,6 +982,53 @@ test "Renderer quality cached image path uses RendererResources" {
     Some(cached) => assert_eq(cached.get_pixel(0, 0), @graphics.Color::red())
     None => abort("expected cached accent pixmap")
   }
+}
+
+///|
+test "Renderer quality cached BMP image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(4, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let panel = @graphics.Pixmap::new(1, 1)
+  panel.set_pixel(0, 0, @graphics.Color::green())
+
+  match
+    renderer.draw_quality_bmp_bytes_cached_with_renderer_resources(
+      panel.to_bmp_bytes(),
+      0,
+      0,
+      2,
+      1,
+      resources,
+      "panel",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(first) => assert_true(first.did_decode_pixmap())
+    Err(_) => abort("expected cached quality BMP draw")
+  }
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_quality_bmp_bytes_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      2,
+      0,
+      2,
+      1,
+      resources,
+      "panel",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(second) => assert_true(second.did_hit_cache())
+    Err(_) => abort("expected cached quality BMP hit")
+  }
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
 }
 
 ///|
