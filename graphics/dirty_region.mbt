@@ -74,6 +74,14 @@ pub fn DirtyPresentPlan::get_rect_count(self : DirtyPresentPlan) -> Int {
 }
 
 ///|
+pub fn DirtyPresentPlan::get_present_bounds(
+  self : DirtyPresentPlan,
+) -> PixelRect? {
+  guard !self.is_empty() else { return None }
+  pixel_rect_array_bounds(self.rects)
+}
+
+///|
 pub fn DirtyPresentPlan::get_present_pixel_count(
   self : DirtyPresentPlan,
 ) -> Int {
@@ -177,6 +185,13 @@ pub fn DirtySubmitPlan::get_present_byte_count(self : DirtySubmitPlan) -> Int {
 }
 
 ///|
+pub fn DirtySubmitPlan::get_present_bounds(
+  self : DirtySubmitPlan,
+) -> PixelRect? {
+  self.present_plan.get_present_bounds()
+}
+
+///|
 pub fn DirtySubmitPlan::saves_full_present_pixels(
   self : DirtySubmitPlan,
   width : Int,
@@ -266,6 +281,13 @@ pub fn DirtySubmitResult::get_present_byte_count(
   self : DirtySubmitResult,
 ) -> Int {
   self.submit_plan.get_present_byte_count()
+}
+
+///|
+pub fn DirtySubmitResult::get_present_bounds(
+  self : DirtySubmitResult,
+) -> PixelRect? {
+  self.submit_plan.get_present_bounds()
 }
 
 ///|
@@ -372,6 +394,27 @@ pub fn PixelRect::clip_to(self : PixelRect, bounds : PixelRect) -> PixelRect? {
 }
 
 ///|
+fn pixel_rect_array_bounds(rects : Array[PixelRect]) -> PixelRect? {
+  let mut has_bounds = false
+  let mut bounds = PixelRect::new(x=0, y=0, width=0, height=0)
+  for rect in rects {
+    if !rect.is_empty() {
+      if has_bounds {
+        bounds = bounds.union(rect)
+      } else {
+        bounds = rect
+        has_bounds = true
+      }
+    }
+  }
+  if has_bounds {
+    Some(bounds)
+  } else {
+    None
+  }
+}
+
+///|
 fn pixel_rects_can_merge(a : PixelRect, b : PixelRect) -> Bool {
   guard !a.is_empty() && !b.is_empty() else { return false }
   if a.intersects(b) {
@@ -470,12 +513,7 @@ pub fn DirtyRegion::add_all(
 
 ///|
 pub fn DirtyRegion::bounds(self : DirtyRegion) -> PixelRect? {
-  guard self.rects.length() > 0 else { return None }
-  let mut bounds = self.rects[0]
-  for i in 1..<self.rects.length() {
-    bounds = bounds.union(self.rects[i])
-  }
-  Some(bounds)
+  pixel_rect_array_bounds(self.rects)
 }
 
 ///|

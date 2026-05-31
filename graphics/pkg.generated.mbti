@@ -129,6 +129,7 @@ pub struct DirtyPresentPlan {
   rects : Array[PixelRect]
 } derive(@debug.Debug)
 pub fn DirtyPresentPlan::get_mode(Self) -> DirtyPresentPlanMode
+pub fn DirtyPresentPlan::get_present_bounds(Self) -> PixelRect?
 pub fn DirtyPresentPlan::get_present_byte_count(Self) -> Int
 pub fn DirtyPresentPlan::get_present_pixel_count(Self) -> Int
 pub fn DirtyPresentPlan::get_present_strategy(Self, Int, Int) -> DirtyPresentStrategy
@@ -170,6 +171,7 @@ pub struct DirtySubmitPlan {
   present_plan : DirtyPresentPlan
 } derive(@debug.Debug)
 pub fn DirtySubmitPlan::get_dirty_bounds(Self) -> PixelRect?
+pub fn DirtySubmitPlan::get_present_bounds(Self) -> PixelRect?
 pub fn DirtySubmitPlan::get_present_byte_count(Self) -> Int
 pub fn DirtySubmitPlan::get_present_pixel_count(Self) -> Int
 pub fn DirtySubmitPlan::get_present_plan(Self) -> DirtyPresentPlan
@@ -187,6 +189,7 @@ pub struct DirtySubmitResult {
 } derive(@debug.Debug)
 pub fn DirtySubmitResult::did_present(Self) -> Bool
 pub fn DirtySubmitResult::get_dirty_bounds(Self) -> PixelRect?
+pub fn DirtySubmitResult::get_present_bounds(Self) -> PixelRect?
 pub fn DirtySubmitResult::get_present_byte_count(Self) -> Int
 pub fn DirtySubmitResult::get_present_pixel_count(Self) -> Int
 pub fn DirtySubmitResult::get_present_strategy(Self, Int, Int) -> DirtyPresentStrategy
@@ -524,6 +527,7 @@ pub struct PresentBatch {
   present_byte_count : Int
 } derive(@debug.Debug)
 pub fn PresentBatch::get_payloads(Self) -> Array[PresentRectPayload]
+pub fn PresentBatch::get_present_bounds(Self) -> PixelRect?
 pub fn PresentBatch::get_present_byte_count(Self) -> Int
 pub fn PresentBatch::get_present_pixel_count(Self) -> Int
 pub fn PresentBatch::get_rect_count(Self) -> Int
@@ -636,6 +640,7 @@ pub struct RenderFrameSchedule {
 } derive(@debug.Debug)
 pub fn RenderFrameSchedule::get_action(Self) -> RenderFrameScheduleAction
 pub fn RenderFrameSchedule::get_dirty_bounds(Self) -> PixelRect?
+pub fn RenderFrameSchedule::get_present_bounds(Self) -> PixelRect?
 pub fn RenderFrameSchedule::get_present_byte_count(Self) -> Int
 pub fn RenderFrameSchedule::get_present_pixel_count(Self) -> Int
 pub fn RenderFrameSchedule::get_present_rect_count(Self) -> Int
@@ -658,12 +663,14 @@ pub(all) enum RenderFrameScheduleAction {
 pub struct RenderFrameSubmitPlan {
   dirty_submit_plan : DirtySubmitPlan
   strategy : DirtyPresentStrategy
+  present_bounds : PixelRect?
   present_rect_count : Int
   present_pixel_count : Int
   present_byte_count : Int
 } derive(@debug.Debug)
 pub fn RenderFrameSubmitPlan::get_dirty_bounds(Self) -> PixelRect?
 pub fn RenderFrameSubmitPlan::get_dirty_submit_plan(Self) -> DirtySubmitPlan
+pub fn RenderFrameSubmitPlan::get_present_bounds(Self) -> PixelRect?
 pub fn RenderFrameSubmitPlan::get_present_byte_count(Self) -> Int
 pub fn RenderFrameSubmitPlan::get_present_pixel_count(Self) -> Int
 pub fn RenderFrameSubmitPlan::get_present_rect_count(Self) -> Int
@@ -688,6 +695,7 @@ pub struct RenderFrameSubmitRequest {
 pub fn RenderFrameSubmitRequest::get_action(Self) -> RenderFrameScheduleAction
 pub fn RenderFrameSubmitRequest::get_dirty_bounds(Self) -> PixelRect?
 pub fn RenderFrameSubmitRequest::get_policy(Self) -> RenderFrameSubmitPolicy
+pub fn RenderFrameSubmitRequest::get_present_bounds(Self) -> PixelRect?
 pub fn RenderFrameSubmitRequest::get_present_byte_count(Self) -> Int
 pub fn RenderFrameSubmitRequest::get_present_pixel_count(Self) -> Int
 pub fn RenderFrameSubmitRequest::get_present_rect_count(Self) -> Int
@@ -709,6 +717,7 @@ pub struct RenderFrameSubmitResult {
 } derive(@debug.Debug)
 pub fn RenderFrameSubmitResult::did_present(Self) -> Bool
 pub fn RenderFrameSubmitResult::get_dirty_bounds(Self) -> PixelRect?
+pub fn RenderFrameSubmitResult::get_present_bounds(Self) -> PixelRect?
 pub fn RenderFrameSubmitResult::get_present_byte_count(Self) -> Int
 pub fn RenderFrameSubmitResult::get_present_pixel_count(Self) -> Int
 pub fn RenderFrameSubmitResult::get_present_rect_count(Self) -> Int

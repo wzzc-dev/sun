@@ -23,6 +23,7 @@ pub struct NativeFrameSubmitPlan {
   strategy : @graphics.DirtyPresentStrategy
   state : @graphics.DirtySubmitState
   dirty_bounds : @graphics.PixelRect?
+  present_bounds : @graphics.PixelRect?
   uses_bounds_fallback : Bool
   present_rect_count : Int
   present_pixel_count : Int
@@ -88,6 +89,13 @@ pub fn NativeFrameSubmitPlan::get_dirty_bounds(
   self : NativeFrameSubmitPlan,
 ) -> @graphics.PixelRect? {
   self.dirty_bounds
+}
+
+///|
+pub fn NativeFrameSubmitPlan::get_present_bounds(
+  self : NativeFrameSubmitPlan,
+) -> @graphics.PixelRect? {
+  self.present_bounds
 }
 
 ///|
@@ -188,6 +196,13 @@ pub fn NativeFrameSubmitResult::get_dirty_bounds(
 }
 
 ///|
+pub fn NativeFrameSubmitResult::get_present_bounds(
+  self : NativeFrameSubmitResult,
+) -> @graphics.PixelRect? {
+  self.submit_plan.get_present_bounds()
+}
+
+///|
 pub fn NativeFrameSubmitResult::has_dirty(
   self : NativeFrameSubmitResult,
 ) -> Bool {
@@ -283,6 +298,13 @@ pub fn NativeFrameSchedule::get_dirty_bounds(
   self : NativeFrameSchedule,
 ) -> @graphics.PixelRect? {
   self.submit_plan.get_dirty_bounds()
+}
+
+///|
+pub fn NativeFrameSchedule::get_present_bounds(
+  self : NativeFrameSchedule,
+) -> @graphics.PixelRect? {
+  self.submit_plan.get_present_bounds()
 }
 
 ///|
@@ -410,6 +432,13 @@ pub fn NativeFrameSubmitRequest::get_dirty_bounds(
 }
 
 ///|
+pub fn NativeFrameSubmitRequest::get_present_bounds(
+  self : NativeFrameSubmitRequest,
+) -> @graphics.PixelRect? {
+  self.schedule.get_present_bounds()
+}
+
+///|
 pub fn NativeFrameSubmitRequest::has_dirty(
   self : NativeFrameSubmitRequest,
 ) -> Bool {
@@ -477,6 +506,7 @@ fn native_frame_submit_plan(
   strategy : @graphics.DirtyPresentStrategy,
   state : @graphics.DirtySubmitState,
   dirty_bounds : @graphics.PixelRect?,
+  present_bounds : @graphics.PixelRect?,
   uses_bounds_fallback : Bool,
   present_rect_count : Int,
   present_pixel_count : Int,
@@ -486,6 +516,7 @@ fn native_frame_submit_plan(
     strategy,
     state,
     dirty_bounds,
+    present_bounds,
     uses_bounds_fallback,
     present_rect_count,
     present_pixel_count,
@@ -501,6 +532,7 @@ fn native_frame_submit_plan_from_frame(
     plan.get_present_strategy(),
     plan.get_state(),
     plan.get_dirty_bounds(),
+    plan.get_present_bounds(),
     plan.uses_bounds_fallback(),
     plan.get_present_rect_count(),
     plan.get_present_pixel_count(),

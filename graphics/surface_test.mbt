@@ -570,6 +570,10 @@ test "Pixmap::present_batch materializes dirty present plan" {
     Ok(batch) => {
       assert_true(!batch.is_empty())
       assert_eq(batch.get_rect_count(), 2)
+      assert_true(
+        batch.get_present_bounds() ==
+        Some(PixelRect::new(x=0, y=0, width=3, height=2)),
+      )
       assert_eq(batch.get_present_pixel_count(), 2)
       assert_eq(batch.get_present_byte_count(), 8)
       assert_eq(batch.get_source_byte_count(), 8)

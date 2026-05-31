@@ -12,6 +12,7 @@ pub struct RenderFrame {
 pub struct RenderFrameSubmitPlan {
   dirty_submit_plan : DirtySubmitPlan
   strategy : DirtyPresentStrategy
+  present_bounds : PixelRect?
   present_rect_count : Int
   present_pixel_count : Int
   present_byte_count : Int
@@ -176,6 +177,13 @@ pub fn RenderFrameSubmitPlan::uses_bounds_fallback(
 }
 
 ///|
+pub fn RenderFrameSubmitPlan::get_present_bounds(
+  self : RenderFrameSubmitPlan,
+) -> PixelRect? {
+  self.present_bounds
+}
+
+///|
 pub fn RenderFrameSubmitPlan::get_present_rect_count(
   self : RenderFrameSubmitPlan,
 ) -> Int {
@@ -274,6 +282,13 @@ pub fn RenderFrameSubmitResult::uses_bounds_fallback(
 }
 
 ///|
+pub fn RenderFrameSubmitResult::get_present_bounds(
+  self : RenderFrameSubmitResult,
+) -> PixelRect? {
+  self.submit_plan.get_present_bounds()
+}
+
+///|
 pub fn RenderFrameSubmitResult::did_present(
   self : RenderFrameSubmitResult,
 ) -> Bool {
@@ -363,6 +378,13 @@ pub fn RenderFrameSchedule::uses_bounds_fallback(
   self : RenderFrameSchedule,
 ) -> Bool {
   self.submit_plan.uses_bounds_fallback()
+}
+
+///|
+pub fn RenderFrameSchedule::get_present_bounds(
+  self : RenderFrameSchedule,
+) -> PixelRect? {
+  self.submit_plan.get_present_bounds()
 }
 
 ///|
@@ -486,6 +508,13 @@ pub fn RenderFrameSubmitRequest::uses_bounds_fallback(
 }
 
 ///|
+pub fn RenderFrameSubmitRequest::get_present_bounds(
+  self : RenderFrameSubmitRequest,
+) -> PixelRect? {
+  self.schedule.get_present_bounds()
+}
+
+///|
 pub fn RenderFrameSubmitRequest::get_present_rect_count(
   self : RenderFrameSubmitRequest,
 ) -> Int {
@@ -517,6 +546,7 @@ pub fn RenderFrameSubmitRequest::saves_full_present_pixels(
 fn render_frame_submit_plan(
   dirty_submit_plan : DirtySubmitPlan,
   strategy : DirtyPresentStrategy,
+  present_bounds : PixelRect?,
   present_rect_count : Int,
   present_pixel_count : Int,
   present_byte_count : Int,
@@ -524,6 +554,7 @@ fn render_frame_submit_plan(
   {
     dirty_submit_plan,
     strategy,
+    present_bounds,
     present_rect_count,
     present_pixel_count,
     present_byte_count,
@@ -575,6 +606,31 @@ fn render_frame_full_present_plan(
   surface_width : Int,
   surface_height : Int,
 ) -> RenderFrameSubmitPlan {
+  let present_bounds = render_frame_full_present_bounds(
+    frame_width, frame_height, surface_width, surface_height,
+  )
+  let present_pixels = match present_bounds {
+    Some(bounds) => bounds.area()
+    None => 0
+  }
+  let present_rect_count = if present_pixels > 0 { 1 } else { 0 }
+  render_frame_submit_plan(
+    dirty_submit_plan,
+    DirtyPresentStrategy::Full,
+    present_bounds,
+    present_rect_count,
+    present_pixels,
+    present_pixels * 4,
+  )
+}
+
+///|
+fn render_frame_full_present_bounds(
+  frame_width : Int,
+  frame_height : Int,
+  surface_width : Int,
+  surface_height : Int,
+) -> PixelRect? {
   let frame_bounds = PixelRect::new(
     x=0,
     y=0,
@@ -587,18 +643,7 @@ fn render_frame_full_present_plan(
     width=surface_width.max(0),
     height=surface_height.max(0),
   )
-  let present_pixels = match frame_bounds.intersection(surface_bounds) {
-    Some(bounds) => bounds.area()
-    None => 0
-  }
-  let present_rect_count = if present_pixels > 0 { 1 } else { 0 }
-  render_frame_submit_plan(
-    dirty_submit_plan,
-    DirtyPresentStrategy::Full,
-    present_rect_count,
-    present_pixels,
-    present_pixels * 4,
-  )
+  frame_bounds.intersection(surface_bounds)
 }
 
 ///|
@@ -918,22 +963,19 @@ pub fn[S : Surface] RenderFrame::submit_by_strategy_plan(
     surface.get_height(),
   )
   match strategy {
-    DirtyPresentStrategy::Full => {
-      let present_pixels = surface.get_width().max(0) *
-        surface.get_height().max(0)
-      let present_rect_count = if present_pixels > 0 { 1 } else { 0 }
-      render_frame_submit_plan(
+    DirtyPresentStrategy::Full =>
+      render_frame_full_present_plan(
         dirty_plan,
-        strategy,
-        present_rect_count,
-        present_pixels,
-        present_pixels * 4,
+        self.get_width(),
+        self.get_height(),
+        surface.get_width(),
+        surface.get_height(),
       )
-    }
     _ =>
       render_frame_submit_plan(
         dirty_plan,
         strategy,
+        dirty_plan.get_present_bounds(),
         dirty_plan.get_present_rect_count(),
         dirty_plan.get_present_pixel_count(),
         dirty_plan.get_present_byte_count(),

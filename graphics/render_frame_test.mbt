@@ -225,6 +225,10 @@ test "RenderFrame::submit_dirty_to reports scheduler result" {
         submit_result.get_dirty_bounds() ==
         Some(PixelRect::new(x=1, y=0, width=1, height=1)),
       )
+      assert_true(
+        submit_result.get_present_bounds() ==
+        Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+      )
     }
     Err(_) => abort("expected dirty submit result")
   }
@@ -246,6 +250,7 @@ test "RenderFrame::submit_dirty_to reports scheduler result" {
         submit_result.get_present_strategy(2, 1) == DirtyPresentStrategy::Skip,
       )
       assert_true(submit_result.get_dirty_bounds() == None)
+      assert_true(submit_result.get_present_bounds() == None)
     }
     Err(_) => abort("expected clean submit result")
   }
@@ -279,6 +284,7 @@ test "RenderFrame::submit_dirty_to consumes surface-clipped dirty" {
         submit_result.get_dirty_bounds() ==
         Some(PixelRect::new(x=3, y=0, width=1, height=1)),
       )
+      assert_true(submit_result.get_present_bounds() == None)
     }
     Err(_) => abort("expected clipped-away submit result")
   }
@@ -750,6 +756,7 @@ test "RenderFrame policy schedules dirty-only cached and full redraw paths" {
   )
   assert_true(dirty_only_schedule.get_state() == DirtySubmitState::Clean)
   assert_true(!dirty_only_schedule.needs_present())
+  assert_true(dirty_only_schedule.get_present_bounds() == None)
   assert_eq(dirty_only_schedule.get_present_rect_count(), 0)
 
   let cached_schedule = clean_frame.submit_schedule_by_policy(
@@ -765,6 +772,10 @@ test "RenderFrame policy schedules dirty-only cached and full redraw paths" {
   assert_true(cached_schedule.get_state() == DirtySubmitState::Clean)
   assert_true(cached_schedule.needs_present())
   assert_true(!cached_schedule.has_dirty())
+  assert_true(
+    cached_schedule.get_present_bounds() ==
+    Some(PixelRect::new(x=0, y=0, width=2, height=1)),
+  )
   assert_eq(cached_schedule.get_present_rect_count(), 1)
   assert_eq(cached_schedule.get_present_pixel_count(), 2)
   assert_eq(cached_schedule.get_present_byte_count(), 8)
@@ -785,6 +796,10 @@ test "RenderFrame policy schedules dirty-only cached and full redraw paths" {
   )
   assert_true(cached_dirty_schedule.get_state() == DirtySubmitState::Present)
   assert_true(cached_dirty_schedule.has_dirty())
+  assert_true(
+    cached_dirty_schedule.get_present_bounds() ==
+    Some(PixelRect::new(x=1, y=0, width=1, height=1)),
+  )
   assert_eq(cached_dirty_schedule.get_present_rect_count(), 1)
   assert_eq(cached_dirty_schedule.get_present_pixel_count(), 1)
   assert_eq(cached_dirty_schedule.get_present_byte_count(), 4)
@@ -802,6 +817,10 @@ test "RenderFrame policy schedules dirty-only cached and full redraw paths" {
   assert_true(full_dirty_schedule.get_state() == DirtySubmitState::Present)
   assert_true(full_dirty_schedule.has_dirty())
   assert_true(full_dirty_schedule.needs_present())
+  assert_true(
+    full_dirty_schedule.get_present_bounds() ==
+    Some(PixelRect::new(x=0, y=0, width=4, height=1)),
+  )
   assert_eq(full_dirty_schedule.get_present_rect_count(), 1)
   assert_eq(full_dirty_schedule.get_present_pixel_count(), 4)
   assert_eq(full_dirty_schedule.get_present_byte_count(), 16)
@@ -826,6 +845,10 @@ test "RenderFrame::submit_to_by_policy executes requested policy" {
       assert_true(result.get_state() == DirtySubmitState::Present)
       assert_true(result.has_dirty())
       assert_true(result.did_present())
+      assert_true(
+        result.get_present_bounds() ==
+        Some(PixelRect::new(x=0, y=0, width=4, height=1)),
+      )
       assert_eq(result.get_present_rect_count(), 1)
       assert_eq(result.get_presented_rect_count(), 1)
       assert_eq(result.get_present_pixel_count(), 4)
@@ -881,6 +904,10 @@ test "RenderFrame submit requests preserve policy and schedule decisions" {
     Some(PixelRect::new(x=1, y=0, width=1, height=1)),
   )
   assert_true(
+    request.get_present_bounds() ==
+    Some(PixelRect::new(x=0, y=0, width=4, height=1)),
+  )
+  assert_true(
     request.get_schedule().get_submit_plan().get_present_strategy() ==
     DirtyPresentStrategy::Full,
   )
@@ -896,6 +923,10 @@ test "RenderFrame submit requests preserve policy and schedule decisions" {
       assert_true(result.get_present_strategy() == DirtyPresentStrategy::Full)
       assert_true(result.get_state() == DirtySubmitState::Present)
       assert_true(result.did_present())
+      assert_true(
+        result.get_present_bounds() ==
+        Some(PixelRect::new(x=0, y=0, width=4, height=1)),
+      )
       assert_eq(result.get_presented_rect_count(), 1)
       assert_eq(result.get_present_pixel_count(), 4)
       assert_eq(result.get_present_byte_count(), 16)
@@ -922,6 +953,7 @@ test "RenderFrame submit requests preserve policy and schedule decisions" {
   assert_true(!clean_request.needs_present())
   assert_true(!clean_request.has_dirty())
   assert_true(clean_request.get_dirty_bounds() == None)
+  assert_true(clean_request.get_present_bounds() == None)
   match clean_frame.submit_request_to(clean_surface, clean_request) {
     Ok(result) => {
       assert_true(result.get_present_strategy() == DirtyPresentStrategy::Skip)

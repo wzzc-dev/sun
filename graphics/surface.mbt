@@ -115,6 +115,15 @@ pub fn PresentBatch::get_rect_count(self : PresentBatch) -> Int {
 }
 
 ///|
+pub fn PresentBatch::get_present_bounds(self : PresentBatch) -> PixelRect? {
+  let rects = []
+  for payload in self.payloads {
+    rects.push(payload.get_rect())
+  }
+  pixel_rect_array_bounds(rects)
+}
+
+///|
 pub fn PresentBatch::is_empty(self : PresentBatch) -> Bool {
   self.payloads.length() == 0
 }

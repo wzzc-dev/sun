@@ -97,6 +97,7 @@ test "DirtyRegion::present_plan exposes dirty present strategy" {
   assert_true(empty.is_empty())
   assert_true(empty.get_mode() == DirtyPresentPlanMode::Empty)
   assert_eq(empty.get_rect_count(), 0)
+  assert_true(empty.get_present_bounds() == None)
   assert_eq(empty.get_present_pixel_count(), 0)
   assert_eq(empty.get_present_byte_count(), 0)
   assert_true(!empty.saves_full_present_pixels(7, 2))
@@ -110,6 +111,10 @@ test "DirtyRegion::present_plan exposes dirty present strategy" {
   assert_true(rect_plan.get_mode() == DirtyPresentPlanMode::Rects)
   assert_true(!rect_plan.uses_bounds_fallback())
   assert_eq(rect_plan.get_rect_count(), 3)
+  assert_true(
+    rect_plan.get_present_bounds() ==
+    Some(PixelRect::new(x=0, y=0, width=7, height=1)),
+  )
   assert_eq(rect_plan.get_present_pixel_count(), 3)
   assert_eq(rect_plan.get_present_byte_count(), 12)
   assert_true(rect_plan.saves_full_present_pixels(7, 2))
@@ -131,6 +136,10 @@ test "DirtyRegion::present_plan exposes dirty present strategy" {
   assert_true(bounds_plan.get_mode() == DirtyPresentPlanMode::Bounds)
   assert_true(bounds_plan.uses_bounds_fallback())
   assert_eq(bounds_plan.get_rect_count(), 1)
+  assert_true(
+    bounds_plan.get_present_bounds() ==
+    Some(PixelRect::new(x=0, y=0, width=7, height=1)),
+  )
   assert_eq(bounds_plan.get_present_pixel_count(), 7)
   assert_eq(bounds_plan.get_present_byte_count(), 28)
   assert_true(bounds_plan.saves_full_present_pixels(7, 2))
@@ -163,6 +172,7 @@ test "DirtySubmitPlan exposes scheduler state" {
   assert_true(clipped.get_state() == DirtySubmitState::DirtyClippedAway)
   assert_true(clipped.has_dirty())
   assert_true(!clipped.needs_present())
+  assert_true(clipped.get_present_bounds() == None)
   assert_eq(clipped.get_present_pixel_count(), 0)
   assert_eq(clipped.get_present_byte_count(), 0)
   assert_true(!clipped.saves_full_present_pixels(2, 1))
@@ -174,6 +184,10 @@ test "DirtySubmitPlan exposes scheduler state" {
   assert_true(present.get_state() == DirtySubmitState::Present)
   assert_true(present.has_dirty())
   assert_true(present.needs_present())
+  assert_true(
+    present.get_present_bounds() ==
+    Some(PixelRect::new(x=0, y=0, width=1, height=1)),
+  )
   assert_eq(present.get_present_pixel_count(), 1)
   assert_eq(present.get_present_byte_count(), 4)
   assert_true(present.saves_full_present_pixels(2, 1))

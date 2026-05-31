@@ -140,6 +140,7 @@ Application / GUI
 - `DirtyPresentStrategy` 将 Skip/Partial/Full present 选择显式化，让事件循环能直接消费统一调度决策
 - `RenderFrame` 在 graphics 核心层提供 strategy-aware submit plan/result/helper，让 MemorySurface、窗口后端和未来 backend 复用同一套 Skip/Partial/Full 调度
 - `RenderFrame` strategy-aware submit plan/result 暴露计划 present rect 数，让后端在提交前后都能复用同一份批量调度 telemetry
+- dirty present plan、packed batch、`RenderFrame` schedule/request/result 与 softbuffer native schedule 暴露实际 present bounds，让事件循环可直接拿到裁剪后的 damage 范围
 - softbuffer 实现 `graphics.Surface` present 契约，并提供 `RenderFrame -> NativeSurface` dirty/full present helper，让窗口示例走统一提交入口
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty-submit plan 查询，让窗口后端调度能复用 graphics 的统一 dirty snapshot
 - softbuffer 的 `NativeSurface` 暴露 `RenderFrame` dirty present batch dry-run，让窗口后端可检查 packed payload 且不触发 hook、不清 dirty
@@ -416,6 +417,7 @@ Application / GUI
 - [x] `DirtyPresentStrategy` 暴露 Skip/Partial/Full present 决策，给事件循环一个可测试的统一策略枚举
 - [x] `RenderFrame` 暴露通用 strategy-aware submit plan/result/helper，把 Skip/Partial/Full 调度从 softbuffer 下沉到 graphics 核心层
 - [x] `RenderFrame` strategy-aware submit plan/result 暴露计划 present rect 数，补齐 dry-run 与实际提交结果的批量调度 telemetry
+- [x] dirty present plan、packed present batch、`RenderFrame` schedule/request/result 与 softbuffer native schedule 暴露实际 present bounds，补齐事件循环 damage telemetry
 - [x] `RenderFrame` 暴露 `RenderFrameSchedule` dry-run 调度快照，将 clean skip、clipped-away submit 和 partial/full present 统一给核心事件循环
 - [x] `RenderFrame` 提供 precomputed schedule submit executor，让任意 `Surface` 先 query 调度快照再按同一决策提交
 - [x] `RenderFrame` 提供 cached redraw schedule/submit 入口，把 clean OS redraw 的 full repaint 策略从示例下沉到 graphics 核心层
