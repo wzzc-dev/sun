@@ -137,8 +137,11 @@ pub enum RenderCommand {
   FillPath(@graphics.Path, @graphics.Paint)
   StrokePath(@graphics.Path, @graphics.Paint)
   DrawPixmap(@graphics.Pixmap, Int, Int, @graphics.Paint)
+  DrawPixmapKeyed(String, @graphics.Pixmap, Int, Int, @graphics.Paint)
   DrawPixmapRect(@graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
+  DrawPixmapRectKeyed(String, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawTextFace(@text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
+  DrawTextFaceKeyed(String, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
 } derive(@debug.Debug)
 
 pub struct RenderPipeline {
@@ -151,8 +154,11 @@ pub fn RenderPipeline::clear_commands(Self) -> Unit
 pub fn RenderPipeline::diff(Self, Self, Int, Int) -> RenderPipelineDiffResult
 pub fn RenderPipeline::dirty_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
 pub fn RenderPipeline::draw_pixmap(Self, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_pixmap_keyed(Self, String, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_rect(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_pixmap_rect_keyed(Self, String, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_text_face_keyed(Self, String, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::fill_path(Self, @graphics.Path, @graphics.Paint) -> Self
 pub fn RenderPipeline::fill_rect(Self, Double, Double, Double, Double, @graphics.Paint) -> Self
 pub fn RenderPipeline::get_commands(Self) -> Array[RenderCommand]
@@ -246,14 +252,17 @@ pub fn RenderPipelineDiffResult::has_dirty(Self) -> Bool
 
 pub struct RenderPipelineImageDependency {
   command_index : Int
+  resource_key : String?
   source_width : Int
   source_height : Int
   source_pixel_count : Int
 } derive(@debug.Debug)
 pub fn RenderPipelineImageDependency::get_command_index(Self) -> Int
+pub fn RenderPipelineImageDependency::get_resource_key(Self) -> String?
 pub fn RenderPipelineImageDependency::get_source_height(Self) -> Int
 pub fn RenderPipelineImageDependency::get_source_pixel_count(Self) -> Int
 pub fn RenderPipelineImageDependency::get_source_width(Self) -> Int
+pub fn RenderPipelineImageDependency::has_resource_key(Self) -> Bool
 
 pub struct RenderPipelineReplayResult {
   command_count : Int
@@ -279,6 +288,9 @@ pub fn RenderPipelineResourcePlan::get_command_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_image_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_image_dependencies(Self) -> Array[RenderPipelineImageDependency]
 pub fn RenderPipelineResourcePlan::get_image_source_pixel_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_keyed_image_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_keyed_resource_count(Self) -> Int
+pub fn RenderPipelineResourcePlan::get_keyed_text_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_resource_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_text_byte_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_text_count(Self) -> Int
@@ -289,6 +301,7 @@ pub fn RenderPipelineResourcePlan::has_resources(Self) -> Bool
 
 pub struct RenderPipelineTextDependency {
   command_index : Int
+  resource_key : String?
   text_byte_count : Int
   run_count : Int
   glyph_count : Int
@@ -299,8 +312,10 @@ pub fn RenderPipelineTextDependency::get_command_index(Self) -> Int
 pub fn RenderPipelineTextDependency::get_glyph_count(Self) -> Int
 pub fn RenderPipelineTextDependency::get_layout_height(Self) -> Double
 pub fn RenderPipelineTextDependency::get_layout_width(Self) -> Double
+pub fn RenderPipelineTextDependency::get_resource_key(Self) -> String?
 pub fn RenderPipelineTextDependency::get_run_count(Self) -> Int
 pub fn RenderPipelineTextDependency::get_text_byte_count(Self) -> Int
+pub fn RenderPipelineTextDependency::has_resource_key(Self) -> Bool
 
 pub struct Renderer {
   canvas : @graphics.Canvas

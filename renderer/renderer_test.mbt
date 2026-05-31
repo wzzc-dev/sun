@@ -401,16 +401,20 @@ test "RenderPipeline resource plan pre-resolves image and text dependencies" {
 
   let images = plan.get_image_dependencies()
   assert_eq(images[0].get_command_index(), 1)
+  assert_true(!images[0].has_resource_key())
+  assert_true(images[0].get_resource_key() == None)
   assert_eq(images[0].get_source_width(), 4)
   assert_eq(images[0].get_source_height(), 3)
   assert_eq(images[0].get_source_pixel_count(), 12)
   assert_eq(images[1].get_command_index(), 2)
+  assert_true(!images[1].has_resource_key())
   assert_eq(images[1].get_source_width(), 2)
   assert_eq(images[1].get_source_height(), 2)
   assert_eq(images[1].get_source_pixel_count(), 4)
 
   let texts = plan.get_text_dependencies()
   assert_eq(texts[0].get_command_index(), 3)
+  assert_true(!texts[0].has_resource_key())
   assert_eq(texts[0].get_text_byte_count(), 2)
   assert_eq(texts[0].get_run_count(), 1)
   assert_eq(texts[0].get_glyph_count(), 2)
@@ -466,6 +470,118 @@ test "Renderer resource plan reports empty and clipped-away dependencies" {
   let texts = plan.get_text_dependencies()
   assert_eq(texts[0].get_layout_width(), 0.0)
   assert_eq(texts[0].get_layout_height(), 0.0)
+}
+
+///|
+test "RenderPipeline keyed resources expose identity and replay normally" {
+  let icon = @graphics.Pixmap::new(3, 2)
+  icon.set_pixel(0, 0, @graphics.Color::red())
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let pipeline = RenderPipeline::new()
+    .draw_pixmap_keyed("hero", icon, 0, 0, @graphics.Paint::new())
+    .draw_pixmap_rect_keyed(
+      "sprite",
+      icon,
+      @graphics.PixelRect::new(x=1, y=0, width=4, height=2),
+      3,
+      0,
+      @graphics.Paint::new(),
+    )
+    .draw_text_face_keyed(
+      "ui-font",
+      face,
+      "A",
+      1.0,
+      1.0,
+      config,
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    )
+  let plan = pipeline.resource_plan()
+  assert_eq(plan.get_resource_count(), 3)
+  assert_eq(plan.get_keyed_resource_count(), 3)
+  assert_eq(plan.get_keyed_image_count(), 2)
+  assert_eq(plan.get_keyed_text_count(), 1)
+  let images = plan.get_image_dependencies()
+  assert_true(images[0].has_resource_key())
+  assert_true(images[0].get_resource_key() == Some("hero"))
+  assert_eq(images[0].get_source_pixel_count(), 6)
+  assert_true(images[1].get_resource_key() == Some("sprite"))
+  assert_eq(images[1].get_source_width(), 2)
+  assert_eq(images[1].get_source_height(), 2)
+  let texts = plan.get_text_dependencies()
+  assert_true(texts[0].get_resource_key() == Some("ui-font"))
+  assert_eq(texts[0].get_glyph_count(), 1)
+
+  let renderer = Renderer::new(@graphics.Canvas::new(12, 12))
+  renderer.get_canvas().clear(@graphics.Color::white())
+  let result = renderer.draw_pipeline(pipeline)
+  assert_eq(result.get_image_count(), 2)
+  assert_eq(result.get_text_count(), 1)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::red(),
+  )
+  assert_true(pixmap_has_ink(renderer.get_canvas().get_pixmap()))
+}
+
+///|
+test "RenderPipeline diff retains keyed resource commands" {
+  let previous_icon = @graphics.Pixmap::new(2, 2)
+  let next_icon = @graphics.Pixmap::new(4, 4)
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let paint = @graphics.Paint::new().set_color(@graphics.Color::black())
+  let previous = RenderPipeline::new()
+    .draw_pixmap_keyed("icon", previous_icon, 1, 1, paint)
+    .draw_pixmap_rect_keyed(
+      "sprite",
+      previous_icon,
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      4,
+      1,
+      paint,
+    )
+    .draw_text_face_keyed("font", face, "A", 1.0, 1.0, config, paint)
+  let next = RenderPipeline::new()
+    .draw_pixmap_keyed("icon", next_icon, 1, 1, paint)
+    .draw_pixmap_rect_keyed(
+      "sprite",
+      next_icon,
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      4,
+      1,
+      paint,
+    )
+    .draw_text_face_keyed("font", face, "A", 1.0, 1.0, config, paint)
+
+  let retained = RenderPipeline::diff(previous, next, 8, 8)
+  assert_eq(retained.get_retained_command_count(), 3)
+  assert_eq(retained.get_changed_command_count(), 0)
+  assert_true(!retained.has_changes())
+  assert_true(!retained.has_dirty())
+
+  let moved = RenderPipeline::diff(
+    RenderPipeline::new().draw_pixmap_keyed("icon", previous_icon, 1, 1, paint),
+    RenderPipeline::new().draw_pixmap_keyed("icon", next_icon, 2, 1, paint),
+    8,
+    8,
+  )
+  assert_eq(moved.get_retained_command_count(), 0)
+  assert_eq(moved.get_changed_command_count(), 1)
+  assert_true(moved.has_dirty())
+  assert_true(
+    moved.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=1, y=1, width=5, height=4)),
+  )
 }
 
 ///|

@@ -7,6 +7,7 @@ pub enum RenderCommand {
   FillPath(@graphics.Path, @graphics.Paint)
   StrokePath(@graphics.Path, @graphics.Paint)
   DrawPixmap(@graphics.Pixmap, Int, Int, @graphics.Paint)
+  DrawPixmapKeyed(String, @graphics.Pixmap, Int, Int, @graphics.Paint)
   DrawPixmapRect(
     @graphics.Pixmap,
     @graphics.PixelRect,
@@ -14,7 +15,24 @@ pub enum RenderCommand {
     Int,
     @graphics.Paint
   )
+  DrawPixmapRectKeyed(
+    String,
+    @graphics.Pixmap,
+    @graphics.PixelRect,
+    Int,
+    Int,
+    @graphics.Paint
+  )
   DrawTextFace(
+    @text.FontFace,
+    String,
+    Double,
+    Double,
+    @text.LayoutConfig,
+    @graphics.Paint
+  )
+  DrawTextFaceKeyed(
+    String,
     @text.FontFace,
     String,
     Double,
@@ -96,6 +114,7 @@ pub struct RenderPipelineBatchPlan {
 /// One image resource use discovered before replaying a render pipeline.
 pub struct RenderPipelineImageDependency {
   command_index : Int
+  resource_key : String?
   source_width : Int
   source_height : Int
   source_pixel_count : Int
@@ -105,6 +124,7 @@ pub struct RenderPipelineImageDependency {
 /// One parsed-font text resource use discovered before replaying a pipeline.
 pub struct RenderPipelineTextDependency {
   command_index : Int
+  resource_key : String?
   text_byte_count : Int
   run_count : Int
   glyph_count : Int
@@ -230,6 +250,19 @@ pub fn RenderPipeline::draw_pixmap(
 }
 
 ///|
+/// Queue a keyed pixmap draw command for stable resource identity.
+pub fn RenderPipeline::draw_pixmap_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  paint : @graphics.Paint,
+) -> RenderPipeline {
+  self.push(RenderCommand::DrawPixmapKeyed(resource_key, pixmap, x, y, paint))
+}
+
+///|
 /// Queue a source-rectangle pixmap draw command.
 pub fn RenderPipeline::draw_pixmap_rect(
   self : RenderPipeline,
@@ -240,6 +273,24 @@ pub fn RenderPipeline::draw_pixmap_rect(
   paint : @graphics.Paint,
 ) -> RenderPipeline {
   self.push(RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, paint))
+}
+
+///|
+/// Queue a keyed source-rectangle pixmap command for stable resource identity.
+pub fn RenderPipeline::draw_pixmap_rect_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  pixmap : @graphics.Pixmap,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  paint : @graphics.Paint,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawPixmapRectKeyed(
+      resource_key, pixmap, src_rect, x, y, paint,
+    ),
+  )
 }
 
 ///|
@@ -254,6 +305,25 @@ pub fn RenderPipeline::draw_text_face(
   paint : @graphics.Paint,
 ) -> RenderPipeline {
   self.push(RenderCommand::DrawTextFace(face, text, x, y, config, paint))
+}
+
+///|
+/// Queue a keyed parsed-font text command for stable resource identity.
+pub fn RenderPipeline::draw_text_face_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  face : @text.FontFace,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  paint : @graphics.Paint,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawTextFaceKeyed(
+      resource_key, face, text, x, y, config, paint,
+    ),
+  )
 }
 
 ///|
@@ -637,6 +707,22 @@ pub fn RenderPipelineImageDependency::get_command_index(
 }
 
 ///|
+/// Return the stable resource key for this image dependency when provided.
+pub fn RenderPipelineImageDependency::get_resource_key(
+  self : RenderPipelineImageDependency,
+) -> String? {
+  self.resource_key
+}
+
+///|
+/// Return whether this image dependency has a stable resource key.
+pub fn RenderPipelineImageDependency::has_resource_key(
+  self : RenderPipelineImageDependency,
+) -> Bool {
+  self.resource_key is Some(_)
+}
+
+///|
 /// Return the clipped source width read from the image resource.
 pub fn RenderPipelineImageDependency::get_source_width(
   self : RenderPipelineImageDependency,
@@ -666,6 +752,22 @@ pub fn RenderPipelineTextDependency::get_command_index(
   self : RenderPipelineTextDependency,
 ) -> Int {
   self.command_index
+}
+
+///|
+/// Return the stable resource key for this text dependency when provided.
+pub fn RenderPipelineTextDependency::get_resource_key(
+  self : RenderPipelineTextDependency,
+) -> String? {
+  self.resource_key
+}
+
+///|
+/// Return whether this text dependency has a stable resource key.
+pub fn RenderPipelineTextDependency::has_resource_key(
+  self : RenderPipelineTextDependency,
+) -> Bool {
+  self.resource_key is Some(_)
 }
 
 ///|
@@ -725,6 +827,20 @@ pub fn RenderPipelineResourcePlan::get_image_count(
 }
 
 ///|
+/// Return the number of image resource uses with stable keys.
+pub fn RenderPipelineResourcePlan::get_keyed_image_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  let mut count = 0
+  for dependency in self.image_dependencies {
+    if dependency.has_resource_key() {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
 /// Return the number of discovered text resource uses.
 pub fn RenderPipelineResourcePlan::get_text_count(
   self : RenderPipelineResourcePlan,
@@ -733,11 +849,33 @@ pub fn RenderPipelineResourcePlan::get_text_count(
 }
 
 ///|
+/// Return the number of text resource uses with stable keys.
+pub fn RenderPipelineResourcePlan::get_keyed_text_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  let mut count = 0
+  for dependency in self.text_dependencies {
+    if dependency.has_resource_key() {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
 /// Return the number of discovered resource uses.
 pub fn RenderPipelineResourcePlan::get_resource_count(
   self : RenderPipelineResourcePlan,
 ) -> Int {
   self.get_image_count() + self.get_text_count()
+}
+
+///|
+/// Return the number of discovered resource uses with stable keys.
+pub fn RenderPipelineResourcePlan::get_keyed_resource_count(
+  self : RenderPipelineResourcePlan,
+) -> Int {
+  self.get_keyed_image_count() + self.get_keyed_text_count()
 }
 
 ///|
@@ -884,8 +1022,11 @@ pub fn RenderPipeline::analyze(
       RenderCommand::StrokeRect(_, _, _, _, _)
       | RenderCommand::StrokePath(_, _) => stroke_count += 1
       RenderCommand::DrawPixmap(_, _, _, _)
-      | RenderCommand::DrawPixmapRect(_, _, _, _, _) => image_count += 1
-      RenderCommand::DrawTextFace(_, _, _, _, _, _) => text_count += 1
+      | RenderCommand::DrawPixmapKeyed(_, _, _, _, _)
+      | RenderCommand::DrawPixmapRect(_, _, _, _, _)
+      | RenderCommand::DrawPixmapRectKeyed(_, _, _, _, _, _) => image_count += 1
+      RenderCommand::DrawTextFace(_, _, _, _, _, _)
+      | RenderCommand::DrawTextFaceKeyed(_, _, _, _, _, _, _) => text_count += 1
     }
     match render_command_estimated_dirty_rect(command, width, height) {
       Some(rect) => dirty_region.add_clipped_rect(rect, canvas_bounds)
@@ -984,17 +1125,66 @@ pub fn RenderPipeline::resource_plan(
         image_dependencies.push(
           render_pipeline_make_image_dependency(
             index,
+            None,
+            pixmap.get_width(),
+            pixmap.get_height(),
+          ),
+        )
+      RenderCommand::DrawPixmapKeyed(resource_key, pixmap, _, _, _) =>
+        image_dependencies.push(
+          render_pipeline_make_image_dependency(
+            index,
+            Some(resource_key),
             pixmap.get_width(),
             pixmap.get_height(),
           ),
         )
       RenderCommand::DrawPixmapRect(pixmap, src_rect, _, _, _) =>
         image_dependencies.push(
-          render_pipeline_make_rect_image_dependency(index, pixmap, src_rect),
+          render_pipeline_make_rect_image_dependency(
+            index,
+            None,
+            pixmap,
+            src_rect,
+          ),
+        )
+      RenderCommand::DrawPixmapRectKeyed(
+        resource_key,
+        pixmap,
+        src_rect,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_rect_image_dependency(
+            index,
+            Some(resource_key),
+            pixmap,
+            src_rect,
+          ),
         )
       RenderCommand::DrawTextFace(face, text, _, _, config, _) =>
         text_dependencies.push(
-          render_pipeline_make_text_dependency(index, face, text, config),
+          render_pipeline_make_text_dependency(index, None, face, text, config),
+        )
+      RenderCommand::DrawTextFaceKeyed(
+        resource_key,
+        face,
+        text,
+        _,
+        _,
+        config,
+        _
+      ) =>
+        text_dependencies.push(
+          render_pipeline_make_text_dependency(
+            index,
+            Some(resource_key),
+            face,
+            text,
+            config,
+          ),
         )
       _ => ()
     }
@@ -1111,11 +1301,23 @@ pub fn RenderPipeline::replay(
         canvas.draw_pixmap(pixmap, x, y, paint)
         image_count += 1
       }
+      RenderCommand::DrawPixmapKeyed(_, pixmap, x, y, paint) => {
+        canvas.draw_pixmap(pixmap, x, y, paint)
+        image_count += 1
+      }
       RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, paint) => {
         canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
         image_count += 1
       }
+      RenderCommand::DrawPixmapRectKeyed(_, pixmap, src_rect, x, y, paint) => {
+        canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
+        image_count += 1
+      }
       RenderCommand::DrawTextFace(face, text, x, y, config, paint) => {
+        renderer.draw_text_face(face, text, x, y, config, paint)
+        text_count += 1
+      }
+      RenderCommand::DrawTextFaceKeyed(_, face, text, x, y, config, paint) => {
         renderer.draw_text_face(face, text, x, y, config, paint)
         text_count += 1
       }
@@ -1158,11 +1360,13 @@ fn render_pipeline_make_batch(
 ///|
 fn render_pipeline_make_image_dependency(
   command_index : Int,
+  resource_key : String?,
   source_width : Int,
   source_height : Int,
 ) -> RenderPipelineImageDependency {
   {
     command_index,
+    resource_key,
     source_width,
     source_height,
     source_pixel_count: source_width * source_height,
@@ -1172,6 +1376,7 @@ fn render_pipeline_make_image_dependency(
 ///|
 fn render_pipeline_make_rect_image_dependency(
   command_index : Int,
+  resource_key : String?,
   pixmap : @graphics.Pixmap,
   src_rect : @graphics.PixelRect,
 ) -> RenderPipelineImageDependency {
@@ -1185,16 +1390,19 @@ fn render_pipeline_make_rect_image_dependency(
     Some(clipped) =>
       render_pipeline_make_image_dependency(
         command_index,
+        resource_key,
         clipped.width,
         clipped.height,
       )
-    None => render_pipeline_make_image_dependency(command_index, 0, 0)
+    None =>
+      render_pipeline_make_image_dependency(command_index, resource_key, 0, 0)
   }
 }
 
 ///|
 fn render_pipeline_make_text_dependency(
   command_index : Int,
+  resource_key : String?,
   face : @text.FontFace,
   text : String,
   config : @text.LayoutConfig,
@@ -1214,6 +1422,7 @@ fn render_pipeline_make_text_dependency(
   }
   {
     command_index,
+    resource_key,
     text_byte_count: text.length(),
     run_count,
     glyph_count,
@@ -1233,9 +1442,13 @@ fn render_command_batch_kind(
     RenderCommand::StrokeRect(_, _, _, _, _)
     | RenderCommand::StrokePath(_, _) => RenderPipelineBatchKind::Stroke
     RenderCommand::DrawPixmap(_, _, _, _)
-    | RenderCommand::DrawPixmapRect(_, _, _, _, _) =>
+    | RenderCommand::DrawPixmapKeyed(_, _, _, _, _)
+    | RenderCommand::DrawPixmapRect(_, _, _, _, _)
+    | RenderCommand::DrawPixmapRectKeyed(_, _, _, _, _, _) =>
       RenderPipelineBatchKind::Image
     RenderCommand::DrawTextFace(_, _, _, _, _, _) =>
+      RenderPipelineBatchKind::Text
+    RenderCommand::DrawTextFaceKeyed(_, _, _, _, _, _, _) =>
       RenderPipelineBatchKind::Text
   }
 }
@@ -1273,6 +1486,15 @@ fn render_command_estimated_dirty_rect(
           height=pixmap.get_height(),
         ),
       )
+    RenderCommand::DrawPixmapKeyed(_, pixmap, x, y, _) =>
+      non_empty_pixel_rect(
+        @graphics.PixelRect::new(
+          x~,
+          y~,
+          width=pixmap.get_width(),
+          height=pixmap.get_height(),
+        ),
+      )
     RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, _) => {
       let src_bounds = @graphics.PixelRect::new(
         x=0,
@@ -1293,7 +1515,37 @@ fn render_command_estimated_dirty_rect(
         None => None
       }
     }
+    RenderCommand::DrawPixmapRectKeyed(_, pixmap, src_rect, x, y, _) => {
+      let src_bounds = @graphics.PixelRect::new(
+        x=0,
+        y=0,
+        width=pixmap.get_width(),
+        height=pixmap.get_height(),
+      )
+      match src_rect.clip_to(src_bounds) {
+        Some(clipped_src) =>
+          non_empty_pixel_rect(
+            @graphics.PixelRect::new(
+              x=x + clipped_src.x - src_rect.x,
+              y=y + clipped_src.y - src_rect.y,
+              width=clipped_src.width,
+              height=clipped_src.height,
+            ),
+          )
+        None => None
+      }
+    }
     RenderCommand::DrawTextFace(face, text, x, y, config, _) => {
+      guard text.length() > 0 else { return None }
+      let layout = @text.TextLayout::layout(face, text, config)
+      pixel_rect_from_double_bounds(
+        x,
+        y,
+        x + layout.get_width(),
+        y + layout.get_height(),
+      )
+    }
+    RenderCommand::DrawTextFaceKeyed(_, face, text, x, y, config, _) => {
       guard text.length() > 0 else { return None }
       let layout = @text.TextLayout::layout(face, text, config)
       pixel_rect_from_double_bounds(
@@ -1341,20 +1593,63 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     ) =>
       render_paths_are_same(a_path, b_path) &&
       render_paint_is_same(a_paint, b_paint)
-    // Pixmap and text commands depend on mutable/external resources. Treat
-    // them as changed until resource-key preflight can prove identity.
+    // Unkeyed pixmap and text commands depend on mutable/external resources.
+    // Treat them as changed unless a stable key can prove identity.
     (
       RenderCommand::DrawPixmap(_, _, _, _),
       RenderCommand::DrawPixmap(_, _, _, _),
     ) => false
     (
+      RenderCommand::DrawPixmapKeyed(a_key, _, ax, ay, a_paint),
+      RenderCommand::DrawPixmapKeyed(b_key, _, bx, by, b_paint),
+    ) =>
+      a_key == b_key &&
+      ax == bx &&
+      ay == by &&
+      render_paint_is_same(a_paint, b_paint)
+    (
       RenderCommand::DrawPixmapRect(_, _, _, _, _),
       RenderCommand::DrawPixmapRect(_, _, _, _, _),
     ) => false
     (
+      RenderCommand::DrawPixmapRectKeyed(a_key, _, a_src, ax, ay, a_paint),
+      RenderCommand::DrawPixmapRectKeyed(b_key, _, b_src, bx, by, b_paint),
+    ) =>
+      a_key == b_key &&
+      a_src == b_src &&
+      ax == bx &&
+      ay == by &&
+      render_paint_is_same(a_paint, b_paint)
+    (
       RenderCommand::DrawTextFace(_, _, _, _, _, _),
       RenderCommand::DrawTextFace(_, _, _, _, _, _),
     ) => false
+    (
+      RenderCommand::DrawTextFaceKeyed(
+        a_key,
+        _,
+        a_text,
+        ax,
+        ay,
+        a_config,
+        a_paint
+      ),
+      RenderCommand::DrawTextFaceKeyed(
+        b_key,
+        _,
+        b_text,
+        bx,
+        by,
+        b_config,
+        b_paint
+      ),
+    ) =>
+      a_key == b_key &&
+      a_text == b_text &&
+      ax == bx &&
+      ay == by &&
+      render_layout_config_is_same(a_config, b_config) &&
+      render_paint_is_same(a_paint, b_paint)
     _ => false
   }
 }
@@ -1385,6 +1680,19 @@ fn render_paint_is_same(a : @graphics.Paint, b : @graphics.Paint) -> Bool {
   a.stroke_dash_offset == b.stroke_dash_offset &&
   a.fill_rule == b.fill_rule &&
   a.opacity == b.opacity
+}
+
+///|
+fn render_layout_config_is_same(
+  a : @text.LayoutConfig,
+  b : @text.LayoutConfig,
+) -> Bool {
+  a.max_width == b.max_width &&
+  a.font_size == b.font_size &&
+  a.line_height == b.line_height &&
+  a.alignment == b.alignment &&
+  a.letter_spacing == b.letter_spacing &&
+  a.word_spacing == b.word_spacing
 }
 
 ///|
