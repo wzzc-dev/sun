@@ -147,6 +147,7 @@ pub struct RenderPipeline {
 pub fn RenderPipeline::analyze(Self, Int, Int) -> RenderPipelineAnalysis
 pub fn RenderPipeline::clear_canvas(Self, @graphics.Color) -> Self
 pub fn RenderPipeline::clear_commands(Self) -> Unit
+pub fn RenderPipeline::diff(Self, Self, Int, Int) -> RenderPipelineDiffResult
 pub fn RenderPipeline::dirty_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
 pub fn RenderPipeline::draw_pixmap(Self, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_rect(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
@@ -183,6 +184,28 @@ pub fn RenderPipelineAnalysis::get_stroke_count(Self) -> Int
 pub fn RenderPipelineAnalysis::get_text_count(Self) -> Int
 pub fn RenderPipelineAnalysis::has_dirty(Self) -> Bool
 
+pub struct RenderPipelineDiffResult {
+  previous_command_count : Int
+  next_command_count : Int
+  retained_command_count : Int
+  changed_command_count : Int
+  inserted_command_count : Int
+  removed_command_count : Int
+  dirty_region : @graphics.DirtyRegion
+} derive(@debug.Debug)
+pub fn RenderPipelineDiffResult::get_changed_command_count(Self) -> Int
+pub fn RenderPipelineDiffResult::get_dirty_bounds(Self) -> @graphics.PixelRect?
+pub fn RenderPipelineDiffResult::get_dirty_rect_count(Self) -> Int
+pub fn RenderPipelineDiffResult::get_dirty_region(Self) -> @graphics.DirtyRegion
+pub fn RenderPipelineDiffResult::get_inserted_command_count(Self) -> Int
+pub fn RenderPipelineDiffResult::get_next_command_count(Self) -> Int
+pub fn RenderPipelineDiffResult::get_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
+pub fn RenderPipelineDiffResult::get_previous_command_count(Self) -> Int
+pub fn RenderPipelineDiffResult::get_removed_command_count(Self) -> Int
+pub fn RenderPipelineDiffResult::get_retained_command_count(Self) -> Int
+pub fn RenderPipelineDiffResult::has_changes(Self) -> Bool
+pub fn RenderPipelineDiffResult::has_dirty(Self) -> Bool
+
 pub struct RenderPipelineReplayResult {
   command_count : Int
   clear_count : Int
@@ -202,6 +225,7 @@ pub struct Renderer {
   canvas : @graphics.Canvas
 } derive(@debug.Debug)
 pub fn Renderer::analyze_pipeline(Self, RenderPipeline) -> RenderPipelineAnalysis
+pub fn Renderer::diff_pipelines(Self, RenderPipeline, RenderPipeline) -> RenderPipelineDiffResult
 pub fn Renderer::draw_bmp_bytes_cached(Self, Bytes, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_bmp_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, RendererResources, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_bmp_bytes_rect_cached(Self, Bytes, @graphics.PixelRect, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]

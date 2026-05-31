@@ -54,6 +54,18 @@ pub struct RenderPipelineAnalysis {
 } derive(Debug)
 
 ///|
+/// Conservative diff between two retained render pipelines.
+pub struct RenderPipelineDiffResult {
+  previous_command_count : Int
+  next_command_count : Int
+  retained_command_count : Int
+  changed_command_count : Int
+  inserted_command_count : Int
+  removed_command_count : Int
+  dirty_region : @graphics.DirtyRegion
+} derive(Debug)
+
+///|
 /// Create an empty render pipeline.
 pub fn RenderPipeline::new() -> RenderPipeline {
   { commands: [] }
@@ -330,6 +342,110 @@ pub fn RenderPipelineAnalysis::get_present_plan(
 }
 
 ///|
+/// Return the number of commands in the previous display list.
+pub fn RenderPipelineDiffResult::get_previous_command_count(
+  self : RenderPipelineDiffResult,
+) -> Int {
+  self.previous_command_count
+}
+
+///|
+/// Return the number of commands in the next display list.
+pub fn RenderPipelineDiffResult::get_next_command_count(
+  self : RenderPipelineDiffResult,
+) -> Int {
+  self.next_command_count
+}
+
+///|
+/// Return the number of commands retained without dirtying their bounds.
+pub fn RenderPipelineDiffResult::get_retained_command_count(
+  self : RenderPipelineDiffResult,
+) -> Int {
+  self.retained_command_count
+}
+
+///|
+/// Return the number of paired commands whose value changed.
+pub fn RenderPipelineDiffResult::get_changed_command_count(
+  self : RenderPipelineDiffResult,
+) -> Int {
+  self.changed_command_count
+}
+
+///|
+/// Return the number of commands inserted in the next display list.
+pub fn RenderPipelineDiffResult::get_inserted_command_count(
+  self : RenderPipelineDiffResult,
+) -> Int {
+  self.inserted_command_count
+}
+
+///|
+/// Return the number of commands removed from the previous display list.
+pub fn RenderPipelineDiffResult::get_removed_command_count(
+  self : RenderPipelineDiffResult,
+) -> Int {
+  self.removed_command_count
+}
+
+///|
+/// Return whether the retained display list changed structurally or by value.
+pub fn RenderPipelineDiffResult::has_changes(
+  self : RenderPipelineDiffResult,
+) -> Bool {
+  self.changed_command_count > 0 ||
+  self.inserted_command_count > 0 ||
+  self.removed_command_count > 0
+}
+
+///|
+/// Return the conservative dirty region caused by this display-list diff.
+pub fn RenderPipelineDiffResult::get_dirty_region(
+  self : RenderPipelineDiffResult,
+) -> @graphics.DirtyRegion {
+  self.dirty_region
+}
+
+///|
+/// Return whether this display-list diff has dirty pixels to submit.
+pub fn RenderPipelineDiffResult::has_dirty(
+  self : RenderPipelineDiffResult,
+) -> Bool {
+  !self.dirty_region.is_empty()
+}
+
+///|
+/// Return the number of conservative dirty rectangles in this diff.
+pub fn RenderPipelineDiffResult::get_dirty_rect_count(
+  self : RenderPipelineDiffResult,
+) -> Int {
+  self.dirty_region.get_rect_count()
+}
+
+///|
+/// Return the conservative dirty bounds for this display-list diff.
+pub fn RenderPipelineDiffResult::get_dirty_bounds(
+  self : RenderPipelineDiffResult,
+) -> @graphics.PixelRect? {
+  self.dirty_region.bounds()
+}
+
+///|
+/// Build a present plan from this diff's estimated dirty region.
+pub fn RenderPipelineDiffResult::get_present_plan(
+  self : RenderPipelineDiffResult,
+  width : Int,
+  height : Int,
+  max_rects : Int,
+) -> @graphics.DirtyPresentPlan {
+  self.dirty_region.present_plan(
+    @graphics.PixelRect::new(x=0, y=0, width~, height~),
+    max_rects,
+  )
+}
+
+///|
 /// Replay all queued commands through this renderer.
 pub fn Renderer::draw_pipeline(
   self : Renderer,
@@ -346,6 +462,17 @@ pub fn Renderer::analyze_pipeline(
 ) -> RenderPipelineAnalysis {
   let pixmap = self.get_canvas().get_pixmap()
   pipeline.analyze(pixmap.get_width(), pixmap.get_height())
+}
+
+///|
+/// Diff two retained pipelines against this renderer's canvas dimensions.
+pub fn Renderer::diff_pipelines(
+  self : Renderer,
+  previous : RenderPipeline,
+  next : RenderPipeline,
+) -> RenderPipelineDiffResult {
+  let pixmap = self.get_canvas().get_pixmap()
+  RenderPipeline::diff(previous, next, pixmap.get_width(), pixmap.get_height())
 }
 
 ///|
@@ -398,6 +525,73 @@ pub fn RenderPipeline::dirty_present_plan(
   max_rects : Int,
 ) -> @graphics.DirtyPresentPlan {
   self.analyze(width, height).get_present_plan(width, height, max_rects)
+}
+
+///|
+/// Diff two retained display lists and estimate the dirty region to redraw.
+pub fn RenderPipeline::diff(
+  previous : RenderPipeline,
+  next : RenderPipeline,
+  width : Int,
+  height : Int,
+) -> RenderPipelineDiffResult {
+  let dirty_region = @graphics.DirtyRegion::new()
+  let canvas_bounds = @graphics.PixelRect::new(x=0, y=0, width~, height~)
+  let previous_len = previous.commands.length()
+  let next_len = next.commands.length()
+  let common_len = previous_len.min(next_len)
+  let mut retained_count = 0
+  let mut changed_count = 0
+  for index in 0..<common_len {
+    let old_command = previous.commands[index]
+    let new_command = next.commands[index]
+    if render_commands_are_same(old_command, new_command) {
+      retained_count += 1
+    } else {
+      changed_count += 1
+      render_pipeline_add_command_dirty(
+        dirty_region, canvas_bounds, old_command, width, height,
+      )
+      render_pipeline_add_command_dirty(
+        dirty_region, canvas_bounds, new_command, width, height,
+      )
+    }
+  }
+  for index in common_len..<previous_len {
+    render_pipeline_add_command_dirty(
+      dirty_region,
+      canvas_bounds,
+      previous.commands[index],
+      width,
+      height,
+    )
+  }
+  for index in common_len..<next_len {
+    render_pipeline_add_command_dirty(
+      dirty_region,
+      canvas_bounds,
+      next.commands[index],
+      width,
+      height,
+    )
+  }
+  {
+    previous_command_count: previous_len,
+    next_command_count: next_len,
+    retained_command_count: retained_count,
+    changed_command_count: changed_count,
+    inserted_command_count: if next_len > previous_len {
+      next_len - previous_len
+    } else {
+      0
+    },
+    removed_command_count: if previous_len > next_len {
+      previous_len - next_len
+    } else {
+      0
+    },
+    dirty_region,
+  }
 }
 
 ///|
@@ -455,6 +649,20 @@ pub fn RenderPipeline::replay(
     stroke_count,
     image_count,
     text_count,
+  }
+}
+
+///|
+fn render_pipeline_add_command_dirty(
+  dirty_region : @graphics.DirtyRegion,
+  canvas_bounds : @graphics.PixelRect,
+  command : RenderCommand,
+  width : Int,
+  height : Int,
+) -> Unit {
+  match render_command_estimated_dirty_rect(command, width, height) {
+    Some(rect) => dirty_region.add_clipped_rect(rect, canvas_bounds)
+    None => ()
   }
 }
 
@@ -522,6 +730,98 @@ fn render_command_estimated_dirty_rect(
       )
     }
   }
+}
+
+///|
+fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
+  match (a, b) {
+    (RenderCommand::Clear(a_color), RenderCommand::Clear(b_color)) =>
+      a_color == b_color
+    (
+      RenderCommand::FillRect(ax, ay, aw, ah, a_paint),
+      RenderCommand::FillRect(bx, by, bw, bh, b_paint),
+    ) =>
+      ax == bx &&
+      ay == by &&
+      aw == bw &&
+      ah == bh &&
+      render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::StrokeRect(ax, ay, aw, ah, a_paint),
+      RenderCommand::StrokeRect(bx, by, bw, bh, b_paint),
+    ) =>
+      ax == bx &&
+      ay == by &&
+      aw == bw &&
+      ah == bh &&
+      render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::FillPath(a_path, a_paint),
+      RenderCommand::FillPath(b_path, b_paint),
+    ) =>
+      render_paths_are_same(a_path, b_path) &&
+      render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::StrokePath(a_path, a_paint),
+      RenderCommand::StrokePath(b_path, b_paint),
+    ) =>
+      render_paths_are_same(a_path, b_path) &&
+      render_paint_is_same(a_paint, b_paint)
+    // Pixmap and text commands depend on mutable/external resources. Treat
+    // them as changed until resource-key preflight can prove identity.
+    (
+      RenderCommand::DrawPixmap(_, _, _, _),
+      RenderCommand::DrawPixmap(_, _, _, _),
+    ) => false
+    (
+      RenderCommand::DrawPixmapRect(_, _, _, _, _),
+      RenderCommand::DrawPixmapRect(_, _, _, _, _),
+    ) => false
+    (
+      RenderCommand::DrawTextFace(_, _, _, _, _, _),
+      RenderCommand::DrawTextFace(_, _, _, _, _, _),
+    ) => false
+    _ => false
+  }
+}
+
+///|
+fn render_paths_are_same(a : @graphics.Path, b : @graphics.Path) -> Bool {
+  let a_segments = a.get_segments()
+  let b_segments = b.get_segments()
+  guard a_segments.length() == b_segments.length() else { return false }
+  for index in 0..<a_segments.length() {
+    if a_segments[index] != b_segments[index] {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn render_paint_is_same(a : @graphics.Paint, b : @graphics.Paint) -> Bool {
+  a.color == b.color &&
+  a.style == b.style &&
+  a.blend_mode == b.blend_mode &&
+  a.stroke_width == b.stroke_width &&
+  a.stroke_cap == b.stroke_cap &&
+  a.stroke_join == b.stroke_join &&
+  a.miter_limit == b.miter_limit &&
+  double_arrays_are_same(a.stroke_dash_pattern, b.stroke_dash_pattern) &&
+  a.stroke_dash_offset == b.stroke_dash_offset &&
+  a.fill_rule == b.fill_rule &&
+  a.opacity == b.opacity
+}
+
+///|
+fn double_arrays_are_same(a : Array[Double], b : Array[Double]) -> Bool {
+  guard a.length() == b.length() else { return false }
+  for index in 0..<a.length() {
+    if a[index] != b[index] {
+      return false
+    }
+  }
+  true
 }
 
 ///|
