@@ -59,6 +59,15 @@ pub enum RenderCommand {
     @text.LayoutConfig,
     @graphics.Paint
   )
+  DrawLoadedFontAtlasKeyed(
+    String,
+    String,
+    String,
+    Double,
+    Double,
+    @text.LayoutConfig,
+    @graphics.Paint
+  )
 } derive(Debug)
 
 ///|
@@ -91,6 +100,12 @@ pub struct RenderPipelineResourceReplayResult {
   keyed_text_count : Int
   text_cache_hit_count : Int
   text_mask_render_count : Int
+  keyed_atlas_text_count : Int
+  glyph_cache_hit_count : Int
+  glyph_mask_render_count : Int
+  atlas_cache_hit_count : Int
+  atlas_insert_count : Int
+  atlas_clear_count : Int
 } derive(Eq, Debug)
 
 ///|
@@ -409,6 +424,25 @@ pub fn RenderPipeline::draw_loaded_font_keyed(
 }
 
 ///|
+/// Queue a keyed loader-backed atlas text command for font-loader replay.
+pub fn RenderPipeline::draw_loaded_font_atlas_keyed(
+  self : RenderPipeline,
+  font_key : String,
+  glyph_key_prefix : String,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  paint : @graphics.Paint,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawLoadedFontAtlasKeyed(
+      font_key, glyph_key_prefix, text, x, y, config, paint,
+    ),
+  )
+}
+
+///|
 /// Return the number of commands replayed.
 pub fn RenderPipelineReplayResult::get_command_count(
   self : RenderPipelineReplayResult,
@@ -537,11 +571,22 @@ pub fn RenderPipelineResourceReplayResult::get_keyed_text_count(
 }
 
 ///|
+/// Return the number of keyed atlas text commands replayed through glyph resources.
+pub fn RenderPipelineResourceReplayResult::get_keyed_atlas_text_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.keyed_atlas_text_count
+}
+
+///|
 /// Return the number of keyed commands replayed through resource caches.
 pub fn RenderPipelineResourceReplayResult::get_keyed_resource_count(
   self : RenderPipelineResourceReplayResult,
 ) -> Int {
-  self.keyed_font_count + self.keyed_image_count + self.keyed_text_count
+  self.keyed_font_count +
+  self.keyed_image_count +
+  self.keyed_text_count +
+  self.keyed_atlas_text_count
 }
 
 ///|
@@ -593,13 +638,55 @@ pub fn RenderPipelineResourceReplayResult::get_text_mask_render_count(
 }
 
 ///|
+/// Return the number of atlas text glyph masks reused from the glyph cache.
+pub fn RenderPipelineResourceReplayResult::get_glyph_cache_hit_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.glyph_cache_hit_count
+}
+
+///|
+/// Return the number of atlas text glyph masks rasterized into the glyph cache.
+pub fn RenderPipelineResourceReplayResult::get_glyph_mask_render_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.glyph_mask_render_count
+}
+
+///|
+/// Return the number of atlas glyph placements reused from the atlas.
+pub fn RenderPipelineResourceReplayResult::get_atlas_cache_hit_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.atlas_cache_hit_count
+}
+
+///|
+/// Return the number of atlas glyph placements inserted into the atlas.
+pub fn RenderPipelineResourceReplayResult::get_atlas_insert_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.atlas_insert_count
+}
+
+///|
+/// Return the number of atlas draws that cleared the atlas while replaying.
+pub fn RenderPipelineResourceReplayResult::get_atlas_clear_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.atlas_clear_count
+}
+
+///|
 /// Return the number of keyed resource commands that hit a cache.
 pub fn RenderPipelineResourceReplayResult::get_resource_cache_hit_count(
   self : RenderPipelineResourceReplayResult,
 ) -> Int {
   self.font_cache_hit_count +
   self.image_cache_hit_count +
-  self.text_cache_hit_count
+  self.text_cache_hit_count +
+  self.glyph_cache_hit_count +
+  self.atlas_cache_hit_count
 }
 
 ///|
@@ -609,7 +696,9 @@ pub fn RenderPipelineResourceReplayResult::get_resource_cache_miss_count(
 ) -> Int {
   self.font_parse_count +
   self.image_cache_insert_count +
-  self.text_mask_render_count
+  self.text_mask_render_count +
+  self.glyph_mask_render_count +
+  self.atlas_insert_count
 }
 
 ///|
@@ -1370,7 +1459,8 @@ pub fn RenderPipeline::analyze(
       RenderCommand::DrawTextFace(_, _, _, _, _, _)
       | RenderCommand::DrawTextFaceKeyed(_, _, _, _, _, _, _)
       | RenderCommand::DrawFontBytesKeyed(_, _, _, _, _, _, _, _)
-      | RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _) =>
+      | RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _)
+      | RenderCommand::DrawLoadedFontAtlasKeyed(_, _, _, _, _, _, _) =>
         text_count += 1
     }
     match render_command_estimated_dirty_rect(command, width, height) {
@@ -1563,6 +1653,26 @@ pub fn RenderPipeline::resource_plan(
           ),
         )
       }
+      RenderCommand::DrawLoadedFontAtlasKeyed(
+        font_key,
+        glyph_key_prefix,
+        text,
+        _,
+        _,
+        _,
+        _
+      ) => {
+        font_dependencies.push(
+          render_pipeline_make_loaded_font_dependency(index, font_key),
+        )
+        text_dependencies.push(
+          render_pipeline_make_unresolved_text_dependency(
+            index,
+            Some(glyph_key_prefix),
+            text,
+          ),
+        )
+      }
       _ => ()
     }
   }
@@ -1717,6 +1827,8 @@ pub fn RenderPipeline::replay(
       }
       RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _) =>
         abort("pipeline loaded font command requires a font loader")
+      RenderCommand::DrawLoadedFontAtlasKeyed(_, _, _, _, _, _, _) =>
+        abort("pipeline loaded font atlas command requires a font loader")
     }
   }
   {
@@ -1764,6 +1876,12 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
   let mut keyed_text_count = 0
   let mut text_cache_hit_count = 0
   let mut text_mask_render_count = 0
+  let keyed_atlas_text_count = 0
+  let glyph_cache_hit_count = 0
+  let glyph_mask_render_count = 0
+  let atlas_cache_hit_count = 0
+  let atlas_insert_count = 0
+  let atlas_clear_count = 0
   for command in self.commands {
     match command {
       RenderCommand::Clear(color) => {
@@ -1883,6 +2001,8 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
       }
       RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _) =>
         abort("pipeline loaded font command requires a font loader")
+      RenderCommand::DrawLoadedFontAtlasKeyed(_, _, _, _, _, _, _) =>
+        abort("pipeline loaded font atlas command requires a font loader")
     }
   }
   Ok({
@@ -1903,6 +2023,12 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
     keyed_text_count,
     text_cache_hit_count,
     text_mask_render_count,
+    keyed_atlas_text_count,
+    glyph_cache_hit_count,
+    glyph_mask_render_count,
+    atlas_cache_hit_count,
+    atlas_insert_count,
+    atlas_clear_count,
   })
 }
 
@@ -1944,6 +2070,12 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
   let mut keyed_text_count = 0
   let mut text_cache_hit_count = 0
   let mut text_mask_render_count = 0
+  let mut keyed_atlas_text_count = 0
+  let mut glyph_cache_hit_count = 0
+  let mut glyph_mask_render_count = 0
+  let mut atlas_cache_hit_count = 0
+  let mut atlas_insert_count = 0
+  let mut atlas_clear_count = 0
   for command in self.commands {
     match command {
       RenderCommand::Clear(color) => {
@@ -2093,6 +2225,39 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         keyed_text_count += 1
         text_count += 1
       }
+      RenderCommand::DrawLoadedFontAtlasKeyed(
+        font_key,
+        glyph_key_prefix,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        match
+          renderer.draw_loaded_font_atlas_with_renderer_resources(
+            loader, text, x, y, config, resources, font_key, glyph_key_prefix, paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_font_cache() {
+              font_cache_hit_count += 1
+            } else {
+              font_parse_count += 1
+            }
+            glyph_cache_hit_count += result.get_cache_hit_count()
+            glyph_mask_render_count += result.get_rasterized_glyph_count()
+            atlas_cache_hit_count += result.get_atlas_hit_count()
+            atlas_insert_count += result.get_atlas_inserted_count()
+            if result.did_clear_atlas() {
+              atlas_clear_count += 1
+            }
+          }
+          Err(error) => return Err(error)
+        }
+        keyed_font_count += 1
+        keyed_atlas_text_count += 1
+        text_count += 1
+      }
     }
   }
   Ok({
@@ -2113,6 +2278,12 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
     keyed_text_count,
     text_cache_hit_count,
     text_mask_render_count,
+    keyed_atlas_text_count,
+    glyph_cache_hit_count,
+    glyph_mask_render_count,
+    atlas_cache_hit_count,
+    atlas_insert_count,
+    atlas_clear_count,
   })
 }
 
@@ -2297,6 +2468,8 @@ fn render_command_batch_kind(
       RenderPipelineBatchKind::Text
     RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _) =>
       RenderPipelineBatchKind::Text
+    RenderCommand::DrawLoadedFontAtlasKeyed(_, _, _, _, _, _, _) =>
+      RenderPipelineBatchKind::Text
   }
 }
 
@@ -2424,6 +2597,15 @@ fn render_command_estimated_dirty_rect(
       }
     }
     RenderCommand::DrawLoadedFontKeyed(_, _, text, x, y, config, _) => {
+      guard text.length() > 0 else { return None }
+      pixel_rect_from_double_bounds(
+        x,
+        y,
+        x + render_pipeline_fallback_text_width(text, config),
+        y + config.line_height.max(config.font_size),
+      )
+    }
+    RenderCommand::DrawLoadedFontAtlasKeyed(_, _, text, x, y, config, _) => {
       guard text.length() > 0 else { return None }
       pixel_rect_from_double_bounds(
         x,
@@ -2578,6 +2760,33 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     ) =>
       a_font_key == b_font_key &&
       a_text_key == b_text_key &&
+      a_text == b_text &&
+      ax == bx &&
+      ay == by &&
+      render_layout_config_is_same(a_config, b_config) &&
+      render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::DrawLoadedFontAtlasKeyed(
+        a_font_key,
+        a_glyph_key_prefix,
+        a_text,
+        ax,
+        ay,
+        a_config,
+        a_paint
+      ),
+      RenderCommand::DrawLoadedFontAtlasKeyed(
+        b_font_key,
+        b_glyph_key_prefix,
+        b_text,
+        bx,
+        by,
+        b_config,
+        b_paint
+      ),
+    ) =>
+      a_font_key == b_font_key &&
+      a_glyph_key_prefix == b_glyph_key_prefix &&
       a_text == b_text &&
       ax == bx &&
       ay == by &&

@@ -144,6 +144,7 @@ pub enum RenderCommand {
   DrawTextFaceKeyed(String, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
   DrawFontBytesKeyed(String, Bytes, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
   DrawLoadedFontKeyed(String, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
+  DrawLoadedFontAtlasKeyed(String, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
 } derive(@debug.Debug)
 
 pub struct RenderPipeline {
@@ -156,6 +157,7 @@ pub fn RenderPipeline::clear_commands(Self) -> Unit
 pub fn RenderPipeline::diff(Self, Self, Int, Int) -> RenderPipelineDiffResult
 pub fn RenderPipeline::dirty_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
 pub fn RenderPipeline::draw_font_bytes_keyed(Self, String, Bytes, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_loaded_font_atlas_keyed(Self, String, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_loaded_font_keyed(Self, String, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap(Self, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_keyed(Self, String, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
@@ -332,15 +334,27 @@ pub struct RenderPipelineResourceReplayResult {
   keyed_text_count : Int
   text_cache_hit_count : Int
   text_mask_render_count : Int
+  keyed_atlas_text_count : Int
+  glyph_cache_hit_count : Int
+  glyph_mask_render_count : Int
+  atlas_cache_hit_count : Int
+  atlas_insert_count : Int
+  atlas_clear_count : Int
 } derive(Eq, @debug.Debug)
+pub fn RenderPipelineResourceReplayResult::get_atlas_cache_hit_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_atlas_clear_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_atlas_insert_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_clear_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_command_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_fill_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_font_cache_hit_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_font_parse_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_glyph_cache_hit_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_glyph_mask_render_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_image_cache_hit_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_image_cache_insert_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_image_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_keyed_atlas_text_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_keyed_font_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_keyed_image_count(Self) -> Int
 pub fn RenderPipelineResourceReplayResult::get_keyed_resource_count(Self) -> Int
