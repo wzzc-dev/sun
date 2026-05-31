@@ -539,6 +539,7 @@ pub(all) enum PixmapDecodeError {
   UnsupportedPngDeflateCompression(Int)
   UnsupportedPngDeflatePresetDictionary
   UnsupportedPngDeflateBlockType(Int)
+  InvalidPngDeflateCode
   UnsupportedPngFilterType(Int)
   InvalidPngDimensions(Int, Int)
   InvalidPngZlibHeader(Int, Int)
@@ -552,6 +553,14 @@ pub(all) enum PixmapDecodeError {
 pub(all) enum PixmapEncodeError {
   InvalidPngDimensions(Int, Int)
 } derive(Eq, @debug.Debug)
+
+type PngDeflateBitReader derive(@debug.Debug)
+
+type PngDeflateHuffman derive(@debug.Debug)
+
+type PngDeflateHuffmanEntry derive(@debug.Debug)
+
+type PngDeflateTables derive(@debug.Debug)
 
 type PngHeader derive(@debug.Debug)
 

@@ -50,6 +50,7 @@ pub(all) enum PixmapDecodeError {
   UnsupportedPngDeflateCompression(Int)
   UnsupportedPngDeflatePresetDictionary
   UnsupportedPngDeflateBlockType(Int)
+  InvalidPngDeflateCode
   UnsupportedPngFilterType(Int)
   InvalidPngDimensions(Int, Int)
   InvalidPngZlibHeader(Int, Int)
@@ -263,10 +264,10 @@ pub fn Pixmap::from_bmp_bytes(
 }
 
 ///|
-/// Decode a deterministic 8-bit RGBA PNG image into a pixmap.
+/// Decode an 8-bit RGBA PNG image into a pixmap.
 ///
-/// This minimal decoder supports non-interlaced PNGs with RGBA color, standard
-/// scanline filters, and zlib streams made of uncompressed DEFLATE blocks. It is
+/// This decoder supports non-interlaced PNGs with RGBA color, standard
+/// scanline filters, and zlib-wrapped DEFLATE image data. It is
 /// intentionally paired with `to_png_bytes` for portable fixture roundtrips.
 pub fn Pixmap::from_png_bytes(
   data : Bytes,
@@ -274,7 +275,7 @@ pub fn Pixmap::from_png_bytes(
   match decode_png_info(data) {
     Err(error) => Err(error)
     Ok(info) =>
-      match png_zlib_stored_stream_decode(info.idat) {
+      match png_zlib_stream_decode(info.idat) {
         Err(error) => Err(error)
         Ok(scanlines) => decode_png_rgba_pixmap(info, scanlines)
       }
@@ -840,6 +841,33 @@ struct PngHeader {
 } derive(Debug)
 
 ///|
+struct PngDeflateBitReader {
+  data : Array[Byte]
+  stream_end : Int
+  mut byte_offset : Int
+  mut bit_offset : Int
+} derive(Debug)
+
+///|
+struct PngDeflateHuffmanEntry {
+  symbol : Int
+  length : Int
+  code : Int
+} derive(Debug)
+
+///|
+struct PngDeflateHuffman {
+  entries : Array[PngDeflateHuffmanEntry]
+  max_bits : Int
+} derive(Debug)
+
+///|
+struct PngDeflateTables {
+  literal_lengths : PngDeflateHuffman
+  distances : PngDeflateHuffman
+} derive(Debug)
+
+///|
 fn decode_png_info(data : Bytes) -> Result[PngInfo, PixmapDecodeError] {
   match require_png_available(data, 0, 8) {
     Err(error) => return Err(error)
@@ -948,7 +976,7 @@ fn decode_png_header(
 }
 
 ///|
-fn png_zlib_stored_stream_decode(
+fn png_zlib_stream_decode(
   data : Array[Byte],
 ) -> Result[Array[Byte], PixmapDecodeError] {
   match require_png_array_available(data, 0, 6) {
@@ -970,49 +998,70 @@ fn png_zlib_stored_stream_decode(
 
   let stream_end = data.length() - 4
   let out : Array[Byte] = []
-  let mut offset = 2
+  let reader : PngDeflateBitReader = {
+    data,
+    stream_end,
+    byte_offset: 2,
+    bit_offset: 0,
+  }
   let mut is_final = false
   while !is_final {
-    match require_png_array_available(data, offset, 1) {
+    match png_deflate_read_bits(reader, 1) {
       Err(error) => return Err(error)
-      Ok(_) => ()
+      Ok(bit) => is_final = bit != 0
     }
-    guard offset < stream_end else {
-      return Err(
-        PixmapDecodeError::UnexpectedEndOfData(offset, 1, data.length()),
-      )
-    }
-    let header = data[offset].to_int()
-    offset = offset + 1
-    is_final = header.land(1) != 0
-    let block_type = (header >> 1).land(0x03)
-    guard block_type == 0 else {
-      return Err(PixmapDecodeError::UnsupportedPngDeflateBlockType(block_type))
-    }
-    match require_png_array_available(data, offset, 4) {
+    let block_type = match png_deflate_read_bits(reader, 2) {
       Err(error) => return Err(error)
-      Ok(_) => ()
+      Ok(bits) => bits
     }
-    let block_len = read_png_u16_le_array_at(data, offset)
-    let inverse_len = read_png_u16_le_array_at(data, offset + 2)
-    offset = offset + 4
-    guard block_len + inverse_len == 0xFFFF else {
-      return Err(
-        PixmapDecodeError::PngStoredBlockLengthMismatch(block_len, inverse_len),
-      )
+    match block_type {
+      0 =>
+        match png_deflate_decode_stored_block(reader, out) {
+          Err(error) => return Err(error)
+          Ok(_) => ()
+        }
+      1 => {
+        let tables = png_deflate_fixed_tables()
+        match
+          png_deflate_decode_compressed_block(
+            reader,
+            out,
+            tables.literal_lengths,
+            tables.distances,
+          ) {
+          Err(error) => return Err(error)
+          Ok(_) => ()
+        }
+      }
+      2 =>
+        match png_deflate_decode_dynamic_tables(reader) {
+          Err(error) => return Err(error)
+          Ok(tables) =>
+            match
+              png_deflate_decode_compressed_block(
+                reader,
+                out,
+                tables.literal_lengths,
+                tables.distances,
+              ) {
+              Err(error) => return Err(error)
+              Ok(_) => ()
+            }
+        }
+      _ =>
+        return Err(
+          PixmapDecodeError::UnsupportedPngDeflateBlockType(block_type),
+        )
     }
-    guard offset + block_len <= stream_end else {
-      return Err(
-        PixmapDecodeError::UnexpectedEndOfData(offset, block_len, data.length()),
-      )
-    }
-    for i in 0..<block_len {
-      out.push(data[offset + i])
-    }
-    offset = offset + block_len
   }
-  guard offset == stream_end else {
-    return Err(PixmapDecodeError::PngInflateLengthMismatch(stream_end, offset))
+  png_deflate_align_to_byte(reader)
+  guard reader.byte_offset == stream_end else {
+    return Err(
+      PixmapDecodeError::PngInflateLengthMismatch(
+        stream_end,
+        reader.byte_offset,
+      ),
+    )
   }
   let expected_adler = read_png_u32_be_uint_array_at(data, stream_end)
   let actual_adler = png_adler32(out)
@@ -1022,6 +1071,344 @@ fn png_zlib_stored_stream_decode(
     )
   }
   Ok(out)
+}
+
+///|
+fn png_deflate_read_bits(
+  reader : PngDeflateBitReader,
+  count : Int,
+) -> Result[Int, PixmapDecodeError] {
+  let mut value = 0
+  for shift in 0..<count {
+    guard reader.byte_offset < reader.stream_end else {
+      return Err(
+        PixmapDecodeError::UnexpectedEndOfData(
+          reader.byte_offset,
+          1,
+          reader.data.length(),
+        ),
+      )
+    }
+    let bit = (reader.data[reader.byte_offset].to_int() >> reader.bit_offset).land(
+      1,
+    )
+    value = value | (bit << shift)
+    reader.bit_offset = reader.bit_offset + 1
+    if reader.bit_offset == 8 {
+      reader.bit_offset = 0
+      reader.byte_offset = reader.byte_offset + 1
+    }
+  }
+  Ok(value)
+}
+
+///|
+fn png_deflate_align_to_byte(reader : PngDeflateBitReader) -> Unit {
+  if reader.bit_offset != 0 {
+    reader.bit_offset = 0
+    reader.byte_offset = reader.byte_offset + 1
+  }
+}
+
+///|
+fn png_deflate_decode_stored_block(
+  reader : PngDeflateBitReader,
+  out : Array[Byte],
+) -> Result[Unit, PixmapDecodeError] {
+  png_deflate_align_to_byte(reader)
+  match require_png_array_available(reader.data, reader.byte_offset, 4) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  guard reader.byte_offset + 4 <= reader.stream_end else {
+    return Err(
+      PixmapDecodeError::UnexpectedEndOfData(
+        reader.byte_offset,
+        4,
+        reader.data.length(),
+      ),
+    )
+  }
+  let block_len = read_png_u16_le_array_at(reader.data, reader.byte_offset)
+  let inverse_len = read_png_u16_le_array_at(
+    reader.data,
+    reader.byte_offset + 2,
+  )
+  reader.byte_offset = reader.byte_offset + 4
+  guard block_len + inverse_len == 0xFFFF else {
+    return Err(
+      PixmapDecodeError::PngStoredBlockLengthMismatch(block_len, inverse_len),
+    )
+  }
+  guard reader.byte_offset + block_len <= reader.stream_end else {
+    return Err(
+      PixmapDecodeError::UnexpectedEndOfData(
+        reader.byte_offset,
+        block_len,
+        reader.data.length(),
+      ),
+    )
+  }
+  for i in 0..<block_len {
+    out.push(reader.data[reader.byte_offset + i])
+  }
+  reader.byte_offset = reader.byte_offset + block_len
+  Ok(())
+}
+
+///|
+fn png_deflate_fixed_tables() -> PngDeflateTables {
+  let literal_lengths : Array[Int] = []
+  for symbol in 0..<288 {
+    let length = if symbol < 144 {
+      8
+    } else if symbol < 256 {
+      9
+    } else if symbol < 280 {
+      7
+    } else {
+      8
+    }
+    literal_lengths.push(length)
+  }
+  let distance_lengths : Array[Int] = []
+  for _ in 0..<32 {
+    distance_lengths.push(5)
+  }
+  {
+    literal_lengths: png_deflate_build_huffman(literal_lengths),
+    distances: png_deflate_build_huffman(distance_lengths),
+  }
+}
+
+///|
+fn png_deflate_decode_dynamic_tables(
+  reader : PngDeflateBitReader,
+) -> Result[PngDeflateTables, PixmapDecodeError] {
+  let hlit = match png_deflate_read_bits(reader, 5) {
+    Err(error) => return Err(error)
+    Ok(bits) => bits + 257
+  }
+  let hdist = match png_deflate_read_bits(reader, 5) {
+    Err(error) => return Err(error)
+    Ok(bits) => bits + 1
+  }
+  let hclen = match png_deflate_read_bits(reader, 4) {
+    Err(error) => return Err(error)
+    Ok(bits) => bits + 4
+  }
+  let code_length_order : Array[Int] = [
+    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
+  ]
+  let code_length_lengths : Array[Int] = []
+  for _ in 0..<19 {
+    code_length_lengths.push(0)
+  }
+  for i in 0..<hclen {
+    match png_deflate_read_bits(reader, 3) {
+      Err(error) => return Err(error)
+      Ok(length) => code_length_lengths[code_length_order[i]] = length
+    }
+  }
+  let code_length_huffman = png_deflate_build_huffman(code_length_lengths)
+  let total_lengths = hlit + hdist
+  let lengths : Array[Int] = []
+  let mut previous = 0
+  while lengths.length() < total_lengths {
+    let symbol = match png_deflate_decode_huffman(reader, code_length_huffman) {
+      Err(error) => return Err(error)
+      Ok(symbol) => symbol
+    }
+    if symbol <= 15 {
+      lengths.push(symbol)
+      previous = symbol
+    } else if symbol == 16 {
+      guard lengths.length() > 0 else {
+        return Err(PixmapDecodeError::InvalidPngDeflateCode)
+      }
+      let repeat = match png_deflate_read_bits(reader, 2) {
+        Err(error) => return Err(error)
+        Ok(bits) => bits + 3
+      }
+      for _ in 0..<repeat {
+        lengths.push(previous)
+      }
+    } else if symbol == 17 {
+      let repeat = match png_deflate_read_bits(reader, 3) {
+        Err(error) => return Err(error)
+        Ok(bits) => bits + 3
+      }
+      for _ in 0..<repeat {
+        lengths.push(0)
+      }
+      previous = 0
+    } else if symbol == 18 {
+      let repeat = match png_deflate_read_bits(reader, 7) {
+        Err(error) => return Err(error)
+        Ok(bits) => bits + 11
+      }
+      for _ in 0..<repeat {
+        lengths.push(0)
+      }
+      previous = 0
+    } else {
+      return Err(PixmapDecodeError::InvalidPngDeflateCode)
+    }
+    guard lengths.length() <= total_lengths else {
+      return Err(PixmapDecodeError::InvalidPngDeflateCode)
+    }
+  }
+
+  let literal_lengths : Array[Int] = []
+  for i in 0..<hlit {
+    literal_lengths.push(lengths[i])
+  }
+  let distance_lengths : Array[Int] = []
+  for i in 0..<hdist {
+    distance_lengths.push(lengths[hlit + i])
+  }
+  Ok({
+    literal_lengths: png_deflate_build_huffman(literal_lengths),
+    distances: png_deflate_build_huffman(distance_lengths),
+  })
+}
+
+///|
+fn png_deflate_build_huffman(code_lengths : Array[Int]) -> PngDeflateHuffman {
+  let bit_counts = FixedArray::make(16, 0)
+  let mut max_bits = 0
+  for length in code_lengths {
+    if length > 0 {
+      bit_counts[length] = bit_counts[length] + 1
+      max_bits = max_bits.max(length)
+    }
+  }
+  let next_codes = FixedArray::make(16, 0)
+  let mut code = 0
+  for bits in 1..<=15 {
+    code = (code + bit_counts[bits - 1]) << 1
+    next_codes[bits] = code
+  }
+  let entries : Array[PngDeflateHuffmanEntry] = []
+  for symbol in 0..<code_lengths.length() {
+    let length = code_lengths[symbol]
+    if length > 0 {
+      let canonical = next_codes[length]
+      next_codes[length] = canonical + 1
+      entries.push({
+        symbol,
+        length,
+        code: png_deflate_reverse_bits(canonical, length),
+      })
+    }
+  }
+  { entries, max_bits }
+}
+
+///|
+fn png_deflate_reverse_bits(value : Int, length : Int) -> Int {
+  let mut input = value
+  let mut output = 0
+  for _ in 0..<length {
+    output = (output << 1) | input.land(1)
+    input = input >> 1
+  }
+  output
+}
+
+///|
+fn png_deflate_decode_huffman(
+  reader : PngDeflateBitReader,
+  huffman : PngDeflateHuffman,
+) -> Result[Int, PixmapDecodeError] {
+  guard huffman.max_bits > 0 else {
+    return Err(PixmapDecodeError::InvalidPngDeflateCode)
+  }
+  let mut code = 0
+  for length in 1..<=huffman.max_bits {
+    let bit = match png_deflate_read_bits(reader, 1) {
+      Err(error) => return Err(error)
+      Ok(bit) => bit
+    }
+    code = code | (bit << (length - 1))
+    for entry in huffman.entries {
+      if entry.length == length && entry.code == code {
+        return Ok(entry.symbol)
+      }
+    }
+  }
+  Err(PixmapDecodeError::InvalidPngDeflateCode)
+}
+
+///|
+fn png_deflate_decode_compressed_block(
+  reader : PngDeflateBitReader,
+  out : Array[Byte],
+  literal_lengths : PngDeflateHuffman,
+  distances : PngDeflateHuffman,
+) -> Result[Unit, PixmapDecodeError] {
+  let length_bases : Array[Int] = [
+    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67,
+    83, 99, 115, 131, 163, 195, 227, 258,
+  ]
+  let length_extra_bits : Array[Int] = [
+    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5,
+    5, 5, 0,
+  ]
+  let distance_bases : Array[Int] = [
+    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769,
+    1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577,
+  ]
+  let distance_extra_bits : Array[Int] = [
+    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11,
+    11, 12, 12, 13, 13,
+  ]
+
+  let mut reached_end = false
+  while !reached_end {
+    let symbol = match png_deflate_decode_huffman(reader, literal_lengths) {
+      Err(error) => return Err(error)
+      Ok(symbol) => symbol
+    }
+    if symbol < 256 {
+      out.push(symbol.to_byte())
+    } else if symbol == 256 {
+      reached_end = true
+    } else {
+      let length_index = symbol - 257
+      guard length_index >= 0 && length_index < length_bases.length() else {
+        return Err(PixmapDecodeError::InvalidPngDeflateCode)
+      }
+      let length_extra = match
+        png_deflate_read_bits(reader, length_extra_bits[length_index]) {
+        Err(error) => return Err(error)
+        Ok(bits) => bits
+      }
+      let length = length_bases[length_index] + length_extra
+      let distance_symbol = match
+        png_deflate_decode_huffman(reader, distances) {
+        Err(error) => return Err(error)
+        Ok(symbol) => symbol
+      }
+      guard distance_symbol >= 0 && distance_symbol < distance_bases.length() else {
+        return Err(PixmapDecodeError::InvalidPngDeflateCode)
+      }
+      let distance_extra = match
+        png_deflate_read_bits(reader, distance_extra_bits[distance_symbol]) {
+        Err(error) => return Err(error)
+        Ok(bits) => bits
+      }
+      let distance = distance_bases[distance_symbol] + distance_extra
+      guard distance > 0 && distance <= out.length() else {
+        return Err(PixmapDecodeError::InvalidPngDeflateCode)
+      }
+      for _ in 0..<length {
+        let source = out.length() - distance
+        out.push(out[source])
+      }
+    }
+  }
+  Ok(())
 }
 
 ///|

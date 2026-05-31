@@ -193,6 +193,49 @@ test "Pixmap::from_png_bytes decodes RGBA scanline filters" {
 }
 
 ///|
+test "Pixmap::from_png_bytes decodes fixed Huffman DEFLATE data" {
+  let png = make_pixmap_test_rgba_png_from_zlib_stream(2, 2, [
+    120, 1, 99, 248, 207, 192, 240, 31, 8, 27, 24, 128, 180, 3, 151, 136, 156, 6,
+    0, 55, 233, 5, 33,
+  ])
+  let expected = Pixmap::new(2, 2)
+  expected.set_pixel(0, 0, Color::new(r=255, g=0, b=0, a=255))
+  expected.set_pixel(1, 0, Color::new(r=0, g=255, b=0, a=128))
+  expected.set_pixel(0, 1, Color::new(r=0, g=0, b=255, a=64))
+  expected.set_pixel(1, 1, Color::new(r=10, g=20, b=30, a=40))
+
+  match Pixmap::from_png_bytes(png) {
+    Ok(decoded) => assert_eq(decoded.to_rgba_bytes(), expected.to_rgba_bytes())
+    Err(_) => abort("expected fixed-Huffman PNG decode")
+  }
+}
+
+///|
+test "Pixmap::from_png_bytes decodes dynamic Huffman DEFLATE data" {
+  let png = make_pixmap_test_rgba_png_from_zlib_stream(64, 8, [
+    120, 218, 237, 208, 89, 66, 1, 80, 0, 0, 192, 103, 77, 246, 72, 73, 100, 41,
+    75, 33, 89, 66, 164, 238, 127, 42, 230, 30, 222, 199, 92, 96, 66, 8, 225, 156,
+    32, 73, 138, 52, 25, 178, 220, 144, 227, 150, 60, 5, 138, 148, 40, 83, 161, 202,
+    29, 53, 234, 220, 211, 224, 129, 71, 154, 60, 209, 226, 153, 54, 29, 94, 232,
+    210, 163, 207, 128, 87, 222, 24, 50, 98, 204, 132, 119, 62, 152, 50, 99, 206,
+    39, 11, 190, 88, 178, 98, 205, 134, 111, 182, 236, 216, 243, 195, 129, 35, 191,
+    156, 248, 227, 159, 16, 3, 98, 64, 12, 136, 1, 49, 32, 6, 92, 111, 192, 5, 57,
+    152, 61, 31,
+  ])
+  let expected = Pixmap::new(64, 8)
+  for y in 0..<8 {
+    for x in 0..<64 {
+      expected.set_pixel(x, y, Color::new(r=x.to_byte(), g=0, b=0, a=255))
+    }
+  }
+
+  match Pixmap::from_png_bytes(png) {
+    Ok(decoded) => assert_eq(decoded.to_rgba_bytes(), expected.to_rgba_bytes())
+    Err(_) => abort("expected dynamic-Huffman PNG decode")
+  }
+}
+
+///|
 test "Pixmap::from_png_bytes reports structural errors" {
   match Pixmap::from_png_bytes(Bytes::from_array([137, 80])) {
     Err(PixmapDecodeError::UnexpectedEndOfData(0, 8, 2)) => ()
@@ -1212,6 +1255,19 @@ fn make_pixmap_test_rgba_png_from_scanlines(
   height : Int,
   scanlines : Array[Byte],
 ) -> Bytes {
+  make_pixmap_test_rgba_png_from_zlib_stream(
+    width,
+    height,
+    pixmap_test_png_zlib_stored_stream(scanlines),
+  )
+}
+
+///|
+fn make_pixmap_test_rgba_png_from_zlib_stream(
+  width : Int,
+  height : Int,
+  zlib_stream : Array[Byte],
+) -> Bytes {
   let out : Array[Byte] = []
   append_pixmap_test_png_bytes(out, [137, 80, 78, 71, 13, 10, 26, 10])
   let ihdr : Array[Byte] = []
@@ -1223,11 +1279,7 @@ fn make_pixmap_test_rgba_png_from_scanlines(
   ihdr.push(0)
   ihdr.push(0)
   append_pixmap_test_png_chunk(out, [73, 72, 68, 82], ihdr)
-  append_pixmap_test_png_chunk(
-    out,
-    [73, 68, 65, 84],
-    pixmap_test_png_zlib_stored_stream(scanlines),
-  )
+  append_pixmap_test_png_chunk(out, [73, 68, 65, 84], zlib_stream)
   append_pixmap_test_png_chunk(out, [73, 69, 78, 68], [])
   Bytes::from_array(out)
 }
