@@ -1394,6 +1394,105 @@ test "Renderer cached RGBA tiled image path uses RendererResources" {
 }
 
 ///|
+test "Renderer cached RGBA nine-patch image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(5, 5)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let panel = make_renderer_test_nine_patch_source()
+  let insets = @graphics.NinePatchInsets::new(left=1, top=1, right=1, bottom=1)
+
+  match
+    renderer.draw_nine_patch_rgba_bytes_cached_with_renderer_resources(
+      panel.to_rgba_bytes(),
+      3,
+      3,
+      0,
+      0,
+      5,
+      5,
+      insets,
+      resources,
+      "panel",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached RGBA nine-patch draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    canvas.get_pixmap().get_pixel(0, 0),
+    @graphics.Color::new(r=10, g=0, b=0),
+  )
+  assert_eq(
+    canvas.get_pixmap().get_pixel(2, 2),
+    @graphics.Color::new(r=50, g=0, b=0),
+  )
+  assert_eq(
+    canvas.get_pixmap().get_pixel(4, 4),
+    @graphics.Color::new(r=90, g=0, b=0),
+  )
+
+  panel.set_pixel(1, 1, @graphics.Color::blue())
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_quality_nine_patch_rgba_bytes_cached_with_renderer_resources(
+      Bytes::from_array([]),
+      3,
+      3,
+      0,
+      0,
+      5,
+      5,
+      insets,
+      resources,
+      "panel",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached quality RGBA nine-patch hit")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    canvas.get_pixmap().get_pixel(2, 2),
+    @graphics.Color::new(r=50, g=0, b=0),
+  )
+  assert_eq(
+    canvas.get_pixmap().get_pixel(4, 4),
+    @graphics.Color::new(r=90, g=0, b=0),
+  )
+
+  match
+    renderer.draw_nine_patch_rgba_bytes_cached_with_renderer_resources(
+      Bytes::from_array([1, 2, 3, 4]),
+      3,
+      3,
+      0,
+      0,
+      5,
+      5,
+      insets,
+      resources,
+      "broken",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ) {
+    Err(@graphics.PixmapDecodeError::RgbaByteLengthMismatch(36, 4)) => ()
+    _ => abort("expected cached RGBA nine-patch decode error")
+  }
+  assert_true(!resources.contains_image("broken"))
+  assert_eq(resources.get_image_cache().len(), 1)
+}
+
+///|
 test "Renderer sampled cached RGBA image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(4, 1)
   canvas.clear(@graphics.Color::white())

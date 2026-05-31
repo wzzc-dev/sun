@@ -2485,6 +2485,79 @@ pub fn Renderer::draw_nine_patch_bmp_bytes_cached_with_renderer_resources(
 }
 
 ///|
+/// Decode raw RGBA bytes through a pixmap cache and draw with nine-patch
+/// scaling.
+pub fn Renderer::draw_nine_patch_rgba_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match
+    image_cache.get_or_decode_rgba_result(
+      image_key, image_width, image_height, image_data,
+    ) {
+    Ok(result) => {
+      self.canvas.draw_nine_patch_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        sampling,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode raw RGBA bytes through renderer-owned resources and draw with
+/// nine-patch scaling.
+pub fn Renderer::draw_nine_patch_rgba_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_nine_patch_rgba_bytes_cached(
+    image_data,
+    image_width,
+    image_height,
+    x,
+    y,
+    width,
+    height,
+    insets,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
 /// Draw a sampled scaled image through a caller-owned pixmap cache.
 pub fn Renderer::draw_sampled_pixmap_cached(
   self : Renderer,
@@ -3085,6 +3158,79 @@ pub fn Renderer::draw_quality_nine_patch_bmp_bytes_cached_with_renderer_resource
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_quality_nine_patch_bmp_bytes_cached(
     image_data,
+    x,
+    y,
+    width,
+    height,
+    insets,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
+/// Decode raw RGBA bytes through a pixmap cache and draw with nine-patch
+/// quality scaling.
+pub fn Renderer::draw_quality_nine_patch_rgba_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match
+    image_cache.get_or_decode_rgba_result(
+      image_key, image_width, image_height, image_data,
+    ) {
+    Ok(result) => {
+      self.canvas.draw_quality_nine_patch_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        quality,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode raw RGBA bytes through renderer-owned resources and draw with
+/// nine-patch quality scaling.
+pub fn Renderer::draw_quality_nine_patch_rgba_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_quality_nine_patch_rgba_bytes_cached(
+    image_data,
+    image_width,
+    image_height,
     x,
     y,
     width,

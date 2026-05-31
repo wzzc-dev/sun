@@ -125,7 +125,7 @@ Application / GUI
 - `Pixmap` 与 `MemorySurface` 暴露隔离 full/rect raw RGBA bytes，让 headless fixture 能直接断言像素字节而不共享可变 backing storage
 - `Pixmap` 与 `MemorySurface` 暴露 full/rect 轻量 RGBA byte checksum，让 headless 回归和 benchmark telemetry 可以复用同一套确定性像素摘要
 - `Pixmap` 支持 packed raw RGBA bytes 解码并接入 `PixmapCache`，让 headless fixture 和 GUI 资源可走无容器格式的依赖-free 输入路径
-- Renderer/`RendererResources` 支持 cached raw RGBA bytes image/source-rect/tiled/sampled/quality draw path，让已解码或外部提供的像素资源复用 image cache、atlas 子图、pattern/background 与缩放绘制入口
+- Renderer/`RendererResources` 支持 cached raw RGBA bytes image/source-rect/tiled/nine-patch/sampled/quality draw path，让已解码或外部提供的像素资源复用 image cache、atlas 子图、pattern/background、GUI 面板边框与缩放绘制入口
 - `PresentRectPayload`/`PresentBatch` 将 dirty present plan 物化为 packed rect payload，复用同一批量提交、present byte 与 source byte 成本统计语义
 - `Canvas::dirty_present_batch` 支持提交前 dry-run packed rect batch，不触发 present、不清 dirty，供事件循环做批量调度
 - `LayerTree`/`RenderFrame` 支持提交前 dry-run dirty present batch，临时合成 layer 脏区后恢复 target 像素和 dirty 状态
@@ -172,7 +172,7 @@ Application / GUI
 - Renderer/`RendererResources` 支持 cached Pixmap/BMP sampled full/source-rect draw path，让 GUI 图像调用方可直接选择 nearest/bilinear/bicubic 并复用 image cache
 - Renderer/`RendererResources` 支持 cached Pixmap/BMP tiled source-rect draw path，让 GUI pattern/background 资源复用同一 image cache
 - Renderer/`RendererResources` 支持 cached Pixmap/BMP transform-aware sampled/quality draw path，让旋转、缩放和局部变换下的 GUI 图像资源继续复用 image cache
-- Renderer/`RendererResources` 支持 cached raw RGBA bytes image/source-rect/tiled/sampled/quality draw path，让无容器像素资源可直接进入 image cache、atlas 子图、pattern/background 与缩放绘制入口
+- Renderer/`RendererResources` 支持 cached raw RGBA bytes image/source-rect/tiled/nine-patch/sampled/quality draw path，让无容器像素资源可直接进入 image cache、atlas 子图、pattern/background、GUI 面板边框与缩放绘制入口
 - Layer 支持 resize 时保留重叠像素并标记新 cache dirty
 - LayerTree 支持位置、尺寸、可见性、opacity、移除、替换和重排触发的旧/新 bounds invalidation
 - LayerTree 可将 dirty 合成到 frame canvas 并提交到 `Surface` partial present
@@ -393,7 +393,7 @@ Application / GUI
 - [x] 增加 `Pixmap`/`MemorySurface` full/rect raw RGBA bytes 导出，覆盖字节顺序、packed rect 与非法 rect 错误路径
 - [x] 增加 `Pixmap`/`MemorySurface` full/rect 轻量 checksum API，覆盖 raw RGBA byte 摘要、非法 rect 错误与 benchmark 复用路径
 - [x] 增加 `Pixmap::from_rgba_bytes` 与 `PixmapCache::get_or_decode_rgba`，覆盖 packed RGBA 输入、空尺寸、长度/尺寸错误、缓存命中与拷贝隔离
-- [x] 将 cached raw RGBA bytes full/source-rect/tiled/sampled/quality draw path 接入 Renderer/`RendererResources`，覆盖无容器像素资源的 cache hit/decode telemetry、atlas 子图复用、pattern/background 复用与缩放绘制
+- [x] 将 cached raw RGBA bytes full/source-rect/tiled/nine-patch/sampled/quality draw path 接入 Renderer/`RendererResources`，覆盖无容器像素资源的 cache hit/decode telemetry、atlas 子图复用、pattern/background 复用、GUI 面板边框复用与缩放绘制
 
 #### 4.3 渲染优化
 - [x] `PixelRect`/`DirtyRegion` 数据结构与 Canvas dirty tracking
@@ -518,7 +518,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert/decode telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态并暴露 residency 查询和 snapshot telemetry，并接入 checked font-byte text draw path、cached image draw path、raw RGBA/BMP bytes cached full/source-rect/tiled/sampled/quality draw path 与 nine-patch GUI image draw path，后续补 PNG/JPEG 与 font loader 集成策略
+- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert/decode telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态并暴露 residency 查询和 snapshot telemetry，并接入 checked font-byte text draw path、cached image draw path、raw RGBA/BMP bytes cached full/source-rect/tiled/nine-patch/sampled/quality draw path，后续补 PNG/JPEG 与 font loader 集成策略
 
 ---
 
