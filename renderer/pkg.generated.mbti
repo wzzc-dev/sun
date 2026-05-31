@@ -144,8 +144,10 @@ pub enum RenderCommand {
 pub struct RenderPipeline {
   commands : Array[RenderCommand]
 } derive(@debug.Debug)
+pub fn RenderPipeline::analyze(Self, Int, Int) -> RenderPipelineAnalysis
 pub fn RenderPipeline::clear_canvas(Self, @graphics.Color) -> Self
 pub fn RenderPipeline::clear_commands(Self) -> Unit
+pub fn RenderPipeline::dirty_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
 pub fn RenderPipeline::draw_pixmap(Self, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_rect(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
@@ -159,6 +161,27 @@ pub fn RenderPipeline::push(Self, RenderCommand) -> Self
 pub fn RenderPipeline::replay(Self, Renderer) -> RenderPipelineReplayResult
 pub fn RenderPipeline::stroke_path(Self, @graphics.Path, @graphics.Paint) -> Self
 pub fn RenderPipeline::stroke_rect(Self, Double, Double, Double, Double, @graphics.Paint) -> Self
+
+pub struct RenderPipelineAnalysis {
+  command_count : Int
+  clear_count : Int
+  fill_count : Int
+  stroke_count : Int
+  image_count : Int
+  text_count : Int
+  dirty_region : @graphics.DirtyRegion
+} derive(@debug.Debug)
+pub fn RenderPipelineAnalysis::get_clear_count(Self) -> Int
+pub fn RenderPipelineAnalysis::get_command_count(Self) -> Int
+pub fn RenderPipelineAnalysis::get_dirty_bounds(Self) -> @graphics.PixelRect?
+pub fn RenderPipelineAnalysis::get_dirty_rect_count(Self) -> Int
+pub fn RenderPipelineAnalysis::get_dirty_region(Self) -> @graphics.DirtyRegion
+pub fn RenderPipelineAnalysis::get_fill_count(Self) -> Int
+pub fn RenderPipelineAnalysis::get_image_count(Self) -> Int
+pub fn RenderPipelineAnalysis::get_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
+pub fn RenderPipelineAnalysis::get_stroke_count(Self) -> Int
+pub fn RenderPipelineAnalysis::get_text_count(Self) -> Int
+pub fn RenderPipelineAnalysis::has_dirty(Self) -> Bool
 
 pub struct RenderPipelineReplayResult {
   command_count : Int
@@ -178,6 +201,7 @@ pub fn RenderPipelineReplayResult::get_text_count(Self) -> Int
 pub struct Renderer {
   canvas : @graphics.Canvas
 } derive(@debug.Debug)
+pub fn Renderer::analyze_pipeline(Self, RenderPipeline) -> RenderPipelineAnalysis
 pub fn Renderer::draw_bmp_bytes_cached(Self, Bytes, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_bmp_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, RendererResources, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_bmp_bytes_rect_cached(Self, Bytes, @graphics.PixelRect, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]

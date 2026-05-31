@@ -298,6 +298,7 @@ Application / GUI
 - [x] 将 `FontFaceCache` 接入 RendererResources fallback atlas draw path，支持 keyed font-byte fallback stack 解析复用、glyph mask/atlas 复用、完整 span/atlas telemetry 与 parse error 保留
 - [x] 增加 `FontLoader` 抽象与 memory/file-backed loader，将 loader-backed `FontFaceCache`/`RendererResources` text/atlas draw path 接入 font cache，覆盖 missing/read/parse error 与 cache hit 跳过 loader
 - [x] 增加 `RenderPipeline` CPU command list，支持 clear/fill/stroke/path/pixmap/text face replay 与 command category telemetry，作为后续 GUI display-list/render pipeline 的测试基线
+- [x] 增加 `RenderPipelineAnalysis` dirty/present preflight，支持 replay 前估算命令 dirty bounds、dirty rect count 与 `DirtyPresentPlan`，推进 GUI display-list 调度基线
 
 #### 2.1 OpenType 支持
 - [ ] 解析 CFF/CFF2 表（PostScript 轮廓）
@@ -527,7 +528,7 @@ Application / GUI
 ### 架构改进
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [x] 抽象字体加载接口
-- [ ] 实现渲染管线（Render Pipeline）：已有 `RenderPipeline` CPU command list 与 renderer replay telemetry，后续补 retained display-list diff、资源依赖预解析与批处理调度
+- [ ] 实现渲染管线（Render Pipeline）：已有 `RenderPipeline` CPU command list、renderer replay telemetry 与 dirty/present preflight，后续补 retained display-list diff、资源依赖预解析与批处理调度
 - [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，并接入 `FontLoader` memory/file-backed loader、loader-backed cache helper 与 RendererResources text/atlas draw path；glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert/decode telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态并暴露 residency 查询和 snapshot telemetry，并接入 checked font-byte text draw path、cached image draw path、raw RGBA/BMP/PNG bytes cached full/source-rect/tiled/nine-patch/sampled/quality/transform-aware draw path，PNG decode 已支持 scanline filters 0-4 与 zlib DEFLATE stored/fixed/dynamic Huffman blocks，后续补 JPEG
 
 ---
