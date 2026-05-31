@@ -91,6 +91,81 @@ test "Pixmap::to_bmp_bytes encodes empty dimensions" {
 }
 
 ///|
+test "Pixmap::from_bmp_bytes decodes exported 32-bit BMP bytes" {
+  let pixmap = Pixmap::new(2, 2)
+  pixmap.set_pixel(0, 0, Color::new(r=255, g=0, b=0, a=255))
+  pixmap.set_pixel(1, 0, Color::new(r=0, g=255, b=0, a=128))
+  pixmap.set_pixel(0, 1, Color::new(r=0, g=0, b=255, a=64))
+  pixmap.set_pixel(1, 1, Color::new(r=10, g=20, b=30, a=40))
+
+  match Pixmap::from_bmp_bytes(pixmap.to_bmp_bytes()) {
+    Ok(decoded) => {
+      assert_eq(decoded.get_width(), 2)
+      assert_eq(decoded.get_height(), 2)
+      assert_eq(decoded.to_rgba_bytes(), pixmap.to_rgba_bytes())
+    }
+    Err(_) => abort("expected BMP decode to succeed")
+  }
+}
+
+///|
+test "Pixmap::from_bmp_bytes accepts top-down BMP row order" {
+  let top_down_bmp : Array[Byte] = [
+    66, 77, 62, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 0, 0, 254, 255,
+    255, 255, 1, 0, 32, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 7, 8, 9, 6, 3, 2, 1, 4,
+  ]
+
+  match Pixmap::from_bmp_bytes(Bytes::from_array(top_down_bmp)) {
+    Ok(decoded) => {
+      assert_eq(decoded.get_width(), 1)
+      assert_eq(decoded.get_height(), 2)
+      assert_eq(decoded.get_pixel(0, 0), Color::new(r=9, g=8, b=7, a=6))
+      assert_eq(decoded.get_pixel(0, 1), Color::new(r=1, g=2, b=3, a=4))
+    }
+    Err(_) => abort("expected top-down BMP decode")
+  }
+}
+
+///|
+test "Pixmap::from_bmp_bytes reports structural errors" {
+  match Pixmap::from_bmp_bytes(Bytes::from_array([66, 77])) {
+    Err(PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
+    _ => abort("expected BMP short-data error")
+  }
+
+  let bad_signature : Array[Byte] = [
+    0, 0, 54, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 1, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0,
+  ]
+  match Pixmap::from_bmp_bytes(Bytes::from_array(bad_signature)) {
+    Err(PixmapDecodeError::InvalidBmpSignature(0, 0)) => ()
+    _ => abort("expected BMP signature error")
+  }
+
+  let unsupported_bpp : Array[Byte] = [
+    66, 77, 54, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+    0, 0, 1, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0,
+  ]
+  match Pixmap::from_bmp_bytes(Bytes::from_array(unsupported_bpp)) {
+    Err(PixmapDecodeError::UnsupportedBmpBitsPerPixel(24)) => ()
+    _ => abort("expected BMP bits-per-pixel error")
+  }
+
+  let truncated_pixels : Array[Byte] = [
+    66, 77, 54, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+    0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0,
+  ]
+  match Pixmap::from_bmp_bytes(Bytes::from_array(truncated_pixels)) {
+    Err(PixmapDecodeError::BmpPixelDataOutOfBounds(54, 58, 54)) => ()
+    _ => abort("expected BMP pixel-data bounds error")
+  }
+}
+
+///|
 test "PixmapCache stores copies and manages entries" {
   let cache = PixmapCache::new()
   assert_true(cache.is_empty())

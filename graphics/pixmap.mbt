@@ -24,6 +24,19 @@ pub(all) enum ImageQuality {
 } derive(Eq, Debug)
 
 ///|
+/// Error returned when decoding pixmap bytes.
+pub(all) enum PixmapDecodeError {
+  UnexpectedEndOfData(Int, Int, Int)
+  InvalidBmpSignature(Byte, Byte)
+  UnsupportedBmpHeaderSize(Int)
+  UnsupportedBmpColorPlanes(Int)
+  UnsupportedBmpBitsPerPixel(Int)
+  UnsupportedBmpCompression(Int)
+  InvalidBmpDimensions(Int, Int)
+  BmpPixelDataOutOfBounds(Int, Int, Int)
+} derive(Eq, Debug)
+
+///|
 /// Return the concrete sampling mode selected by this quality strategy.
 pub fn ImageQuality::to_sampling(self : ImageQuality) -> ImageSampling {
   match self {
@@ -146,6 +159,21 @@ pub fn Pixmap::to_bmp_bytes(self : Pixmap) -> Bytes {
     }
   }
   Bytes::from_array(out)
+}
+
+///|
+/// Decode a 32-bit BMP image into an RGBA pixmap.
+///
+/// This intentionally supports the dependency-free format emitted by
+/// `to_bmp_bytes`: uncompressed BMP with BGRA pixels. Both bottom-up and
+/// top-down BMP row order are accepted.
+pub fn Pixmap::from_bmp_bytes(
+  data : Bytes,
+) -> Result[Pixmap, PixmapDecodeError] {
+  match decode_bmp_info(data) {
+    Err(error) => Err(error)
+    Ok(info) => Ok(decode_bmp_pixmap(data, info))
+  }
 }
 
 ///|
@@ -439,6 +467,102 @@ fn append_bmp_u32_le(out : Array[Byte], value : Int) -> Unit {
   out.push((value / 256).land(0xFF).to_byte())
   out.push((value / 65536).land(0xFF).to_byte())
   out.push((value / 16777216).land(0xFF).to_byte())
+}
+
+///|
+struct BmpInfo {
+  pixel_offset : Int
+  width : Int
+  height : Int
+  is_top_down : Bool
+} derive(Debug)
+
+///|
+fn decode_bmp_info(data : Bytes) -> Result[BmpInfo, PixmapDecodeError] {
+  guard data.length() >= 54 else {
+    return Err(PixmapDecodeError::UnexpectedEndOfData(0, 54, data.length()))
+  }
+  guard data[0] == 66 && data[1] == 77 else {
+    return Err(PixmapDecodeError::InvalidBmpSignature(data[0], data[1]))
+  }
+  let pixel_offset = read_u32_le_at(data, 10)
+  let header_size = read_u32_le_at(data, 14)
+  guard header_size >= 40 else {
+    return Err(PixmapDecodeError::UnsupportedBmpHeaderSize(header_size))
+  }
+  let width = read_i32_le_at(data, 18)
+  let raw_height = read_i32_le_at(data, 22)
+  guard width > 0 && raw_height != 0 else {
+    return Err(PixmapDecodeError::InvalidBmpDimensions(width, raw_height))
+  }
+  let color_planes = read_u16_le_at(data, 26)
+  guard color_planes == 1 else {
+    return Err(PixmapDecodeError::UnsupportedBmpColorPlanes(color_planes))
+  }
+  let bits_per_pixel = read_u16_le_at(data, 28)
+  guard bits_per_pixel == 32 else {
+    return Err(PixmapDecodeError::UnsupportedBmpBitsPerPixel(bits_per_pixel))
+  }
+  let compression = read_u32_le_at(data, 30)
+  guard compression == 0 else {
+    return Err(PixmapDecodeError::UnsupportedBmpCompression(compression))
+  }
+  let height = raw_height.abs()
+  let required_len = pixel_offset + width * height * 4
+  guard data.length() >= required_len else {
+    return Err(
+      PixmapDecodeError::BmpPixelDataOutOfBounds(
+        pixel_offset,
+        required_len,
+        data.length(),
+      ),
+    )
+  }
+  Ok({ pixel_offset, width, height, is_top_down: raw_height < 0 })
+}
+
+///|
+fn decode_bmp_pixmap(data : Bytes, info : BmpInfo) -> Pixmap {
+  let pixmap = Pixmap::new(info.width, info.height)
+  let dst = pixmap.get_pixels()
+  let row_bytes = info.width * 4
+  for y in 0..<info.height {
+    let source_y = if info.is_top_down { y } else { info.height - 1 - y }
+    let source_row = info.pixel_offset + source_y * row_bytes
+    let dst_row = y * row_bytes
+    for x in 0..<info.width {
+      let source_offset = source_row + x * 4
+      let dst_offset = dst_row + x * 4
+      dst[dst_offset] = data[source_offset + 2]
+      dst[dst_offset + 1] = data[source_offset + 1]
+      dst[dst_offset + 2] = data[source_offset]
+      dst[dst_offset + 3] = data[source_offset + 3]
+    }
+  }
+  pixmap
+}
+
+///|
+fn read_u16_le_at(data : Bytes, offset : Int) -> Int {
+  data[offset].to_int() + data[offset + 1].to_int() * 256
+}
+
+///|
+fn read_u32_le_at(data : Bytes, offset : Int) -> Int {
+  data[offset].to_int() +
+  data[offset + 1].to_int() * 256 +
+  data[offset + 2].to_int() * 65536 +
+  data[offset + 3].to_int() * 16777216
+}
+
+///|
+fn read_i32_le_at(data : Bytes, offset : Int) -> Int {
+  let b0 = data[offset].to_int()
+  let b1 = data[offset + 1].to_int()
+  let b2 = data[offset + 2].to_int()
+  let b3 = data[offset + 3].to_int()
+  let signed_b3 = if b3 >= 128 { b3 - 256 } else { b3 }
+  b0 + b1 * 256 + b2 * 65536 + signed_b3 * 16777216
 }
 
 ///|

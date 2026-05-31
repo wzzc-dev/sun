@@ -22,6 +22,8 @@ pub(all) enum BlendMode {
   Add
 } derive(Eq, @debug.Debug)
 
+type BmpInfo derive(@debug.Debug)
+
 pub struct Canvas {
   pixmap : Pixmap
   mut transform : Transform
@@ -443,6 +445,7 @@ pub fn Pixmap::clear(Self, Color) -> Unit
 pub fn Pixmap::copy(Self) -> Self
 pub fn Pixmap::copy_rect(Self, PixelRect) -> Result[Self, PresentError]
 pub fn Pixmap::fill_rect(Self, Int, Int, Int, Int, Color) -> Unit
+pub fn Pixmap::from_bmp_bytes(Bytes) -> Result[Self, PixmapDecodeError]
 pub fn Pixmap::get_height(Self) -> Int
 pub fn Pixmap::get_pixel(Self, Int, Int) -> Color
 pub fn Pixmap::get_pixels(Self) -> FixedArray[Byte]
@@ -487,6 +490,17 @@ pub struct PixmapCacheInsertResult {
 pub fn PixmapCacheInsertResult::did_hit_cache(Self) -> Bool
 pub fn PixmapCacheInsertResult::did_insert(Self) -> Bool
 pub fn PixmapCacheInsertResult::get_pixmap(Self) -> Pixmap
+
+pub(all) enum PixmapDecodeError {
+  UnexpectedEndOfData(Int, Int, Int)
+  InvalidBmpSignature(Byte, Byte)
+  UnsupportedBmpHeaderSize(Int)
+  UnsupportedBmpColorPlanes(Int)
+  UnsupportedBmpBitsPerPixel(Int)
+  UnsupportedBmpCompression(Int)
+  InvalidBmpDimensions(Int, Int)
+  BmpPixelDataOutOfBounds(Int, Int, Int)
+} derive(Eq, @debug.Debug)
 
 pub struct Point {
   x : Double
