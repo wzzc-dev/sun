@@ -146,6 +146,7 @@ pub enum RenderCommand {
   DrawSampledRgbaBytesKeyed(String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawQualityRgbaBytesKeyed(String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality)
   DrawQualityRgbaBytesRectKeyed(String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality)
+  DrawTransformedSampledRgbaBytesKeyed(String, Bytes, Int, Int, Double, Double, Double, Double, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledBmpBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledPngBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledRgbaBytesRectKeyed(String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
@@ -215,6 +216,7 @@ pub fn RenderPipeline::draw_text_face_keyed(Self, String, @text.FontFace, String
 pub fn RenderPipeline::draw_tiled_bmp_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_tiled_png_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_tiled_rgba_bytes_rect_keyed(Self, String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_transformed_sampled_rgba_bytes_keyed(Self, String, Bytes, Int, Int, Double, Double, Double, Double, @graphics.Paint, @graphics.ImageSampling) -> Self
 pub fn RenderPipeline::fill_path(Self, @graphics.Path, @graphics.Paint) -> Self
 pub fn RenderPipeline::fill_rect(Self, Double, Double, Double, Double, @graphics.Paint) -> Self
 pub fn RenderPipeline::get_commands(Self) -> Array[RenderCommand]
