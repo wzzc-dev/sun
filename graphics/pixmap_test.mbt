@@ -283,6 +283,49 @@ test "PixmapCache::get_or_insert_result reports cache hits" {
 }
 
 ///|
+test "PixmapCache::get_or_decode_bmp_result decodes misses and reports hits" {
+  let cache = PixmapCache::new()
+  let source = Pixmap::new(1, 1)
+  source.set_pixel(0, 0, Color::red())
+  match cache.get_or_decode_bmp_result("icon", source.to_bmp_bytes()) {
+    Ok(first) => {
+      assert_true(first.did_decode())
+      assert_true(!first.did_hit_cache())
+      assert_eq(first.get_pixmap().get_pixel(0, 0), Color::red())
+      let first_pixmap = first.get_pixmap()
+      first_pixmap.set_pixel(0, 0, Color::green())
+    }
+    Err(_) => abort("expected BMP cache decode")
+  }
+  assert_eq(cache.len(), 1)
+  match cache.get("icon") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), Color::red())
+    None => abort("expected cached decoded pixmap")
+  }
+
+  match cache.get_or_decode_bmp_result("icon", Bytes::from_array([0, 0])) {
+    Ok(second) => {
+      assert_true(!second.did_decode())
+      assert_true(second.did_hit_cache())
+      assert_eq(second.get_pixmap().get_pixel(0, 0), Color::red())
+    }
+    Err(_) => abort("expected cached BMP pixmap hit")
+  }
+  assert_eq(cache.len(), 1)
+}
+
+///|
+test "PixmapCache::get_or_decode_bmp leaves cache unchanged on decode errors" {
+  let cache = PixmapCache::new()
+  match cache.get_or_decode_bmp("bad", Bytes::from_array([66, 77])) {
+    Err(PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
+    _ => abort("expected BMP cache decode error")
+  }
+  assert_true(cache.is_empty())
+  assert_true(!cache.contains("bad"))
+}
+
+///|
 test "PixmapCache::contains reports membership without refreshing LRU" {
   let cache = PixmapCache::with_capacity(2)
   let red = Pixmap::new(1, 1)

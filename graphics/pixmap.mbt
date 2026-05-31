@@ -192,6 +192,13 @@ pub struct PixmapCacheInsertResult {
 } derive(Debug)
 
 ///|
+/// Result of reading a pixmap from cache or decoding BMP bytes on miss.
+pub struct PixmapCacheDecodeResult {
+  pixmap : Pixmap
+  did_decode : Bool
+} derive(Debug)
+
+///|
 /// Create an empty pixmap cache.
 pub fn PixmapCache::new() -> PixmapCache {
   { pixmaps: {}, access_order: [], capacity: 0, is_bounded: false }
@@ -225,6 +232,30 @@ pub fn PixmapCacheInsertResult::did_hit_cache(
   self : PixmapCacheInsertResult,
 ) -> Bool {
   !self.did_insert
+}
+
+///|
+/// Get the resulting pixmap.
+pub fn PixmapCacheDecodeResult::get_pixmap(
+  self : PixmapCacheDecodeResult,
+) -> Pixmap {
+  self.pixmap
+}
+
+///|
+/// Return whether this lookup decoded BMP bytes instead of hitting cache.
+pub fn PixmapCacheDecodeResult::did_decode(
+  self : PixmapCacheDecodeResult,
+) -> Bool {
+  self.did_decode
+}
+
+///|
+/// Return whether this lookup reused a cached pixmap.
+pub fn PixmapCacheDecodeResult::did_hit_cache(
+  self : PixmapCacheDecodeResult,
+) -> Bool {
+  !self.did_decode
 }
 
 ///|
@@ -303,6 +334,39 @@ pub fn PixmapCache::get_or_insert_result(
   match self.get(key) {
     Some(cached) => { pixmap: cached, did_insert: false }
     None => { pixmap: self.insert(key, pixmap), did_insert: true }
+  }
+}
+
+///|
+/// Return a cached pixmap or decode BMP bytes and cache the decoded pixmap.
+pub fn PixmapCache::get_or_decode_bmp(
+  self : PixmapCache,
+  key : String,
+  data : Bytes,
+) -> Result[Pixmap, PixmapDecodeError] {
+  match self.get_or_decode_bmp_result(key, data) {
+    Ok(result) => Ok(result.get_pixmap())
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Return a cached pixmap or decode BMP bytes, reporting cache hits.
+pub fn PixmapCache::get_or_decode_bmp_result(
+  self : PixmapCache,
+  key : String,
+  data : Bytes,
+) -> Result[PixmapCacheDecodeResult, PixmapDecodeError] {
+  match self.get(key) {
+    Some(cached) => Ok({ pixmap: cached, did_decode: false })
+    None =>
+      match Pixmap::from_bmp_bytes(data) {
+        Ok(decoded) => {
+          let pixmap = self.insert(key, decoded)
+          Ok({ pixmap, did_decode: true })
+        }
+        Err(error) => Err(error)
+      }
   }
 }
 

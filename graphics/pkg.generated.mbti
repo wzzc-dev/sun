@@ -473,6 +473,8 @@ pub fn PixmapCache::capacity(Self) -> Int
 pub fn PixmapCache::clear(Self) -> Unit
 pub fn PixmapCache::contains(Self, String) -> Bool
 pub fn PixmapCache::get(Self, String) -> Pixmap?
+pub fn PixmapCache::get_or_decode_bmp(Self, String, Bytes) -> Result[Pixmap, PixmapDecodeError]
+pub fn PixmapCache::get_or_decode_bmp_result(Self, String, Bytes) -> Result[PixmapCacheDecodeResult, PixmapDecodeError]
 pub fn PixmapCache::get_or_insert(Self, String, Pixmap) -> Pixmap
 pub fn PixmapCache::get_or_insert_result(Self, String, Pixmap) -> PixmapCacheInsertResult
 pub fn PixmapCache::insert(Self, String, Pixmap) -> Pixmap
@@ -482,6 +484,14 @@ pub fn PixmapCache::len(Self) -> Int
 pub fn PixmapCache::new() -> Self
 pub fn PixmapCache::remove(Self, String) -> Unit
 pub fn PixmapCache::with_capacity(Int) -> Self
+
+pub struct PixmapCacheDecodeResult {
+  pixmap : Pixmap
+  did_decode : Bool
+} derive(@debug.Debug)
+pub fn PixmapCacheDecodeResult::did_decode(Self) -> Bool
+pub fn PixmapCacheDecodeResult::did_hit_cache(Self) -> Bool
+pub fn PixmapCacheDecodeResult::get_pixmap(Self) -> Pixmap
 
 pub struct PixmapCacheInsertResult {
   pixmap : Pixmap
