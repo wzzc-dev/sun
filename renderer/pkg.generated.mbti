@@ -144,6 +144,8 @@ pub enum RenderCommand {
   DrawPngBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawTiledBmpBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint)
   DrawTiledPngBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint)
+  DrawNinePatchBmpBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.Paint, @graphics.ImageSampling)
+  DrawNinePatchPngBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.Paint, @graphics.ImageSampling)
   DrawPixmapRect(@graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawPixmapRectKeyed(String, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawTextFace(@text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
@@ -177,6 +179,8 @@ pub fn RenderPipeline::draw_loaded_font_atlas_keyed(Self, String, String, String
 pub fn RenderPipeline::draw_loaded_font_fallback_atlas_keyed(Self, Array[String], String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_loaded_font_fallback_keyed(Self, Array[String], String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_loaded_font_keyed(Self, String, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_nine_patch_bmp_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.Paint, @graphics.ImageSampling) -> Self
+pub fn RenderPipeline::draw_nine_patch_png_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.Paint, @graphics.ImageSampling) -> Self
 pub fn RenderPipeline::draw_pixmap(Self, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_keyed(Self, String, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_rect(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self

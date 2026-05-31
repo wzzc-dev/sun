@@ -46,6 +46,28 @@ pub enum RenderCommand {
     Int,
     @graphics.Paint
   )
+  DrawNinePatchBmpBytesKeyed(
+    String,
+    Bytes,
+    Int,
+    Int,
+    Int,
+    Int,
+    @graphics.NinePatchInsets,
+    @graphics.Paint,
+    @graphics.ImageSampling
+  )
+  DrawNinePatchPngBytesKeyed(
+    String,
+    Bytes,
+    Int,
+    Int,
+    Int,
+    Int,
+    @graphics.NinePatchInsets,
+    @graphics.Paint,
+    @graphics.ImageSampling
+  )
   DrawPixmapRect(
     @graphics.Pixmap,
     @graphics.PixelRect,
@@ -506,6 +528,48 @@ pub fn RenderPipeline::draw_tiled_png_bytes_rect_keyed(
   self.push(
     RenderCommand::DrawTiledPngBytesRectKeyed(
       resource_key, image_data, src_rect, x, y, width, height, paint,
+    ),
+  )
+}
+
+///|
+/// Queue a keyed BMP-bytes nine-patch command.
+pub fn RenderPipeline::draw_nine_patch_bmp_bytes_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawNinePatchBmpBytesKeyed(
+      resource_key, image_data, x, y, width, height, insets, paint, sampling,
+    ),
+  )
+}
+
+///|
+/// Queue a keyed PNG-bytes nine-patch command.
+pub fn RenderPipeline::draw_nine_patch_png_bytes_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  insets : @graphics.NinePatchInsets,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawNinePatchPngBytesKeyed(
+      resource_key, image_data, x, y, width, height, insets, paint, sampling,
     ),
   )
 }
@@ -1746,6 +1810,8 @@ pub fn RenderPipeline::analyze(
       | RenderCommand::DrawPngBytesRectKeyed(_, _, _, _, _, _)
       | RenderCommand::DrawTiledBmpBytesRectKeyed(_, _, _, _, _, _, _, _)
       | RenderCommand::DrawTiledPngBytesRectKeyed(_, _, _, _, _, _, _, _)
+      | RenderCommand::DrawNinePatchBmpBytesKeyed(_, _, _, _, _, _, _, _, _)
+      | RenderCommand::DrawNinePatchPngBytesKeyed(_, _, _, _, _, _, _, _, _)
       | RenderCommand::DrawPixmapRect(_, _, _, _, _)
       | RenderCommand::DrawPixmapRectKeyed(_, _, _, _, _, _) => image_count += 1
       RenderCommand::DrawTextFace(_, _, _, _, _, _)
@@ -1938,6 +2004,38 @@ pub fn RenderPipeline::resource_plan(
         image_dependencies.push(
           render_pipeline_make_png_bytes_rect_image_dependency(
             index, resource_key, image_data, src_rect,
+          ),
+        )
+      RenderCommand::DrawNinePatchBmpBytesKeyed(
+        resource_key,
+        image_data,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_bmp_bytes_image_dependency(
+            index, resource_key, image_data,
+          ),
+        )
+      RenderCommand::DrawNinePatchPngBytesKeyed(
+        resource_key,
+        image_data,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_png_bytes_image_dependency(
+            index, resource_key, image_data,
           ),
         )
       RenderCommand::DrawPixmapRect(pixmap, src_rect, _, _, _) =>
@@ -2339,6 +2437,46 @@ pub fn RenderPipeline::replay(
         }
         image_count += 1
       }
+      RenderCommand::DrawNinePatchBmpBytesKeyed(
+        _,
+        image_data,
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        sampling
+      ) => {
+        match @graphics.Pixmap::from_bmp_bytes(image_data) {
+          Ok(pixmap) =>
+            canvas.draw_nine_patch_pixmap(
+              pixmap, x, y, width, height, insets, paint, sampling,
+            )
+          Err(_) => abort("failed to decode pipeline BMP bytes")
+        }
+        image_count += 1
+      }
+      RenderCommand::DrawNinePatchPngBytesKeyed(
+        _,
+        image_data,
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        sampling
+      ) => {
+        match @graphics.Pixmap::from_png_bytes(image_data) {
+          Ok(pixmap) =>
+            canvas.draw_nine_patch_pixmap(
+              pixmap, x, y, width, height, insets, paint, sampling,
+            )
+          Err(_) => abort("failed to decode pipeline PNG bytes")
+        }
+        image_count += 1
+      }
       RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, paint) => {
         canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
         image_count += 1
@@ -2640,6 +2778,60 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
         match
           renderer.draw_tiled_png_bytes_rect_cached_with_renderer_resources(
             image_data, src_rect, x, y, width, height, resources, resource_key, paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline PNG bytes")
+        }
+      RenderCommand::DrawNinePatchBmpBytesKeyed(
+        resource_key,
+        image_data,
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        sampling
+      ) =>
+        match
+          renderer.draw_nine_patch_bmp_bytes_cached_with_renderer_resources(
+            image_data, x, y, width, height, insets, resources, resource_key, paint,
+            sampling,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline BMP bytes")
+        }
+      RenderCommand::DrawNinePatchPngBytesKeyed(
+        resource_key,
+        image_data,
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        sampling
+      ) =>
+        match
+          renderer.draw_nine_patch_png_bytes_cached_with_renderer_resources(
+            image_data, x, y, width, height, insets, resources, resource_key, paint,
+            sampling,
           ) {
           Ok(result) => {
             if result.did_hit_cache() {
@@ -3058,6 +3250,60 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         match
           renderer.draw_tiled_png_bytes_rect_cached_with_renderer_resources(
             image_data, src_rect, x, y, width, height, resources, resource_key, paint,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline PNG bytes")
+        }
+      RenderCommand::DrawNinePatchBmpBytesKeyed(
+        resource_key,
+        image_data,
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        sampling
+      ) =>
+        match
+          renderer.draw_nine_patch_bmp_bytes_cached_with_renderer_resources(
+            image_data, x, y, width, height, insets, resources, resource_key, paint,
+            sampling,
+          ) {
+          Ok(result) => {
+            if result.did_hit_cache() {
+              image_cache_hit_count += 1
+            } else {
+              image_cache_insert_count += 1
+            }
+            keyed_image_count += 1
+            image_count += 1
+          }
+          Err(_) => abort("failed to decode pipeline BMP bytes")
+        }
+      RenderCommand::DrawNinePatchPngBytesKeyed(
+        resource_key,
+        image_data,
+        x,
+        y,
+        width,
+        height,
+        insets,
+        paint,
+        sampling
+      ) =>
+        match
+          renderer.draw_nine_patch_png_bytes_cached_with_renderer_resources(
+            image_data, x, y, width, height, insets, resources, resource_key, paint,
+            sampling,
           ) {
           Ok(result) => {
             if result.did_hit_cache() {
@@ -3725,6 +3971,8 @@ fn render_command_batch_kind(
     | RenderCommand::DrawPngBytesRectKeyed(_, _, _, _, _, _)
     | RenderCommand::DrawTiledBmpBytesRectKeyed(_, _, _, _, _, _, _, _)
     | RenderCommand::DrawTiledPngBytesRectKeyed(_, _, _, _, _, _, _, _)
+    | RenderCommand::DrawNinePatchBmpBytesKeyed(_, _, _, _, _, _, _, _, _)
+    | RenderCommand::DrawNinePatchPngBytesKeyed(_, _, _, _, _, _, _, _, _)
     | RenderCommand::DrawPixmapRect(_, _, _, _, _)
     | RenderCommand::DrawPixmapRectKeyed(_, _, _, _, _, _) =>
       RenderPipelineBatchKind::Image
@@ -3865,6 +4113,42 @@ fn render_command_estimated_dirty_rect(
           )
         Err(_) => None
       }
+    RenderCommand::DrawNinePatchBmpBytesKeyed(
+      _,
+      image_data,
+      x,
+      y,
+      width,
+      height,
+      _,
+      _,
+      _
+    ) =>
+      match @graphics.Pixmap::from_bmp_bytes(image_data) {
+        Ok(pixmap) =>
+          render_nine_patch_pixmap_estimated_dirty_rect(
+            pixmap, x, y, width, height,
+          )
+        Err(_) => None
+      }
+    RenderCommand::DrawNinePatchPngBytesKeyed(
+      _,
+      image_data,
+      x,
+      y,
+      width,
+      height,
+      _,
+      _,
+      _
+    ) =>
+      match @graphics.Pixmap::from_png_bytes(image_data) {
+        Ok(pixmap) =>
+          render_nine_patch_pixmap_estimated_dirty_rect(
+            pixmap, x, y, width, height,
+          )
+        Err(_) => None
+      }
     RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, _) =>
       render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
     RenderCommand::DrawPixmapRectKeyed(_, pixmap, src_rect, x, y, _) =>
@@ -3995,6 +4279,19 @@ fn render_command_estimated_dirty_rect(
       )
     }
   }
+}
+
+///|
+fn render_nine_patch_pixmap_estimated_dirty_rect(
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> @graphics.PixelRect? {
+  guard width > 0 && height > 0 else { return None }
+  guard pixmap.get_width() > 0 && pixmap.get_height() > 0 else { return None }
+  non_empty_pixel_rect(@graphics.PixelRect::new(x~, y~, width~, height~))
 }
 
 ///|
@@ -4192,6 +4489,70 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
       aw == bw &&
       ah == bh &&
       render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::DrawNinePatchBmpBytesKeyed(
+        a_key,
+        _,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_insets,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawNinePatchBmpBytesKeyed(
+        b_key,
+        _,
+        bx,
+        by,
+        bw,
+        bh,
+        b_insets,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      a_key == b_key &&
+      ax == bx &&
+      ay == by &&
+      aw == bw &&
+      ah == bh &&
+      a_insets == b_insets &&
+      render_paint_is_same(a_paint, b_paint) &&
+      a_sampling == b_sampling
+    (
+      RenderCommand::DrawNinePatchPngBytesKeyed(
+        a_key,
+        _,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_insets,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawNinePatchPngBytesKeyed(
+        b_key,
+        _,
+        bx,
+        by,
+        bw,
+        bh,
+        b_insets,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      a_key == b_key &&
+      ax == bx &&
+      ay == by &&
+      aw == bw &&
+      ah == bh &&
+      a_insets == b_insets &&
+      render_paint_is_same(a_paint, b_paint) &&
+      a_sampling == b_sampling
     (
       RenderCommand::DrawPixmapRect(_, _, _, _, _),
       RenderCommand::DrawPixmapRect(_, _, _, _, _),

@@ -1032,6 +1032,119 @@ test "RenderPipeline bytes tiled source-rect replay uses RendererResources image
 }
 
 ///|
+test "RenderPipeline bytes nine-patch replay uses RendererResources image cache" {
+  let panel = make_renderer_test_nine_patch_source()
+  let insets = @graphics.NinePatchInsets::new(left=1, top=1, right=1, bottom=1)
+  let resources = RendererResources::with_capacities(16, 16, 2, 4, 4)
+  let renderer = Renderer::new(@graphics.Canvas::new(10, 5))
+  let first_pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_nine_patch_bmp_bytes_keyed(
+      "bmp-panel",
+      panel.to_bmp_bytes(),
+      0,
+      0,
+      5,
+      5,
+      insets,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_nine_patch_png_bytes_keyed(
+      "png-panel",
+      must_renderer_test_png_bytes(panel),
+      5,
+      0,
+      5,
+      5,
+      insets,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    )
+  let plan = first_pipeline.resource_plan()
+  assert_eq(plan.get_command_count(), 3)
+  assert_eq(plan.get_image_count(), 2)
+  assert_eq(plan.get_keyed_image_count(), 2)
+  assert_eq(plan.get_resource_count(), 2)
+  assert_eq(plan.get_keyed_resource_count(), 2)
+  assert_eq(plan.get_image_source_pixel_count(), 18)
+  let images = plan.get_image_dependencies()
+  assert_true(images[0].get_resource_key() == Some("bmp-panel"))
+  assert_eq(images[0].get_source_width(), 3)
+  assert_eq(images[0].get_source_height(), 3)
+  assert_true(images[1].get_resource_key() == Some("png-panel"))
+  assert_eq(images[1].get_source_width(), 3)
+  assert_eq(images[1].get_source_height(), 3)
+
+  let first = renderer.draw_pipeline_with_renderer_resources(
+    first_pipeline, resources,
+  )
+  assert_eq(first.get_command_count(), 3)
+  assert_eq(first.get_clear_count(), 1)
+  assert_eq(first.get_image_count(), 2)
+  assert_eq(first.get_keyed_image_count(), 2)
+  assert_eq(first.get_image_cache_insert_count(), 2)
+  assert_eq(first.get_image_cache_hit_count(), 0)
+  assert_eq(first.get_resource_cache_miss_count(), 2)
+  assert_eq(first.get_resource_cache_hit_count(), 0)
+  assert_true(resources.contains_image("bmp-panel"))
+  assert_true(resources.contains_image("png-panel"))
+  assert_eq(resources.get_image_cache().len(), 2)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(2, 2),
+    @graphics.Color::new(r=50, g=0, b=0),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(9, 4),
+    @graphics.Color::new(r=90, g=0, b=0),
+  )
+
+  let second = renderer.draw_pipeline_with_renderer_resources(
+    RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_nine_patch_bmp_bytes_keyed(
+      "bmp-panel",
+      Bytes::from_array([0, 0]),
+      0,
+      0,
+      5,
+      5,
+      insets,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_nine_patch_png_bytes_keyed(
+      "png-panel",
+      Bytes::from_array([137, 80]),
+      5,
+      0,
+      5,
+      5,
+      insets,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ),
+    resources,
+  )
+  assert_eq(second.get_command_count(), 3)
+  assert_eq(second.get_image_count(), 2)
+  assert_eq(second.get_keyed_image_count(), 2)
+  assert_eq(second.get_image_cache_insert_count(), 0)
+  assert_eq(second.get_image_cache_hit_count(), 2)
+  assert_eq(second.get_resource_cache_miss_count(), 0)
+  assert_eq(second.get_resource_cache_hit_count(), 2)
+  assert_eq(resources.get_image_cache().len(), 2)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(2, 2),
+    @graphics.Color::new(r=50, g=0, b=0),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(9, 4),
+    @graphics.Color::new(r=90, g=0, b=0),
+  )
+}
+
+///|
 test "RenderPipeline font bytes replay uses RendererResources and preserves errors" {
   let renderer = Renderer::new(@graphics.Canvas::new(12, 12))
   let resources = RendererResources::with_font_capacity(16, 16, 1, 1, 2, 1)
@@ -1951,6 +2064,7 @@ test "RenderPipeline diff retains keyed resource commands" {
     line_height=10.0,
   )
   let paint = @graphics.Paint::new().set_color(@graphics.Color::black())
+  let insets = @graphics.NinePatchInsets::new(left=1, top=1, right=1, bottom=1)
   let previous = RenderPipeline::new()
     .draw_pixmap_keyed("icon", previous_icon, 1, 1, paint)
     .draw_bmp_bytes_keyed("bmp-icon", previous_icon.to_bmp_bytes(), 5, 1, paint)
@@ -1996,6 +2110,28 @@ test "RenderPipeline diff retains keyed resource commands" {
       2,
       1,
       paint,
+    )
+    .draw_nine_patch_bmp_bytes_keyed(
+      "bmp-panel",
+      previous_icon.to_bmp_bytes(),
+      0,
+      4,
+      2,
+      2,
+      insets,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_nine_patch_png_bytes_keyed(
+      "png-panel",
+      must_renderer_test_png_bytes(previous_icon),
+      2,
+      4,
+      2,
+      2,
+      insets,
+      paint,
+      @graphics.ImageSampling::Nearest,
     )
     .draw_pixmap_rect_keyed(
       "sprite",
@@ -2110,6 +2246,28 @@ test "RenderPipeline diff retains keyed resource commands" {
       1,
       paint,
     )
+    .draw_nine_patch_bmp_bytes_keyed(
+      "bmp-panel",
+      next_icon.to_bmp_bytes(),
+      0,
+      4,
+      2,
+      2,
+      insets,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_nine_patch_png_bytes_keyed(
+      "png-panel",
+      must_renderer_test_png_bytes(next_icon),
+      2,
+      4,
+      2,
+      2,
+      insets,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
     .draw_pixmap_rect_keyed(
       "sprite",
       next_icon,
@@ -2172,7 +2330,7 @@ test "RenderPipeline diff retains keyed resource commands" {
     )
 
   let retained = RenderPipeline::diff(previous, next, 8, 8)
-  assert_eq(retained.get_retained_command_count(), 16)
+  assert_eq(retained.get_retained_command_count(), 18)
   assert_eq(retained.get_changed_command_count(), 0)
   assert_true(!retained.has_changes())
   assert_true(!retained.has_dirty())
