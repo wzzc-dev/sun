@@ -69,6 +69,15 @@ pub enum RenderCommand {
     @text.LayoutConfig,
     @graphics.Paint
   )
+  DrawFontBytesFallbackAtlasKeyed(
+    Array[FontBytesFallbackSource],
+    String,
+    String,
+    Double,
+    Double,
+    @text.LayoutConfig,
+    @graphics.Paint
+  )
   DrawLoadedFontKeyed(
     String,
     String,
@@ -458,6 +467,25 @@ pub fn RenderPipeline::draw_font_bytes_fallback_keyed(
   self.push(
     RenderCommand::DrawFontBytesFallbackKeyed(
       sources, text_key_prefix, text, x, y, config, paint,
+    ),
+  )
+}
+
+///|
+/// Queue a keyed font-byte fallback atlas command for RendererResources replay.
+pub fn RenderPipeline::draw_font_bytes_fallback_atlas_keyed(
+  self : RenderPipeline,
+  sources : Array[FontBytesFallbackSource],
+  glyph_key_prefix : String,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  paint : @graphics.Paint,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawFontBytesFallbackAtlasKeyed(
+      sources, glyph_key_prefix, text, x, y, config, paint,
     ),
   )
 }
@@ -1519,6 +1547,7 @@ pub fn RenderPipeline::analyze(
       | RenderCommand::DrawFontBytesKeyed(_, _, _, _, _, _, _, _)
       | RenderCommand::DrawFontBytesAtlasKeyed(_, _, _, _, _, _, _, _)
       | RenderCommand::DrawFontBytesFallbackKeyed(_, _, _, _, _, _, _)
+      | RenderCommand::DrawFontBytesFallbackAtlasKeyed(_, _, _, _, _, _, _)
       | RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _)
       | RenderCommand::DrawLoadedFontAtlasKeyed(_, _, _, _, _, _, _) =>
         text_count += 1
@@ -1746,6 +1775,32 @@ pub fn RenderPipeline::resource_plan(
           ),
         )
       }
+      RenderCommand::DrawFontBytesFallbackAtlasKeyed(
+        sources,
+        glyph_key_prefix,
+        text,
+        _,
+        _,
+        _,
+        _
+      ) => {
+        for source in sources {
+          font_dependencies.push(
+            render_pipeline_make_font_dependency(
+              index,
+              source.get_font_key(),
+              source.get_font_data(),
+            ),
+          )
+        }
+        text_dependencies.push(
+          render_pipeline_make_unresolved_text_dependency(
+            index,
+            Some(glyph_key_prefix),
+            text,
+          ),
+        )
+      }
       RenderCommand::DrawLoadedFontKeyed(font_key, text_key, text, _, _, _, _) => {
         font_dependencies.push(
           render_pipeline_make_loaded_font_dependency(index, font_key),
@@ -1961,6 +2016,24 @@ pub fn RenderPipeline::replay(
               renderer.draw_text_fallback_line(faces, text, x, y, config, paint),
             )
           Err(_) => abort("failed to parse pipeline fallback font bytes")
+        }
+        text_count += 1
+      }
+      RenderCommand::DrawFontBytesFallbackAtlasKeyed(
+        sources,
+        _,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        match render_pipeline_parse_font_bytes_fallback_sources(sources) {
+          Ok(faces) =>
+            ignore(
+              renderer.draw_text_fallback_line(faces, text, x, y, config, paint),
+            )
+          Err(_) => abort("failed to parse pipeline fallback atlas font bytes")
         }
         text_count += 1
       }
@@ -2192,6 +2265,36 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             text_mask_render_count += result.get_rendered_mask_count()
             text_cache_hit_count += result.get_text_cache_hit_count()
             keyed_text_count += result.get_drawn_span_count()
+          }
+          Err(error) => return Err(error)
+        }
+        keyed_font_count += sources.length()
+        text_count += 1
+      }
+      RenderCommand::DrawFontBytesFallbackAtlasKeyed(
+        sources,
+        glyph_key_prefix,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        match
+          renderer.draw_font_bytes_fallback_line_atlas_with_renderer_resources(
+            sources, text, x, y, config, resources, glyph_key_prefix, paint,
+          ) {
+          Ok(result) => {
+            font_parse_count += result.get_parsed_font_count()
+            font_cache_hit_count += result.get_font_cache_hit_count()
+            glyph_cache_hit_count += result.get_cache_hit_count()
+            glyph_mask_render_count += result.get_rasterized_glyph_count()
+            atlas_cache_hit_count += result.get_atlas_hit_count()
+            atlas_insert_count += result.get_atlas_inserted_count()
+            if result.did_clear_atlas() {
+              atlas_clear_count += 1
+            }
+            keyed_atlas_text_count += result.get_drawn_span_count()
           }
           Err(error) => return Err(error)
         }
@@ -2474,6 +2577,56 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         keyed_text_count += result.get_drawn_span_count()
         text_count += 1
       }
+      RenderCommand::DrawFontBytesFallbackAtlasKeyed(
+        sources,
+        glyph_key_prefix,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        let faces : Array[@text.FontFace] = []
+        let mut command_font_parse_count = 0
+        let mut command_font_cache_hit_count = 0
+        for source in sources {
+          match
+            resources
+            .get_font_face_cache()
+            .get_or_parse_result(source.get_font_key(), source.get_font_data()) {
+            Ok(parse_result) => {
+              faces.push(parse_result.get_face())
+              if parse_result.did_parse() {
+                command_font_parse_count += 1
+              } else {
+                command_font_cache_hit_count += 1
+              }
+            }
+            Err(error) =>
+              return Err(
+                @text.FontLoadError::FontParseFailed(
+                  source.get_font_key(),
+                  error,
+                ),
+              )
+          }
+        }
+        let result = renderer.draw_text_fallback_line_atlas_with_renderer_resources(
+          faces, text, x, y, config, resources, glyph_key_prefix, paint,
+        )
+        font_parse_count += command_font_parse_count
+        font_cache_hit_count += command_font_cache_hit_count
+        glyph_cache_hit_count += result.get_cache_hit_count()
+        glyph_mask_render_count += result.get_rasterized_glyph_count()
+        atlas_cache_hit_count += result.get_atlas_hit_count()
+        atlas_insert_count += result.get_atlas_inserted_count()
+        if result.did_clear_atlas() {
+          atlas_clear_count += 1
+        }
+        keyed_font_count += sources.length()
+        keyed_atlas_text_count += result.get_drawn_span_count()
+        text_count += 1
+      }
       RenderCommand::DrawLoadedFontKeyed(
         font_key,
         text_key,
@@ -2750,6 +2903,8 @@ fn render_command_batch_kind(
       RenderPipelineBatchKind::Text
     RenderCommand::DrawFontBytesFallbackKeyed(_, _, _, _, _, _, _) =>
       RenderPipelineBatchKind::Text
+    RenderCommand::DrawFontBytesFallbackAtlasKeyed(_, _, _, _, _, _, _) =>
+      RenderPipelineBatchKind::Text
     RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _) =>
       RenderPipelineBatchKind::Text
     RenderCommand::DrawLoadedFontAtlasKeyed(_, _, _, _, _, _, _) =>
@@ -2911,6 +3066,15 @@ fn render_command_estimated_dirty_rect(
       }
     }
     RenderCommand::DrawFontBytesFallbackKeyed(_, _, text, x, y, config, _) => {
+      guard text.length() > 0 else { return None }
+      pixel_rect_from_double_bounds(
+        x,
+        y,
+        x + render_pipeline_fallback_text_width(text, config),
+        y + config.line_height.max(config.font_size),
+      )
+    }
+    RenderCommand::DrawFontBytesFallbackAtlasKeyed(_, _, text, x, y, config, _) => {
       guard text.length() > 0 else { return None }
       pixel_rect_from_double_bounds(
         x,
@@ -3112,6 +3276,33 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     ) =>
       render_font_bytes_fallback_sources_are_same(a_sources, b_sources) &&
       a_text_key_prefix == b_text_key_prefix &&
+      a_text == b_text &&
+      ax == bx &&
+      ay == by &&
+      render_layout_config_is_same(a_config, b_config) &&
+      render_paint_is_same(a_paint, b_paint)
+    (
+      RenderCommand::DrawFontBytesFallbackAtlasKeyed(
+        a_sources,
+        a_glyph_key_prefix,
+        a_text,
+        ax,
+        ay,
+        a_config,
+        a_paint
+      ),
+      RenderCommand::DrawFontBytesFallbackAtlasKeyed(
+        b_sources,
+        b_glyph_key_prefix,
+        b_text,
+        bx,
+        by,
+        b_config,
+        b_paint
+      ),
+    ) =>
+      render_font_bytes_fallback_sources_are_same(a_sources, b_sources) &&
+      a_glyph_key_prefix == b_glyph_key_prefix &&
       a_text == b_text &&
       ax == bx &&
       ay == by &&
