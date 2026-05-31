@@ -265,8 +265,8 @@ pub fn Pixmap::from_bmp_bytes(
 ///|
 /// Decode a deterministic 8-bit RGBA PNG image into a pixmap.
 ///
-/// This minimal decoder supports non-interlaced PNGs with RGBA color, filter-0
-/// scanlines, and zlib streams made of uncompressed DEFLATE blocks. It is
+/// This minimal decoder supports non-interlaced PNGs with RGBA color, standard
+/// scanline filters, and zlib streams made of uncompressed DEFLATE blocks. It is
 /// intentionally paired with `to_png_bytes` for portable fixture roundtrips.
 pub fn Pixmap::from_png_bytes(
   data : Bytes,
@@ -276,7 +276,7 @@ pub fn Pixmap::from_png_bytes(
     Ok(info) =>
       match png_zlib_stored_stream_decode(info.idat) {
         Err(error) => Err(error)
-        Ok(scanlines) => decode_png_rgba_filter0_pixmap(info, scanlines)
+        Ok(scanlines) => decode_png_rgba_pixmap(info, scanlines)
       }
   }
 }
@@ -1025,7 +1025,7 @@ fn png_zlib_stored_stream_decode(
 }
 
 ///|
-fn decode_png_rgba_filter0_pixmap(
+fn decode_png_rgba_pixmap(
   info : PngInfo,
   scanlines : Array[Byte],
 ) -> Result[Pixmap, PixmapDecodeError] {
@@ -1045,15 +1045,47 @@ fn decode_png_rgba_filter0_pixmap(
   for y in 0..<info.height {
     let source_row = y * source_row_bytes
     let filter_type = scanlines[source_row].to_int()
-    guard filter_type == 0 else {
+    guard filter_type >= 0 && filter_type <= 4 else {
       return Err(PixmapDecodeError::UnsupportedPngFilterType(filter_type))
     }
     let dst_row = y * row_bytes
     for i in 0..<row_bytes {
-      dst[dst_row + i] = scanlines[source_row + 1 + i]
+      let left = if i >= 4 { dst[dst_row + i - 4].to_int() } else { 0 }
+      let up = if y > 0 { dst[dst_row - row_bytes + i].to_int() } else { 0 }
+      let upper_left = if y > 0 && i >= 4 {
+        dst[dst_row - row_bytes + i - 4].to_int()
+      } else {
+        0
+      }
+      let predictor = match filter_type {
+        0 => 0
+        1 => left
+        2 => up
+        3 => (left + up) / 2
+        4 => png_paeth_predictor(left, up, upper_left)
+        _ => 0
+      }
+      dst[dst_row + i] = (scanlines[source_row + 1 + i].to_int() + predictor)
+        .land(0xFF)
+        .to_byte()
     }
   }
   Ok(pixmap)
+}
+
+///|
+fn png_paeth_predictor(a : Int, b : Int, c : Int) -> Int {
+  let p = a + b - c
+  let pa = (p - a).abs()
+  let pb = (p - b).abs()
+  let pc = (p - c).abs()
+  if pa <= pb && pa <= pc {
+    a
+  } else if pb <= pc {
+    b
+  } else {
+    c
+  }
 }
 
 ///|

@@ -169,6 +169,30 @@ test "Pixmap::from_png_bytes decodes exported RGBA PNG bytes" {
 }
 
 ///|
+test "Pixmap::from_png_bytes decodes RGBA scanline filters" {
+  let png = make_pixmap_test_rgba_png_from_scanlines(2, 5, [
+    0, 10, 20, 30, 40, 50, 60, 70, 80, 1, 1, 2, 3, 4, 5, 6, 7, 8, 2, 2, 3, 4, 5,
+    4, 5, 6, 7, 3, 19, 18, 17, 16, 45, 44, 42, 41, 4, 5, 6, 7, 8, 10, 11, 12, 13,
+  ])
+  let expected = Pixmap::new(2, 5)
+  expected.set_pixel(0, 0, Color::new(r=10, g=20, b=30, a=40))
+  expected.set_pixel(1, 0, Color::new(r=50, g=60, b=70, a=80))
+  expected.set_pixel(0, 1, Color::new(r=1, g=2, b=3, a=4))
+  expected.set_pixel(1, 1, Color::new(r=6, g=8, b=10, a=12))
+  expected.set_pixel(0, 2, Color::new(r=3, g=5, b=7, a=9))
+  expected.set_pixel(1, 2, Color::new(r=10, g=13, b=16, a=19))
+  expected.set_pixel(0, 3, Color::new(r=20, g=20, b=20, a=20))
+  expected.set_pixel(1, 3, Color::new(r=60, g=60, b=60, a=60))
+  expected.set_pixel(0, 4, Color::new(r=25, g=26, b=27, a=28))
+  expected.set_pixel(1, 4, Color::new(r=70, g=71, b=72, a=73))
+
+  match Pixmap::from_png_bytes(png) {
+    Ok(decoded) => assert_eq(decoded.to_rgba_bytes(), expected.to_rgba_bytes())
+    Err(_) => abort("expected filtered PNG decode")
+  }
+}
+
+///|
 test "Pixmap::from_png_bytes reports structural errors" {
   match Pixmap::from_png_bytes(Bytes::from_array([137, 80])) {
     Err(PixmapDecodeError::UnexpectedEndOfData(0, 8, 2)) => ()
@@ -187,6 +211,14 @@ test "Pixmap::from_png_bytes reports structural errors" {
   match Pixmap::from_png_bytes(Bytes::from_array(bad_crc)) {
     Err(PixmapDecodeError::PngCrcMismatch(0x1F15C400, 0x1F15C489)) => ()
     _ => abort("expected PNG CRC mismatch")
+  }
+
+  let bad_filter = make_pixmap_test_rgba_png_from_scanlines(1, 1, [
+    5, 0, 0, 0, 0,
+  ])
+  match Pixmap::from_png_bytes(bad_filter) {
+    Err(PixmapDecodeError::UnsupportedPngFilterType(5)) => ()
+    _ => abort("expected PNG filter type error")
   }
 }
 
@@ -1172,6 +1204,117 @@ fn make_pixmap_test_bicubic_rect_source() -> Pixmap {
   src.set_pixel(4, 0, Color::red())
   src.set_pixel(5, 0, Color::black())
   src
+}
+
+///|
+fn make_pixmap_test_rgba_png_from_scanlines(
+  width : Int,
+  height : Int,
+  scanlines : Array[Byte],
+) -> Bytes {
+  let out : Array[Byte] = []
+  append_pixmap_test_png_bytes(out, [137, 80, 78, 71, 13, 10, 26, 10])
+  let ihdr : Array[Byte] = []
+  append_pixmap_test_png_u32_be(ihdr, width.reinterpret_as_uint())
+  append_pixmap_test_png_u32_be(ihdr, height.reinterpret_as_uint())
+  ihdr.push(8)
+  ihdr.push(6)
+  ihdr.push(0)
+  ihdr.push(0)
+  ihdr.push(0)
+  append_pixmap_test_png_chunk(out, [73, 72, 68, 82], ihdr)
+  append_pixmap_test_png_chunk(
+    out,
+    [73, 68, 65, 84],
+    pixmap_test_png_zlib_stored_stream(scanlines),
+  )
+  append_pixmap_test_png_chunk(out, [73, 69, 78, 68], [])
+  Bytes::from_array(out)
+}
+
+///|
+fn append_pixmap_test_png_chunk(
+  out : Array[Byte],
+  chunk_type : Array[Byte],
+  data : Array[Byte],
+) -> Unit {
+  append_pixmap_test_png_u32_be(out, data.length().reinterpret_as_uint())
+  append_pixmap_test_png_bytes(out, chunk_type)
+  append_pixmap_test_png_bytes(out, data)
+  append_pixmap_test_png_u32_be(
+    out,
+    pixmap_test_png_crc32_chunk(chunk_type, data),
+  )
+}
+
+///|
+fn append_pixmap_test_png_bytes(out : Array[Byte], bytes : Array[Byte]) -> Unit {
+  for byte in bytes {
+    out.push(byte)
+  }
+}
+
+///|
+fn append_pixmap_test_png_u16_le(out : Array[Byte], value : Int) -> Unit {
+  out.push(value.land(0xFF).to_byte())
+  out.push((value >> 8).land(0xFF).to_byte())
+}
+
+///|
+fn append_pixmap_test_png_u32_be(out : Array[Byte], value : UInt) -> Unit {
+  out.push((value >> 24).to_byte())
+  out.push((value >> 16).to_byte())
+  out.push((value >> 8).to_byte())
+  out.push(value.to_byte())
+}
+
+///|
+fn pixmap_test_png_zlib_stored_stream(data : Array[Byte]) -> Array[Byte] {
+  let out : Array[Byte] = []
+  out.push(0x78)
+  out.push(0x01)
+  out.push(1)
+  append_pixmap_test_png_u16_le(out, data.length())
+  append_pixmap_test_png_u16_le(out, 0xFFFF - data.length())
+  append_pixmap_test_png_bytes(out, data)
+  append_pixmap_test_png_u32_be(out, pixmap_test_png_adler32(data))
+  out
+}
+
+///|
+fn pixmap_test_png_adler32(data : Array[Byte]) -> UInt {
+  let mod_adler = 65521
+  let mut s1 = 1
+  let mut s2 = 0
+  for byte in data {
+    s1 = (s1 + byte.to_int()) % mod_adler
+    s2 = (s2 + s1) % mod_adler
+  }
+  (s2.reinterpret_as_uint() << 16) | s1.reinterpret_as_uint()
+}
+
+///|
+fn pixmap_test_png_crc32_chunk(
+  chunk_type : Array[Byte],
+  data : Array[Byte],
+) -> UInt {
+  let mut crc : UInt = 0xFFFFFFFF
+  for byte in chunk_type {
+    crc = pixmap_test_png_crc32_update(crc, byte)
+  }
+  for byte in data {
+    crc = pixmap_test_png_crc32_update(crc, byte)
+  }
+  crc ^ 0xFFFFFFFF
+}
+
+///|
+fn pixmap_test_png_crc32_update(crc : UInt, byte : Byte) -> UInt {
+  let mut c = crc ^ byte.to_uint()
+  for _ in 0..<8 {
+    c = if (c & 1) != 0 { (c >> 1) ^ 0xEDB88320 } else { c >> 1 }
+  }
+  c
 }
 
 ///|
