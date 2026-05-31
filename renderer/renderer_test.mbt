@@ -714,6 +714,81 @@ test "RenderPipeline BMP bytes replay uses RendererResources image cache" {
 }
 
 ///|
+test "RenderPipeline PNG bytes replay uses RendererResources image cache" {
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::green())
+  let resources = RendererResources::with_capacities(16, 16, 2, 4, 2)
+  let renderer = Renderer::new(@graphics.Canvas::new(3, 1))
+  let first_pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_png_bytes_keyed(
+      "icon",
+      must_renderer_test_png_bytes(icon),
+      0,
+      0,
+      @graphics.Paint::new(),
+    )
+  let plan = first_pipeline.resource_plan()
+  assert_eq(plan.get_command_count(), 2)
+  assert_eq(plan.get_image_count(), 1)
+  assert_eq(plan.get_keyed_image_count(), 1)
+  assert_eq(plan.get_resource_count(), 1)
+  assert_eq(plan.get_keyed_resource_count(), 1)
+  assert_eq(plan.get_image_source_pixel_count(), 1)
+  let images = plan.get_image_dependencies()
+  assert_true(images[0].get_resource_key() == Some("icon"))
+  assert_eq(images[0].get_source_width(), 1)
+  assert_eq(images[0].get_source_height(), 1)
+
+  let first = renderer.draw_pipeline_with_renderer_resources(
+    first_pipeline, resources,
+  )
+  assert_eq(first.get_command_count(), 2)
+  assert_eq(first.get_clear_count(), 1)
+  assert_eq(first.get_image_count(), 1)
+  assert_eq(first.get_keyed_image_count(), 1)
+  assert_eq(first.get_image_cache_insert_count(), 1)
+  assert_eq(first.get_image_cache_hit_count(), 0)
+  assert_eq(first.get_resource_cache_miss_count(), 1)
+  assert_eq(first.get_resource_cache_hit_count(), 0)
+  assert_true(resources.contains_image("icon"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::green(),
+  )
+
+  let second = renderer.draw_pipeline_with_renderer_resources(
+    RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_png_bytes_keyed(
+      "icon",
+      Bytes::from_array([137, 80]),
+      1,
+      0,
+      @graphics.Paint::new(),
+    ),
+    resources,
+  )
+  assert_eq(second.get_command_count(), 2)
+  assert_eq(second.get_image_count(), 1)
+  assert_eq(second.get_keyed_image_count(), 1)
+  assert_eq(second.get_image_cache_insert_count(), 0)
+  assert_eq(second.get_image_cache_hit_count(), 1)
+  assert_eq(second.get_resource_cache_miss_count(), 0)
+  assert_eq(second.get_resource_cache_hit_count(), 1)
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::white(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(1, 0),
+    @graphics.Color::green(),
+  )
+}
+
+///|
 test "RenderPipeline font bytes replay uses RendererResources and preserves errors" {
   let renderer = Renderer::new(@graphics.Canvas::new(12, 12))
   let resources = RendererResources::with_font_capacity(16, 16, 1, 1, 2, 1)
@@ -1636,6 +1711,13 @@ test "RenderPipeline diff retains keyed resource commands" {
   let previous = RenderPipeline::new()
     .draw_pixmap_keyed("icon", previous_icon, 1, 1, paint)
     .draw_bmp_bytes_keyed("bmp-icon", previous_icon.to_bmp_bytes(), 5, 1, paint)
+    .draw_png_bytes_keyed(
+      "png-icon",
+      must_renderer_test_png_bytes(previous_icon),
+      6,
+      1,
+      paint,
+    )
     .draw_pixmap_rect_keyed(
       "sprite",
       previous_icon,
@@ -1706,6 +1788,13 @@ test "RenderPipeline diff retains keyed resource commands" {
   let next = RenderPipeline::new()
     .draw_pixmap_keyed("icon", next_icon, 1, 1, paint)
     .draw_bmp_bytes_keyed("bmp-icon", next_icon.to_bmp_bytes(), 5, 1, paint)
+    .draw_png_bytes_keyed(
+      "png-icon",
+      must_renderer_test_png_bytes(next_icon),
+      6,
+      1,
+      paint,
+    )
     .draw_pixmap_rect_keyed(
       "sprite",
       next_icon,
@@ -1768,7 +1857,7 @@ test "RenderPipeline diff retains keyed resource commands" {
     )
 
   let retained = RenderPipeline::diff(previous, next, 8, 8)
-  assert_eq(retained.get_retained_command_count(), 11)
+  assert_eq(retained.get_retained_command_count(), 12)
   assert_eq(retained.get_changed_command_count(), 0)
   assert_true(!retained.has_changes())
   assert_true(!retained.has_dirty())

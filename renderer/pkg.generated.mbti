@@ -139,6 +139,7 @@ pub enum RenderCommand {
   DrawPixmap(@graphics.Pixmap, Int, Int, @graphics.Paint)
   DrawPixmapKeyed(String, @graphics.Pixmap, Int, Int, @graphics.Paint)
   DrawBmpBytesKeyed(String, Bytes, Int, Int, @graphics.Paint)
+  DrawPngBytesKeyed(String, Bytes, Int, Int, @graphics.Paint)
   DrawPixmapRect(@graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawPixmapRectKeyed(String, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawTextFace(@text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
@@ -175,6 +176,7 @@ pub fn RenderPipeline::draw_pixmap(Self, @graphics.Pixmap, Int, Int, @graphics.P
 pub fn RenderPipeline::draw_pixmap_keyed(Self, String, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_rect(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_pixmap_rect_keyed(Self, String, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_png_bytes_keyed(Self, String, Bytes, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_text_face_keyed(Self, String, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::fill_path(Self, @graphics.Path, @graphics.Paint) -> Self
