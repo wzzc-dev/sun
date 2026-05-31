@@ -167,6 +167,7 @@ pub fn RenderPipeline::len(Self) -> Int
 pub fn RenderPipeline::new() -> Self
 pub fn RenderPipeline::push(Self, RenderCommand) -> Self
 pub fn RenderPipeline::replay(Self, Renderer) -> RenderPipelineReplayResult
+pub fn RenderPipeline::replay_with_renderer_resources(Self, Renderer, RendererResources) -> RenderPipelineResourceReplayResult
 pub fn RenderPipeline::resource_plan(Self) -> RenderPipelineResourcePlan
 pub fn RenderPipeline::stroke_path(Self, @graphics.Path, @graphics.Paint) -> Self
 pub fn RenderPipeline::stroke_rect(Self, Double, Double, Double, Double, @graphics.Paint) -> Self
@@ -299,6 +300,32 @@ pub fn RenderPipelineResourcePlan::get_text_glyph_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::get_text_run_count(Self) -> Int
 pub fn RenderPipelineResourcePlan::has_resources(Self) -> Bool
 
+pub struct RenderPipelineResourceReplayResult {
+  replay_result : RenderPipelineReplayResult
+  keyed_image_count : Int
+  image_cache_hit_count : Int
+  image_cache_insert_count : Int
+  keyed_text_count : Int
+  text_cache_hit_count : Int
+  text_mask_render_count : Int
+} derive(Eq, @debug.Debug)
+pub fn RenderPipelineResourceReplayResult::get_clear_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_command_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_fill_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_image_cache_hit_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_image_cache_insert_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_image_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_keyed_image_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_keyed_resource_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_keyed_text_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_replay_result(Self) -> RenderPipelineReplayResult
+pub fn RenderPipelineResourceReplayResult::get_resource_cache_hit_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_resource_cache_miss_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_stroke_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_text_cache_hit_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_text_count(Self) -> Int
+pub fn RenderPipelineResourceReplayResult::get_text_mask_render_count(Self) -> Int
+
 pub struct RenderPipelineTextDependency {
   command_index : Int
   resource_key : String?
@@ -343,6 +370,7 @@ pub fn Renderer::draw_nine_patch_png_bytes_cached_with_renderer_resources(Self, 
 pub fn Renderer::draw_nine_patch_rgba_bytes_cached(Self, Bytes, Int, Int, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_nine_patch_rgba_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, Int, Int, Int, Int, @graphics.NinePatchInsets, RendererResources, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_pipeline(Self, RenderPipeline) -> RenderPipelineReplayResult
+pub fn Renderer::draw_pipeline_with_renderer_resources(Self, RenderPipeline, RendererResources) -> RenderPipelineResourceReplayResult
 pub fn Renderer::draw_pixmap_cached(Self, @graphics.Pixmap, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::draw_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, RendererResources, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::draw_pixmap_rect_cached(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult

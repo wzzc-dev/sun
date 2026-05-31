@@ -60,6 +60,18 @@ pub struct RenderPipelineReplayResult {
 } derive(Eq, Debug)
 
 ///|
+/// Telemetry returned after replaying a pipeline through RendererResources.
+pub struct RenderPipelineResourceReplayResult {
+  replay_result : RenderPipelineReplayResult
+  keyed_image_count : Int
+  image_cache_hit_count : Int
+  image_cache_insert_count : Int
+  keyed_text_count : Int
+  text_cache_hit_count : Int
+  text_mask_render_count : Int
+} derive(Eq, Debug)
+
+///|
 /// Conservative CPU-side analysis of a render pipeline before replay.
 pub struct RenderPipelineAnalysis {
   command_count : Int
@@ -372,6 +384,134 @@ pub fn RenderPipelineReplayResult::get_text_count(
   self : RenderPipelineReplayResult,
 ) -> Int {
   self.text_count
+}
+
+///|
+/// Return the base command replay telemetry.
+pub fn RenderPipelineResourceReplayResult::get_replay_result(
+  self : RenderPipelineResourceReplayResult,
+) -> RenderPipelineReplayResult {
+  self.replay_result
+}
+
+///|
+/// Return the number of commands replayed.
+pub fn RenderPipelineResourceReplayResult::get_command_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.replay_result.get_command_count()
+}
+
+///|
+/// Return the number of clear commands replayed.
+pub fn RenderPipelineResourceReplayResult::get_clear_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.replay_result.get_clear_count()
+}
+
+///|
+/// Return the number of fill commands replayed.
+pub fn RenderPipelineResourceReplayResult::get_fill_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.replay_result.get_fill_count()
+}
+
+///|
+/// Return the number of stroke commands replayed.
+pub fn RenderPipelineResourceReplayResult::get_stroke_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.replay_result.get_stroke_count()
+}
+
+///|
+/// Return the number of image commands replayed.
+pub fn RenderPipelineResourceReplayResult::get_image_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.replay_result.get_image_count()
+}
+
+///|
+/// Return the number of text commands replayed.
+pub fn RenderPipelineResourceReplayResult::get_text_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.replay_result.get_text_count()
+}
+
+///|
+/// Return the number of keyed image commands replayed through the image cache.
+pub fn RenderPipelineResourceReplayResult::get_keyed_image_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.keyed_image_count
+}
+
+///|
+/// Return the number of keyed text commands replayed through the text cache.
+pub fn RenderPipelineResourceReplayResult::get_keyed_text_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.keyed_text_count
+}
+
+///|
+/// Return the number of keyed commands replayed through resource caches.
+pub fn RenderPipelineResourceReplayResult::get_keyed_resource_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.keyed_image_count + self.keyed_text_count
+}
+
+///|
+/// Return the number of keyed image commands that reused a cached pixmap.
+pub fn RenderPipelineResourceReplayResult::get_image_cache_hit_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.image_cache_hit_count
+}
+
+///|
+/// Return the number of keyed image commands that inserted a pixmap cache entry.
+pub fn RenderPipelineResourceReplayResult::get_image_cache_insert_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.image_cache_insert_count
+}
+
+///|
+/// Return the number of keyed text commands that reused a cached text mask.
+pub fn RenderPipelineResourceReplayResult::get_text_cache_hit_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.text_cache_hit_count
+}
+
+///|
+/// Return the number of keyed text commands that rendered a new text mask.
+pub fn RenderPipelineResourceReplayResult::get_text_mask_render_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.text_mask_render_count
+}
+
+///|
+/// Return the number of keyed resource commands that hit a cache.
+pub fn RenderPipelineResourceReplayResult::get_resource_cache_hit_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.image_cache_hit_count + self.text_cache_hit_count
+}
+
+///|
+/// Return the number of keyed resource commands that populated a cache.
+pub fn RenderPipelineResourceReplayResult::get_resource_cache_miss_count(
+  self : RenderPipelineResourceReplayResult,
+) -> Int {
+  self.image_cache_insert_count + self.text_mask_render_count
 }
 
 ///|
@@ -960,6 +1100,16 @@ pub fn Renderer::draw_pipeline(
 }
 
 ///|
+/// Replay a pipeline, routing keyed image/text commands through resources.
+pub fn Renderer::draw_pipeline_with_renderer_resources(
+  self : Renderer,
+  pipeline : RenderPipeline,
+  resources : RendererResources,
+) -> RenderPipelineResourceReplayResult {
+  pipeline.replay_with_renderer_resources(self, resources)
+}
+
+///|
 /// Analyze a pipeline against this renderer's canvas dimensions.
 pub fn Renderer::analyze_pipeline(
   self : Renderer,
@@ -1330,6 +1480,130 @@ pub fn RenderPipeline::replay(
     stroke_count,
     image_count,
     text_count,
+  }
+}
+
+///|
+/// Replay all queued commands, using RendererResources for keyed resources.
+pub fn RenderPipeline::replay_with_renderer_resources(
+  self : RenderPipeline,
+  renderer : Renderer,
+  resources : RendererResources,
+) -> RenderPipelineResourceReplayResult {
+  let canvas = renderer.get_canvas()
+  let mut clear_count = 0
+  let mut fill_count = 0
+  let mut stroke_count = 0
+  let mut image_count = 0
+  let mut text_count = 0
+  let mut keyed_image_count = 0
+  let mut image_cache_hit_count = 0
+  let mut image_cache_insert_count = 0
+  let mut keyed_text_count = 0
+  let mut text_cache_hit_count = 0
+  let mut text_mask_render_count = 0
+  for command in self.commands {
+    match command {
+      RenderCommand::Clear(color) => {
+        canvas.clear(color)
+        clear_count += 1
+      }
+      RenderCommand::FillRect(x, y, width, height, paint) => {
+        canvas.fill_rect(x, y, width, height, paint)
+        fill_count += 1
+      }
+      RenderCommand::StrokeRect(x, y, width, height, paint) => {
+        canvas.stroke_rect(x, y, width, height, paint)
+        stroke_count += 1
+      }
+      RenderCommand::FillPath(path, paint) => {
+        canvas.fill_path(path, paint)
+        fill_count += 1
+      }
+      RenderCommand::StrokePath(path, paint) => {
+        canvas.stroke_path(path, paint)
+        stroke_count += 1
+      }
+      RenderCommand::DrawPixmap(pixmap, x, y, paint) => {
+        canvas.draw_pixmap(pixmap, x, y, paint)
+        image_count += 1
+      }
+      RenderCommand::DrawPixmapKeyed(resource_key, pixmap, x, y, paint) => {
+        let result = renderer.draw_pixmap_cached_with_renderer_resources(
+          pixmap, x, y, resources, resource_key, paint,
+        )
+        if result.did_hit_cache() {
+          image_cache_hit_count += 1
+        } else {
+          image_cache_insert_count += 1
+        }
+        keyed_image_count += 1
+        image_count += 1
+      }
+      RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, paint) => {
+        canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
+        image_count += 1
+      }
+      RenderCommand::DrawPixmapRectKeyed(
+        resource_key,
+        pixmap,
+        src_rect,
+        x,
+        y,
+        paint
+      ) => {
+        let result = renderer.draw_pixmap_rect_cached_with_renderer_resources(
+          pixmap, src_rect, x, y, resources, resource_key, paint,
+        )
+        if result.did_hit_cache() {
+          image_cache_hit_count += 1
+        } else {
+          image_cache_insert_count += 1
+        }
+        keyed_image_count += 1
+        image_count += 1
+      }
+      RenderCommand::DrawTextFace(face, text, x, y, config, paint) => {
+        renderer.draw_text_face(face, text, x, y, config, paint)
+        text_count += 1
+      }
+      RenderCommand::DrawTextFaceKeyed(
+        resource_key,
+        face,
+        text,
+        x,
+        y,
+        config,
+        paint
+      ) => {
+        let result = renderer.draw_text_face_cached_with_renderer_resources(
+          face, text, x, y, config, resources, resource_key, paint,
+        )
+        if result.did_hit_cache() {
+          text_cache_hit_count += 1
+        } else {
+          text_mask_render_count += 1
+        }
+        keyed_text_count += 1
+        text_count += 1
+      }
+    }
+  }
+  {
+    replay_result: {
+      command_count: self.commands.length(),
+      clear_count,
+      fill_count,
+      stroke_count,
+      image_count,
+      text_count,
+    },
+    keyed_image_count,
+    image_cache_hit_count,
+    image_cache_insert_count,
+    keyed_text_count,
+    text_cache_hit_count,
+    text_mask_render_count,
   }
 }
 

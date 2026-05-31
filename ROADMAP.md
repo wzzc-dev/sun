@@ -303,6 +303,7 @@ Application / GUI
 - [x] 增加 `RenderPipelineBatchPlan` CPU batch scheduling baseline，按 clear/fill/stroke/image/text 连续命令切批并暴露 per-batch dirty/present plan，便于后续事件循环与后端调度消费
 - [x] 增加 `RenderPipelineResourcePlan` 资源依赖预解析 baseline，扫描 inline pixmap 与 parsed font-face text 命令，暴露命令索引、图像源像素成本和文本 layout/glyph 成本 telemetry
 - [x] 增加 `RenderPipeline` keyed resource identity baseline，支持 keyed pixmap/source-rect/text-face 命令、resource plan key telemetry 与 keyed display-list diff retention
+- [x] 增加 `RenderPipeline` RendererResources-backed keyed replay，keyed pixmap/source-rect/text-face 命令可复用 image/text cache 并报告 replay cache hit/miss telemetry
 
 #### 2.1 OpenType 支持
 - [ ] 解析 CFF/CFF2 表（PostScript 轮廓）
@@ -532,7 +533,7 @@ Application / GUI
 ### 架构改进
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [x] 抽象字体加载接口
-- [ ] 实现渲染管线（Render Pipeline）：已有 `RenderPipeline` CPU command list、renderer replay telemetry、dirty/present preflight、retained display-list diff、batch scheduling baseline、resource dependency preflight 与 keyed resource identity/replay baseline，后续补 RendererResources-backed keyed replay
+- [ ] 实现渲染管线（Render Pipeline）：已有 `RenderPipeline` CPU command list、renderer replay telemetry、dirty/present preflight、retained display-list diff、batch scheduling baseline、resource dependency preflight、keyed resource identity/replay baseline 与 RendererResources-backed keyed replay，后续补 pipeline-level font-byte/loader resource commands
 - [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，并接入 `FontLoader` memory/file-backed loader、loader-backed cache helper 与 RendererResources text/atlas draw path；glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert/decode telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态并暴露 residency 查询和 snapshot telemetry，并接入 checked font-byte text draw path、cached image draw path、raw RGBA/BMP/PNG bytes cached full/source-rect/tiled/nine-patch/sampled/quality/transform-aware draw path，PNG decode 已支持 scanline filters 0-4 与 zlib DEFLATE stored/fixed/dynamic Huffman blocks，后续补 JPEG
 
 ---

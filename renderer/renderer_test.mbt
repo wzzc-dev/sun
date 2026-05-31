@@ -530,6 +530,115 @@ test "RenderPipeline keyed resources expose identity and replay normally" {
 }
 
 ///|
+test "RenderPipeline resource replay caches keyed image and text commands" {
+  let first_icon = @graphics.Pixmap::new(2, 1)
+  first_icon.set_pixel(0, 0, @graphics.Color::red())
+  first_icon.set_pixel(1, 0, @graphics.Color::green())
+  let second_icon = @graphics.Pixmap::new(2, 1)
+  second_icon.set_pixel(0, 0, @graphics.Color::blue())
+  second_icon.set_pixel(1, 0, @graphics.Color::black())
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let resources = RendererResources::with_capacities(16, 16, 2, 4, 2)
+  let renderer = Renderer::new(@graphics.Canvas::new(8, 12))
+  let first = renderer.draw_pipeline_with_renderer_resources(
+    RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_pixmap_keyed("icon", first_icon, 0, 0, @graphics.Paint::new())
+    .draw_pixmap_rect_keyed(
+      "icon",
+      second_icon,
+      @graphics.PixelRect::new(x=1, y=0, width=1, height=1),
+      2,
+      0,
+      @graphics.Paint::new(),
+    )
+    .draw_text_face_keyed(
+      "label",
+      face,
+      "A",
+      1.0,
+      1.0,
+      config,
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ),
+    resources,
+  )
+
+  assert_eq(first.get_command_count(), 4)
+  assert_eq(first.get_clear_count(), 1)
+  assert_eq(first.get_image_count(), 2)
+  assert_eq(first.get_text_count(), 1)
+  assert_eq(first.get_keyed_resource_count(), 3)
+  assert_eq(first.get_keyed_image_count(), 2)
+  assert_eq(first.get_keyed_text_count(), 1)
+  assert_eq(first.get_image_cache_insert_count(), 1)
+  assert_eq(first.get_image_cache_hit_count(), 1)
+  assert_eq(first.get_text_mask_render_count(), 1)
+  assert_eq(first.get_text_cache_hit_count(), 0)
+  assert_eq(first.get_resource_cache_hit_count(), 1)
+  assert_eq(first.get_resource_cache_miss_count(), 2)
+  assert_true(resources.contains_image("icon"))
+  assert_true(resources.contains_text_mask("label"))
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(2, 0),
+    @graphics.Color::green(),
+  )
+
+  let second = renderer.draw_pipeline_with_renderer_resources(
+    RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_pixmap_keyed("icon", second_icon, 0, 0, @graphics.Paint::new())
+    .draw_pixmap_rect_keyed(
+      "icon",
+      second_icon,
+      @graphics.PixelRect::new(x=1, y=0, width=1, height=1),
+      2,
+      0,
+      @graphics.Paint::new(),
+    )
+    .draw_text_face_keyed(
+      "label",
+      face,
+      "A",
+      1.0,
+      1.0,
+      config,
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ),
+    resources,
+  )
+
+  assert_eq(second.get_command_count(), 4)
+  assert_eq(second.get_image_count(), 2)
+  assert_eq(second.get_text_count(), 1)
+  assert_eq(second.get_keyed_resource_count(), 3)
+  assert_eq(second.get_image_cache_insert_count(), 0)
+  assert_eq(second.get_image_cache_hit_count(), 2)
+  assert_eq(second.get_text_mask_render_count(), 0)
+  assert_eq(second.get_text_cache_hit_count(), 1)
+  assert_eq(second.get_resource_cache_hit_count(), 3)
+  assert_eq(second.get_resource_cache_miss_count(), 0)
+  assert_eq(second.get_replay_result().get_command_count(), 4)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(2, 0),
+    @graphics.Color::green(),
+  )
+}
+
+///|
 test "RenderPipeline diff retains keyed resource commands" {
   let previous_icon = @graphics.Pixmap::new(2, 2)
   let next_icon = @graphics.Pixmap::new(4, 4)
