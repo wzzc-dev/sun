@@ -166,6 +166,10 @@ pub fn Renderer::draw_text_fallback_line_atlas_with_resources(Self, Array[@text.
 pub fn Renderer::draw_text_fallback_line_cached(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, @text.TextMaskCache, String, @graphics.Paint) -> TextFallbackDrawResult
 pub fn Renderer::draw_text_fallback_line_cached_with_renderer_resources(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> TextFallbackDrawResult
 pub fn Renderer::draw_text_fallback_line_cached_with_resources(Self, Array[@text.FontFace], String, Double, Double, @text.LayoutConfig, RendererTextResources, String, @graphics.Paint) -> TextFallbackDrawResult
+pub fn Renderer::draw_tiled_bmp_bytes_rect_cached(Self, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
+pub fn Renderer::draw_tiled_bmp_bytes_rect_cached_with_renderer_resources(Self, Bytes, @graphics.PixelRect, Int, Int, Int, Int, RendererResources, String, @graphics.Paint) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
+pub fn Renderer::draw_tiled_pixmap_rect_cached(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
+pub fn Renderer::draw_tiled_pixmap_rect_cached_with_renderer_resources(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, Int, Int, RendererResources, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::get_canvas(Self) -> @graphics.Canvas
 pub fn Renderer::new(@graphics.Canvas) -> Self
 

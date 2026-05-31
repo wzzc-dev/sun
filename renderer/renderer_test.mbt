@@ -915,6 +915,57 @@ test "Renderer cached image source rect path uses RendererResources" {
 }
 
 ///|
+test "Renderer cached tiled image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(4, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let tile = make_renderer_test_tile_source()
+  let src_rect = @graphics.PixelRect::new(x=0, y=0, width=2, height=1)
+
+  let first = renderer.draw_tiled_pixmap_rect_cached_with_renderer_resources(
+    tile,
+    src_rect,
+    0,
+    0,
+    4,
+    1,
+    resources,
+    "tile",
+    @graphics.Paint::new(),
+  )
+  assert_true(first.did_insert_pixmap())
+  assert_true(!first.did_hit_cache())
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+
+  tile.set_pixel(0, 0, @graphics.Color::blue())
+  tile.set_pixel(1, 0, @graphics.Color::blue())
+  canvas.clear(@graphics.Color::white())
+  let second = renderer.draw_tiled_pixmap_rect_cached_with_renderer_resources(
+    tile,
+    src_rect,
+    0,
+    0,
+    4,
+    1,
+    resources,
+    "tile",
+    @graphics.Paint::new(),
+  )
+  assert_true(!second.did_insert_pixmap())
+  assert_true(second.did_hit_cache())
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+}
+
+///|
 test "Renderer cached nine-patch image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(5, 5)
   canvas.clear(@graphics.Color::white())
@@ -1102,6 +1153,85 @@ test "Renderer cached BMP source rect path uses RendererResources" {
   }
   assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
   assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+}
+
+///|
+test "Renderer cached BMP tiled image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(4, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let tile = make_renderer_test_tile_source()
+  let src_rect = @graphics.PixelRect::new(x=0, y=0, width=2, height=1)
+
+  match
+    renderer.draw_tiled_bmp_bytes_rect_cached_with_renderer_resources(
+      tile.to_bmp_bytes(),
+      src_rect,
+      0,
+      0,
+      4,
+      1,
+      resources,
+      "tile",
+      @graphics.Paint::new(),
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached BMP tiled draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_tiled_bmp_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      src_rect,
+      0,
+      0,
+      4,
+      1,
+      resources,
+      "tile",
+      @graphics.Paint::new(),
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached BMP tiled hit")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_tiled_bmp_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([66, 77]),
+      src_rect,
+      0,
+      0,
+      4,
+      1,
+      resources,
+      "broken",
+      @graphics.Paint::new(),
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
+    _ => abort("expected cached BMP tiled decode error")
+  }
+  assert_true(!resources.contains_image("broken"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
 }
 
 ///|
@@ -2157,6 +2287,14 @@ fn make_renderer_test_nine_patch_source() -> @graphics.Pixmap {
   src.set_pixel(0, 2, @graphics.Color::new(r=70, g=0, b=0))
   src.set_pixel(1, 2, @graphics.Color::new(r=80, g=0, b=0))
   src.set_pixel(2, 2, @graphics.Color::new(r=90, g=0, b=0))
+  src
+}
+
+///|
+fn make_renderer_test_tile_source() -> @graphics.Pixmap {
+  let src = @graphics.Pixmap::new(2, 1)
+  src.set_pixel(0, 0, @graphics.Color::red())
+  src.set_pixel(1, 0, @graphics.Color::green())
   src
 }
 
