@@ -2353,6 +2353,75 @@ pub fn Renderer::draw_tiled_bmp_bytes_rect_cached_with_renderer_resources(
 }
 
 ///|
+/// Decode raw RGBA bytes through a pixmap cache and draw a tiled source
+/// rectangle.
+pub fn Renderer::draw_tiled_rgba_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match
+    image_cache.get_or_decode_rgba_result(
+      image_key, image_width, image_height, image_data,
+    ) {
+    Ok(result) => {
+      self.canvas.draw_tiled_pixmap_rect(
+        result.get_pixmap(),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode raw RGBA bytes through renderer-owned resources and draw a tiled
+/// source rectangle.
+pub fn Renderer::draw_tiled_rgba_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_tiled_rgba_bytes_rect_cached(
+    image_data,
+    image_width,
+    image_height,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+  )
+}
+
+///|
 /// Decode BMP bytes through a pixmap cache and draw with nine-patch scaling.
 pub fn Renderer::draw_nine_patch_bmp_bytes_cached(
   self : Renderer,

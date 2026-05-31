@@ -1309,6 +1309,91 @@ test "Renderer cached RGBA source rect path uses RendererResources" {
 }
 
 ///|
+test "Renderer cached RGBA tiled image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(4, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let tile = make_renderer_test_tile_source()
+  let src_rect = @graphics.PixelRect::new(x=0, y=0, width=2, height=1)
+
+  match
+    renderer.draw_tiled_rgba_bytes_rect_cached_with_renderer_resources(
+      tile.to_rgba_bytes(),
+      2,
+      1,
+      src_rect,
+      0,
+      0,
+      4,
+      1,
+      resources,
+      "tile",
+      @graphics.Paint::new(),
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached RGBA tiled draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_tiled_rgba_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([]),
+      2,
+      1,
+      src_rect,
+      0,
+      0,
+      4,
+      1,
+      resources,
+      "tile",
+      @graphics.Paint::new(),
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached RGBA tiled hit")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_tiled_rgba_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([1, 2, 3, 4]),
+      2,
+      1,
+      src_rect,
+      0,
+      0,
+      4,
+      1,
+      resources,
+      "broken",
+      @graphics.Paint::new(),
+    ) {
+    Err(@graphics.PixmapDecodeError::RgbaByteLengthMismatch(8, 4)) => ()
+    _ => abort("expected cached RGBA tiled decode error")
+  }
+  assert_true(!resources.contains_image("broken"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+}
+
+///|
 test "Renderer sampled cached RGBA image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(4, 1)
   canvas.clear(@graphics.Color::white())
