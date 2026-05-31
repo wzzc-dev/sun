@@ -1903,6 +1903,46 @@ pub fn Renderer::draw_pixmap_cached_with_renderer_resources(
 }
 
 ///|
+/// Draw a source rectangle from an image through a caller-owned pixmap cache.
+pub fn Renderer::draw_pixmap_rect_cached(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> CachedPixmapDrawResult {
+  let result = image_cache.get_or_insert_result(image_key, pixmap)
+  self.canvas.draw_pixmap_rect(result.get_pixmap(), src_rect, x, y, paint)
+  { did_insert_pixmap: result.did_insert() }
+}
+
+///|
+/// Draw a source rectangle from an image through renderer-owned resources.
+pub fn Renderer::draw_pixmap_rect_cached_with_renderer_resources(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> CachedPixmapDrawResult {
+  self.draw_pixmap_rect_cached(
+    pixmap,
+    src_rect,
+    x,
+    y,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+  )
+}
+
+///|
 /// Decode BMP bytes through a caller-owned pixmap cache and draw the image.
 pub fn Renderer::draw_bmp_bytes_cached(
   self : Renderer,
@@ -1935,6 +1975,50 @@ pub fn Renderer::draw_bmp_bytes_cached_with_renderer_resources(
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_bmp_bytes_cached(
     image_data,
+    x,
+    y,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+  )
+}
+
+///|
+/// Decode BMP bytes through a pixmap cache and draw a source rectangle.
+pub fn Renderer::draw_bmp_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_bmp_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_pixmap_rect(result.get_pixmap(), src_rect, x, y, paint)
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode BMP bytes through renderer-owned resources and draw a source rectangle.
+pub fn Renderer::draw_bmp_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_bmp_bytes_rect_cached(
+    image_data,
+    src_rect,
     x,
     y,
     resources.get_image_cache(),
@@ -1998,6 +2082,64 @@ pub fn Renderer::draw_quality_pixmap_cached_with_renderer_resources(
 }
 
 ///|
+/// Draw a scaled image source rectangle through a caller-owned pixmap cache.
+pub fn Renderer::draw_quality_pixmap_rect_cached(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> CachedPixmapDrawResult {
+  let result = image_cache.get_or_insert_result(image_key, pixmap)
+  self.canvas.draw_quality_pixmap_rect(
+    result.get_pixmap(),
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    paint,
+    quality,
+  )
+  { did_insert_pixmap: result.did_insert() }
+}
+
+///|
+/// Draw a scaled image source rectangle through renderer-owned resources.
+pub fn Renderer::draw_quality_pixmap_rect_cached_with_renderer_resources(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> CachedPixmapDrawResult {
+  self.draw_quality_pixmap_rect_cached(
+    pixmap,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
 /// Decode BMP bytes through a caller-owned pixmap cache and draw a scaled image.
 pub fn Renderer::draw_quality_bmp_bytes_cached(
   self : Renderer,
@@ -2044,6 +2186,69 @@ pub fn Renderer::draw_quality_bmp_bytes_cached_with_renderer_resources(
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_quality_bmp_bytes_cached(
     image_data,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    quality,
+  )
+}
+
+///|
+/// Decode BMP bytes through a pixmap cache and draw a scaled source rectangle.
+pub fn Renderer::draw_quality_bmp_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_bmp_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_quality_pixmap_rect(
+        result.get_pixmap(),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode BMP bytes through renderer-owned resources and draw a scaled source
+/// rectangle.
+pub fn Renderer::draw_quality_bmp_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_quality_bmp_bytes_rect_cached(
+    image_data,
+    src_rect,
     x,
     y,
     width,

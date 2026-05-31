@@ -858,6 +858,63 @@ test "Renderer cached image path uses RendererResources" {
 }
 
 ///|
+test "Renderer cached image source rect path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(4, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let atlas = @graphics.Pixmap::new(3, 1)
+  atlas.set_pixel(0, 0, @graphics.Color::red())
+  atlas.set_pixel(1, 0, @graphics.Color::green())
+  atlas.set_pixel(2, 0, @graphics.Color::blue())
+  let green_rect = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let blue_rect = @graphics.PixelRect::new(x=2, y=0, width=1, height=1)
+
+  let first = renderer.draw_pixmap_rect_cached_with_renderer_resources(
+    atlas,
+    green_rect,
+    0,
+    0,
+    resources,
+    "atlas",
+    @graphics.Paint::new(),
+  )
+  assert_true(first.did_insert_pixmap())
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+
+  atlas.set_pixel(1, 0, @graphics.Color::red())
+  canvas.clear(@graphics.Color::white())
+  let second = renderer.draw_pixmap_rect_cached_with_renderer_resources(
+    atlas,
+    green_rect,
+    1,
+    0,
+    resources,
+    "atlas",
+    @graphics.Paint::new(),
+  )
+  assert_true(second.did_hit_cache())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+
+  let scaled = renderer.draw_quality_pixmap_rect_cached_with_renderer_resources(
+    atlas,
+    blue_rect,
+    2,
+    0,
+    2,
+    1,
+    resources,
+    "atlas",
+    @graphics.Paint::new(),
+    @graphics.ImageQuality::Fast,
+  )
+  assert_true(scaled.did_hit_cache())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::blue())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::blue())
+}
+
+///|
 test "Renderer cached BMP image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(3, 1)
   canvas.clear(@graphics.Color::white())
@@ -918,6 +975,74 @@ test "Renderer cached BMP image path uses RendererResources" {
   }
   assert_true(!resources.contains_image("broken"))
   assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::white())
+}
+
+///|
+test "Renderer cached BMP source rect path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(4, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let atlas = @graphics.Pixmap::new(3, 1)
+  atlas.set_pixel(0, 0, @graphics.Color::red())
+  atlas.set_pixel(1, 0, @graphics.Color::green())
+  atlas.set_pixel(2, 0, @graphics.Color::blue())
+  let green_rect = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let blue_rect = @graphics.PixelRect::new(x=2, y=0, width=1, height=1)
+
+  match
+    renderer.draw_bmp_bytes_rect_cached_with_renderer_resources(
+      atlas.to_bmp_bytes(),
+      green_rect,
+      0,
+      0,
+      resources,
+      "atlas",
+      @graphics.Paint::new(),
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached BMP source rect draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+
+  match
+    renderer.draw_bmp_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      blue_rect,
+      1,
+      0,
+      resources,
+      "atlas",
+      @graphics.Paint::new(),
+    ) {
+    Ok(second) => assert_true(second.did_hit_cache())
+    Err(_) => abort("expected cached BMP source rect hit")
+  }
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::blue())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_quality_bmp_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      green_rect,
+      2,
+      0,
+      2,
+      1,
+      resources,
+      "atlas",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(scaled) => assert_true(scaled.did_hit_cache())
+    Err(_) => abort("expected cached quality BMP source rect hit")
+  }
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
 }
 
 ///|
