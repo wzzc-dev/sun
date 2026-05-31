@@ -144,6 +144,8 @@ pub enum RenderCommand {
   DrawSampledBmpBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledPngBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledRgbaBytesKeyed(String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
+  DrawQualityBmpBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality)
+  DrawQualityBmpBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality)
   DrawQualityPngBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality)
   DrawQualityPngBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality)
   DrawQualityRgbaBytesKeyed(String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality)
@@ -208,6 +210,8 @@ pub fn RenderPipeline::draw_pixmap_rect(Self, @graphics.Pixmap, @graphics.PixelR
 pub fn RenderPipeline::draw_pixmap_rect_keyed(Self, String, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_png_bytes_keyed(Self, String, Bytes, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_png_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_quality_bmp_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality) -> Self
+pub fn RenderPipeline::draw_quality_bmp_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality) -> Self
 pub fn RenderPipeline::draw_quality_png_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality) -> Self
 pub fn RenderPipeline::draw_quality_png_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality) -> Self
 pub fn RenderPipeline::draw_quality_rgba_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality) -> Self
