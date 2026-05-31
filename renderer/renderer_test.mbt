@@ -966,6 +966,61 @@ test "Renderer cached tiled image path uses RendererResources" {
 }
 
 ///|
+test "Renderer cached transformed image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(5, 3)
+  canvas.clear(@graphics.Color::white())
+  canvas.set_transform(
+    @graphics.Transform::translate(tx=1.0, ty=1.0).multiply(
+      @graphics.Transform::scale(sx=2.0, sy=1.0),
+    ),
+  )
+  canvas.set_clip_rect(@graphics.Rect::new(x=2.0, y=1.0, width=2.0, height=1.0))
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let tile = make_renderer_test_tile_source()
+
+  let first = renderer.draw_transformed_sampled_pixmap_cached_with_renderer_resources(
+    tile,
+    0.0,
+    0.0,
+    2.0,
+    1.0,
+    resources,
+    "tile-transform",
+    @graphics.Paint::new(),
+    @graphics.ImageSampling::Nearest,
+  )
+  assert_true(first.did_insert_pixmap())
+  assert_true(!first.did_hit_cache())
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 1), @graphics.Color::white())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 1), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 1), @graphics.Color::green())
+  assert_eq(canvas.get_pixmap().get_pixel(4, 1), @graphics.Color::white())
+
+  tile.set_pixel(0, 0, @graphics.Color::blue())
+  tile.set_pixel(1, 0, @graphics.Color::blue())
+  canvas.clear(@graphics.Color::white())
+  let src_rect = @graphics.PixelRect::new(x=0, y=0, width=2, height=1)
+  let second = renderer.draw_transformed_quality_pixmap_rect_cached_with_renderer_resources(
+    tile,
+    src_rect,
+    0.0,
+    0.0,
+    2.0,
+    1.0,
+    resources,
+    "tile-transform",
+    @graphics.Paint::new(),
+    @graphics.ImageQuality::Fast,
+  )
+  assert_true(!second.did_insert_pixmap())
+  assert_true(second.did_hit_cache())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 1), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(3, 1), @graphics.Color::green())
+}
+
+///|
 test "Renderer cached nine-patch image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(5, 5)
   canvas.clear(@graphics.Color::white())
@@ -1232,6 +1287,83 @@ test "Renderer cached BMP tiled image path uses RendererResources" {
   assert_true(!resources.contains_image("broken"))
   assert_eq(resources.get_image_cache().len(), 1)
   assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+}
+
+///|
+test "Renderer cached BMP transformed image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(4, 1)
+  canvas.clear(@graphics.Color::white())
+  canvas.set_transform(@graphics.Transform::translate(tx=1.0, ty=0.0))
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let tile = make_renderer_test_tile_source()
+  let src_rect = @graphics.PixelRect::new(x=0, y=0, width=2, height=1)
+
+  match
+    renderer.draw_transformed_sampled_bmp_bytes_cached_with_renderer_resources(
+      tile.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "tile-transform-bmp",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached transformed BMP draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_transformed_quality_bmp_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      src_rect,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "tile-transform-bmp",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached transformed BMP hit")
+  }
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_transformed_sampled_bmp_bytes_cached_with_renderer_resources(
+      Bytes::from_array([66, 77]),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "broken-transform-bmp",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
+    _ => abort("expected cached transformed BMP decode error")
+  }
+  assert_true(!resources.contains_image("broken-transform-bmp"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
 }
 
 ///|

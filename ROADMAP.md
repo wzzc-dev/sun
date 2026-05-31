@@ -91,7 +91,7 @@ Application / GUI
 |--------|---------------|---------------|-----------------|
 | Text | TTF -> layout -> glyph mask -> Canvas，Latin/ASCII 回归，`TextLayout` 基础对齐、显式换行、尾随空格和 spacing | 明确 `FontFace`/`GlyphRun`/`TextLayout` API，基础 CJK、kerning、fallback 轮廓 | Unicode 分段、BiDi 初版、字体缓存、更多 OpenType 表 |
 | Vector | transform-aware rect/path fill、line/polyline/polygon/arc/pie/rect/circle/ellipse/uniform 与 per-corner rounded-rect Canvas helpers、stroke、cap/join/dash、clip/intersect clip、transform helpers、Canvas save/restore state stack、4x4 coverage | 更稳定的 fill rule、miter/dash 行为、路径简化和基础 boolean 可评估 | 文档化 Canvas API、复杂路径回归、性能基准 |
-| Image/Layer | Pixmap blit、source-rect atlas drawing、tiled/cached tiled Pixmap fills、nearest/bilinear/bicubic sampling modes、fast/balanced/high quality strategy、transform-aware sampled Pixmap drawing、nine-patch GUI image scaling、`Paint` blend modes、dirty region 合并、mask/alpha composition、Layer cache、LayerTree、属性变化 invalidation、LayerTree partial present、RenderFrame resize、rect present API | GUI event-loop 调度与 layer lifecycle 策略 | PNG 基础解码、GUI 集成 |
+| Image/Layer | Pixmap blit、source-rect atlas drawing、tiled/cached tiled Pixmap fills、nearest/bilinear/bicubic sampling modes、fast/balanced/high quality strategy、transform-aware sampled/cached Pixmap drawing、nine-patch GUI image scaling、`Paint` blend modes、dirty region 合并、mask/alpha composition、Layer cache、LayerTree、属性变化 invalidation、LayerTree partial present、RenderFrame resize、rect present API | GUI event-loop 调度与 layer lifecycle 策略 | PNG 基础解码、GUI 集成 |
 | Surface | `MemorySurface`、`NativeSurface`、`Canvas/Pixmap::present_to`、`RenderFrame -> NativeSurface` helpers、`present_pixels_rect` | dirty rect 调度、row stride、错误传播和 pre-present hook 标准化 | Win32/macOS/Linux/WASM 后端都有 build 或运行验证 |
 | Tooling | `scripts/check_ci.sh`、`.mbti`、核心单测、headless render smoke test、deterministic render bench smoke | warning baseline 可审查、覆盖率/benchmark 初版 | release checklist、示例矩阵、性能趋势 |
 
@@ -167,6 +167,7 @@ Application / GUI
 - Nine-patch Pixmap 缩放合成，作为 GUI 面板、边框和背景图的基础图像缩放能力
 - `PixmapCache` 支持按 key 复用 image/layer pixmap，并通过像素拷贝隔离缓存内容，同时提供 membership 与 hit/insert telemetry，作为 GUI 图像资源缓存基础
 - Renderer/`RendererResources` 支持 cached Pixmap/BMP tiled source-rect draw path，让 GUI pattern/background 资源复用同一 image cache
+- Renderer/`RendererResources` 支持 cached Pixmap/BMP transform-aware sampled/quality draw path，让旋转、缩放和局部变换下的 GUI 图像资源继续复用 image cache
 - Layer 支持 resize 时保留重叠像素并标记新 cache dirty
 - LayerTree 支持位置、尺寸、可见性、opacity、移除、替换和重排触发的旧/新 bounds invalidation
 - LayerTree 可将 dirty 合成到 frame canvas 并提交到 `Surface` partial present
@@ -378,6 +379,7 @@ Application / GUI
 - [x] 将 cached Pixmap/BMP tiled source-rect draw path 接入 Renderer/`RendererResources`，覆盖 pattern/background cache hit/decode telemetry
 - [x] 将 cached Pixmap/BMP nine-patch draw path 接入 Renderer/`RendererResources`，覆盖 GUI 面板资源的 cache hit/decode telemetry 与 quality-scaled 绘制
 - [x] 增加 transform-aware sampled Pixmap/atlas 绘制入口，覆盖 current transform、clip、nearest/bilinear/bicubic sampling、dirty region 与不可逆 transform 回归
+- [x] 将 cached Pixmap/BMP transform-aware sampled/quality draw path 接入 Renderer/`RendererResources`，覆盖 transformed image cache hit/decode telemetry
 - [x] 增加 bicubic 图像采样，覆盖 Pixmap/Canvas 缩放、source-rect atlas、premultiplied alpha 和 transform-aware sampled Pixmap 回归
 - [x] 增加 `ImageQuality`（fast/balanced/high）图像质量策略 API，统一 Pixmap/Canvas 缩放、source-rect、nine-patch 与 transform-aware image drawing 的采样选择
 - [x] 增加 `Paint` blend mode（source-over/multiply/screen/add），覆盖 vector、mask、Pixmap blit、scaled image 与 transform-aware sampled image composition 回归
