@@ -152,6 +152,7 @@ pub enum RenderCommand {
   DrawRgbaBytesRectKeyed(String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawTiledBmpBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint)
   DrawTiledPngBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint)
+  DrawTiledRgbaBytesRectKeyed(String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint)
   DrawNinePatchBmpBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.Paint, @graphics.ImageSampling)
   DrawNinePatchPngBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.Paint, @graphics.ImageSampling)
   DrawPixmapRect(@graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
@@ -207,6 +208,7 @@ pub fn RenderPipeline::draw_text_face(Self, @text.FontFace, String, Double, Doub
 pub fn RenderPipeline::draw_text_face_keyed(Self, String, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_tiled_bmp_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_tiled_png_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_tiled_rgba_bytes_rect_keyed(Self, String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::fill_path(Self, @graphics.Path, @graphics.Paint) -> Self
 pub fn RenderPipeline::fill_rect(Self, Double, Double, Double, Double, @graphics.Paint) -> Self
 pub fn RenderPipeline::get_commands(Self) -> Array[RenderCommand]
