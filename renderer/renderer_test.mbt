@@ -259,6 +259,108 @@ test "RenderPipeline diff keeps resource commands conservatively dirty" {
 }
 
 ///|
+test "RenderPipeline batch plan groups contiguous command categories" {
+  let icon = @graphics.Pixmap::new(2, 2)
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  let config = @text.LayoutConfig::new(
+    max_width=12.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let fill_paint = @graphics.Paint::new().set_color(@graphics.Color::red())
+  let stroke_paint = @graphics.Paint::new()
+    .set_style(@graphics.PaintStyle::Stroke)
+    .set_stroke_width(2.0)
+  let path = @graphics.Path::new().move_to(0.0, 4.0).line_to(4.0, 4.0)
+  let plan = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .fill_rect(1.0, 1.0, 2.0, 2.0, fill_paint)
+    .fill_path(@graphics.Path::new().add_rect(3.0, 1.0, 1.0, 2.0), fill_paint)
+    .stroke_path(path, stroke_paint)
+    .draw_pixmap(icon, 6, 0, @graphics.Paint::new())
+    .draw_pixmap_rect(
+      icon,
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      6,
+      1,
+      @graphics.Paint::new(),
+    )
+    .draw_text_face(
+      face,
+      "A",
+      1.0,
+      1.0,
+      config,
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    )
+    .batch_plan(8, 6)
+
+  assert_eq(plan.get_command_count(), 7)
+  assert_eq(plan.get_batch_count(), 5)
+  assert_true(plan.has_dirty())
+  assert_true(
+    plan.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=8, height=6)),
+  )
+  let batches = plan.get_batches()
+  assert_true(batches[0].get_kind() == RenderPipelineBatchKind::Clear)
+  assert_eq(batches[0].get_start_index(), 0)
+  assert_eq(batches[0].get_command_count(), 1)
+  assert_true(
+    batches[0].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=8, height=6)),
+  )
+  assert_true(batches[1].get_kind() == RenderPipelineBatchKind::Fill)
+  assert_eq(batches[1].get_start_index(), 1)
+  assert_eq(batches[1].get_command_count(), 2)
+  assert_true(
+    batches[1].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=1, y=1, width=3, height=2)),
+  )
+  assert_true(batches[2].get_kind() == RenderPipelineBatchKind::Stroke)
+  assert_eq(batches[2].get_start_index(), 3)
+  assert_eq(batches[2].get_command_count(), 1)
+  assert_true(
+    batches[2].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=3, width=5, height=2)),
+  )
+  assert_true(batches[3].get_kind() == RenderPipelineBatchKind::Image)
+  assert_eq(batches[3].get_start_index(), 4)
+  assert_eq(batches[3].get_command_count(), 2)
+  assert_true(
+    batches[3].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=6, y=0, width=2, height=2)),
+  )
+  assert_true(batches[4].get_kind() == RenderPipelineBatchKind::Text)
+  assert_eq(batches[4].get_start_index(), 6)
+  assert_eq(batches[4].get_command_count(), 1)
+  assert_true(batches[4].has_dirty())
+}
+
+///|
+test "Renderer batch plan uses canvas bounds for present planning" {
+  let empty = RenderPipeline::new().batch_plan(5, 3)
+  assert_eq(empty.get_command_count(), 0)
+  assert_eq(empty.get_batch_count(), 0)
+  assert_true(!empty.has_dirty())
+  assert_true(empty.get_dirty_bounds() == None)
+
+  let icon = @graphics.Pixmap::new(4, 1)
+  let renderer = Renderer::new(@graphics.Canvas::new(5, 3))
+  let plan = renderer.plan_pipeline_batches(
+    RenderPipeline::new().draw_pixmap(icon, 3, 1, @graphics.Paint::new()),
+  )
+  assert_eq(plan.get_batch_count(), 1)
+  assert_true(
+    plan.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=3, y=1, width=2, height=1)),
+  )
+  let present_plan = plan.get_present_plan(5, 3, 4)
+  assert_eq(present_plan.get_rect_count(), 1)
+  assert_eq(present_plan.get_present_pixel_count(), 2)
+}
+
+///|
 test "RenderPipeline replays parsed text commands and can be cleared" {
   let pipeline = RenderPipeline::new().clear_canvas(@graphics.Color::white())
   assert_eq(pipeline.len(), 1)

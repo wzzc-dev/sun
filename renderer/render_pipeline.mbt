@@ -66,6 +66,33 @@ pub struct RenderPipelineDiffResult {
 } derive(Debug)
 
 ///|
+/// Coarse command category used by CPU batch scheduling.
+pub(all) enum RenderPipelineBatchKind {
+  Clear
+  Fill
+  Stroke
+  Image
+  Text
+} derive(Eq, Debug)
+
+///|
+/// One contiguous run of commands with the same scheduling category.
+pub struct RenderPipelineBatch {
+  kind : RenderPipelineBatchKind
+  start_index : Int
+  command_count : Int
+  dirty_region : @graphics.DirtyRegion
+} derive(Debug)
+
+///|
+/// Scheduler-facing grouping of a render pipeline into contiguous CPU batches.
+pub struct RenderPipelineBatchPlan {
+  command_count : Int
+  batches : Array[RenderPipelineBatch]
+  dirty_region : @graphics.DirtyRegion
+} derive(Debug)
+
+///|
 /// Create an empty render pipeline.
 pub fn RenderPipeline::new() -> RenderPipeline {
   { commands: [] }
@@ -446,6 +473,134 @@ pub fn RenderPipelineDiffResult::get_present_plan(
 }
 
 ///|
+/// Return this batch's scheduling category.
+pub fn RenderPipelineBatch::get_kind(
+  self : RenderPipelineBatch,
+) -> RenderPipelineBatchKind {
+  self.kind
+}
+
+///|
+/// Return the first command index covered by this batch.
+pub fn RenderPipelineBatch::get_start_index(self : RenderPipelineBatch) -> Int {
+  self.start_index
+}
+
+///|
+/// Return the number of commands covered by this batch.
+pub fn RenderPipelineBatch::get_command_count(
+  self : RenderPipelineBatch,
+) -> Int {
+  self.command_count
+}
+
+///|
+/// Return the conservative dirty region for this batch.
+pub fn RenderPipelineBatch::get_dirty_region(
+  self : RenderPipelineBatch,
+) -> @graphics.DirtyRegion {
+  self.dirty_region
+}
+
+///|
+/// Return whether this batch may dirty pixels.
+pub fn RenderPipelineBatch::has_dirty(self : RenderPipelineBatch) -> Bool {
+  !self.dirty_region.is_empty()
+}
+
+///|
+/// Return the number of dirty rects estimated for this batch.
+pub fn RenderPipelineBatch::get_dirty_rect_count(
+  self : RenderPipelineBatch,
+) -> Int {
+  self.dirty_region.get_rect_count()
+}
+
+///|
+/// Return the conservative dirty bounds for this batch.
+pub fn RenderPipelineBatch::get_dirty_bounds(
+  self : RenderPipelineBatch,
+) -> @graphics.PixelRect? {
+  self.dirty_region.bounds()
+}
+
+///|
+/// Build a present plan from this batch's estimated dirty region.
+pub fn RenderPipelineBatch::get_present_plan(
+  self : RenderPipelineBatch,
+  width : Int,
+  height : Int,
+  max_rects : Int,
+) -> @graphics.DirtyPresentPlan {
+  self.dirty_region.present_plan(
+    @graphics.PixelRect::new(x=0, y=0, width~, height~),
+    max_rects,
+  )
+}
+
+///|
+/// Return the number of commands covered by this plan.
+pub fn RenderPipelineBatchPlan::get_command_count(
+  self : RenderPipelineBatchPlan,
+) -> Int {
+  self.command_count
+}
+
+///|
+/// Return the number of contiguous command batches.
+pub fn RenderPipelineBatchPlan::get_batch_count(
+  self : RenderPipelineBatchPlan,
+) -> Int {
+  self.batches.length()
+}
+
+///|
+/// Return the scheduler-facing contiguous command batches.
+pub fn RenderPipelineBatchPlan::get_batches(
+  self : RenderPipelineBatchPlan,
+) -> Array[RenderPipelineBatch] {
+  self.batches
+}
+
+///|
+/// Return the conservative dirty region for all batches.
+pub fn RenderPipelineBatchPlan::get_dirty_region(
+  self : RenderPipelineBatchPlan,
+) -> @graphics.DirtyRegion {
+  self.dirty_region
+}
+
+///|
+/// Return whether any batch may dirty pixels.
+pub fn RenderPipelineBatchPlan::has_dirty(
+  self : RenderPipelineBatchPlan,
+) -> Bool {
+  !self.dirty_region.is_empty()
+}
+
+///|
+/// Return the conservative dirty bounds for all batches.
+pub fn RenderPipelineBatchPlan::get_dirty_bounds(
+  self : RenderPipelineBatchPlan,
+) -> @graphics.PixelRect? {
+  self.dirty_region.bounds()
+}
+
+///|
+/// Build a present plan from the batch plan's estimated dirty region.
+pub fn RenderPipelineBatchPlan::get_present_plan(
+  self : RenderPipelineBatchPlan,
+  width : Int,
+  height : Int,
+  max_rects : Int,
+) -> @graphics.DirtyPresentPlan {
+  self.dirty_region.present_plan(
+    @graphics.PixelRect::new(x=0, y=0, width~, height~),
+    max_rects,
+  )
+}
+
+///|
 /// Replay all queued commands through this renderer.
 pub fn Renderer::draw_pipeline(
   self : Renderer,
@@ -473,6 +628,16 @@ pub fn Renderer::diff_pipelines(
 ) -> RenderPipelineDiffResult {
   let pixmap = self.get_canvas().get_pixmap()
   RenderPipeline::diff(previous, next, pixmap.get_width(), pixmap.get_height())
+}
+
+///|
+/// Build a scheduler-facing batch plan against this renderer's canvas size.
+pub fn Renderer::plan_pipeline_batches(
+  self : Renderer,
+  pipeline : RenderPipeline,
+) -> RenderPipelineBatchPlan {
+  let pixmap = self.get_canvas().get_pixmap()
+  pipeline.batch_plan(pixmap.get_width(), pixmap.get_height())
 }
 
 ///|
@@ -525,6 +690,62 @@ pub fn RenderPipeline::dirty_present_plan(
   max_rects : Int,
 ) -> @graphics.DirtyPresentPlan {
   self.analyze(width, height).get_present_plan(width, height, max_rects)
+}
+
+///|
+/// Group contiguous commands by scheduling category and estimate batch dirties.
+pub fn RenderPipeline::batch_plan(
+  self : RenderPipeline,
+  width : Int,
+  height : Int,
+) -> RenderPipelineBatchPlan {
+  let batches = []
+  let plan_dirty_region = @graphics.DirtyRegion::new()
+  let canvas_bounds = @graphics.PixelRect::new(x=0, y=0, width~, height~)
+  let mut has_current_batch = false
+  let mut current_kind = RenderPipelineBatchKind::Clear
+  let mut current_start = 0
+  let mut current_count = 0
+  let mut current_dirty_region = @graphics.DirtyRegion::new()
+  for index in 0..<self.commands.length() {
+    let command = self.commands[index]
+    let kind = render_command_batch_kind(command)
+    if has_current_batch && current_kind != kind {
+      batches.push(
+        render_pipeline_make_batch(
+          current_kind, current_start, current_count, current_dirty_region,
+        ),
+      )
+      current_start = index
+      current_count = 0
+      current_dirty_region = @graphics.DirtyRegion::new()
+    } else if !has_current_batch {
+      has_current_batch = true
+      current_start = index
+      current_count = 0
+      current_dirty_region = @graphics.DirtyRegion::new()
+    }
+    current_kind = kind
+    current_count += 1
+    render_pipeline_add_command_dirty(
+      current_dirty_region, canvas_bounds, command, width, height,
+    )
+    render_pipeline_add_command_dirty(
+      plan_dirty_region, canvas_bounds, command, width, height,
+    )
+  }
+  if has_current_batch {
+    batches.push(
+      render_pipeline_make_batch(
+        current_kind, current_start, current_count, current_dirty_region,
+      ),
+    )
+  }
+  {
+    command_count: self.commands.length(),
+    batches,
+    dirty_region: plan_dirty_region,
+  }
 }
 
 ///|
@@ -663,6 +884,34 @@ fn render_pipeline_add_command_dirty(
   match render_command_estimated_dirty_rect(command, width, height) {
     Some(rect) => dirty_region.add_clipped_rect(rect, canvas_bounds)
     None => ()
+  }
+}
+
+///|
+fn render_pipeline_make_batch(
+  kind : RenderPipelineBatchKind,
+  start_index : Int,
+  command_count : Int,
+  dirty_region : @graphics.DirtyRegion,
+) -> RenderPipelineBatch {
+  { kind, start_index, command_count, dirty_region }
+}
+
+///|
+fn render_command_batch_kind(
+  command : RenderCommand,
+) -> RenderPipelineBatchKind {
+  match command {
+    RenderCommand::Clear(_) => RenderPipelineBatchKind::Clear
+    RenderCommand::FillRect(_, _, _, _, _) | RenderCommand::FillPath(_, _) =>
+      RenderPipelineBatchKind::Fill
+    RenderCommand::StrokeRect(_, _, _, _, _)
+    | RenderCommand::StrokePath(_, _) => RenderPipelineBatchKind::Stroke
+    RenderCommand::DrawPixmap(_, _, _, _)
+    | RenderCommand::DrawPixmapRect(_, _, _, _, _) =>
+      RenderPipelineBatchKind::Image
+    RenderCommand::DrawTextFace(_, _, _, _, _, _) =>
+      RenderPipelineBatchKind::Text
   }
 }
 

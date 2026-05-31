@@ -145,6 +145,7 @@ pub struct RenderPipeline {
   commands : Array[RenderCommand]
 } derive(@debug.Debug)
 pub fn RenderPipeline::analyze(Self, Int, Int) -> RenderPipelineAnalysis
+pub fn RenderPipeline::batch_plan(Self, Int, Int) -> RenderPipelineBatchPlan
 pub fn RenderPipeline::clear_canvas(Self, @graphics.Color) -> Self
 pub fn RenderPipeline::clear_commands(Self) -> Unit
 pub fn RenderPipeline::diff(Self, Self, Int, Int) -> RenderPipelineDiffResult
@@ -183,6 +184,42 @@ pub fn RenderPipelineAnalysis::get_present_plan(Self, Int, Int, Int) -> @graphic
 pub fn RenderPipelineAnalysis::get_stroke_count(Self) -> Int
 pub fn RenderPipelineAnalysis::get_text_count(Self) -> Int
 pub fn RenderPipelineAnalysis::has_dirty(Self) -> Bool
+
+pub struct RenderPipelineBatch {
+  kind : RenderPipelineBatchKind
+  start_index : Int
+  command_count : Int
+  dirty_region : @graphics.DirtyRegion
+} derive(@debug.Debug)
+pub fn RenderPipelineBatch::get_command_count(Self) -> Int
+pub fn RenderPipelineBatch::get_dirty_bounds(Self) -> @graphics.PixelRect?
+pub fn RenderPipelineBatch::get_dirty_rect_count(Self) -> Int
+pub fn RenderPipelineBatch::get_dirty_region(Self) -> @graphics.DirtyRegion
+pub fn RenderPipelineBatch::get_kind(Self) -> RenderPipelineBatchKind
+pub fn RenderPipelineBatch::get_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
+pub fn RenderPipelineBatch::get_start_index(Self) -> Int
+pub fn RenderPipelineBatch::has_dirty(Self) -> Bool
+
+pub(all) enum RenderPipelineBatchKind {
+  Clear
+  Fill
+  Stroke
+  Image
+  Text
+} derive(Eq, @debug.Debug)
+
+pub struct RenderPipelineBatchPlan {
+  command_count : Int
+  batches : Array[RenderPipelineBatch]
+  dirty_region : @graphics.DirtyRegion
+} derive(@debug.Debug)
+pub fn RenderPipelineBatchPlan::get_batch_count(Self) -> Int
+pub fn RenderPipelineBatchPlan::get_batches(Self) -> Array[RenderPipelineBatch]
+pub fn RenderPipelineBatchPlan::get_command_count(Self) -> Int
+pub fn RenderPipelineBatchPlan::get_dirty_bounds(Self) -> @graphics.PixelRect?
+pub fn RenderPipelineBatchPlan::get_dirty_region(Self) -> @graphics.DirtyRegion
+pub fn RenderPipelineBatchPlan::get_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
+pub fn RenderPipelineBatchPlan::has_dirty(Self) -> Bool
 
 pub struct RenderPipelineDiffResult {
   previous_command_count : Int
@@ -356,6 +393,7 @@ pub fn Renderer::draw_transformed_sampled_rgba_bytes_rect_cached(Self, Bytes, In
 pub fn Renderer::draw_transformed_sampled_rgba_bytes_rect_cached_with_renderer_resources(Self, Bytes, Int, Int, @graphics.PixelRect, Double, Double, Double, Double, RendererResources, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::get_canvas(Self) -> @graphics.Canvas
 pub fn Renderer::new(@graphics.Canvas) -> Self
+pub fn Renderer::plan_pipeline_batches(Self, RenderPipeline) -> RenderPipelineBatchPlan
 
 pub struct RendererResources {
   font_cache : @text.FontFaceCache
