@@ -138,6 +138,7 @@ pub enum RenderCommand {
   StrokePath(@graphics.Path, @graphics.Paint)
   DrawPixmap(@graphics.Pixmap, Int, Int, @graphics.Paint)
   DrawPixmapKeyed(String, @graphics.Pixmap, Int, Int, @graphics.Paint)
+  DrawBmpBytesKeyed(String, Bytes, Int, Int, @graphics.Paint)
   DrawPixmapRect(@graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawPixmapRectKeyed(String, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawTextFace(@text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
@@ -161,6 +162,7 @@ pub fn RenderPipeline::clear_canvas(Self, @graphics.Color) -> Self
 pub fn RenderPipeline::clear_commands(Self) -> Unit
 pub fn RenderPipeline::diff(Self, Self, Int, Int) -> RenderPipelineDiffResult
 pub fn RenderPipeline::dirty_present_plan(Self, Int, Int, Int) -> @graphics.DirtyPresentPlan
+pub fn RenderPipeline::draw_bmp_bytes_keyed(Self, String, Bytes, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_font_bytes_atlas_keyed(Self, String, Bytes, String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_font_bytes_fallback_atlas_keyed(Self, Array[FontBytesFallbackSource], String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_font_bytes_fallback_keyed(Self, Array[FontBytesFallbackSource], String, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
