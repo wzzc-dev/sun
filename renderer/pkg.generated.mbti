@@ -143,6 +143,8 @@ pub fn Renderer::draw_font_bytes_cached_with_renderer_resources(Self, Bytes, Str
 pub fn Renderer::draw_font_bytes_fallback_line_atlas_with_renderer_resources(Self, Array[FontBytesFallbackSource], String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> Result[CachedFontFallbackAtlasDrawResult, @text.FontParseError]
 pub fn Renderer::draw_font_bytes_fallback_line_cached_with_renderer_resources(Self, Array[FontBytesFallbackSource], String, Double, Double, @text.LayoutConfig, RendererResources, String, @graphics.Paint) -> Result[CachedFontFallbackDrawResult, @text.FontParseError]
 pub fn Renderer::draw_glyph_atlas_entry(Self, @text.CoverageMask, @text.GlyphAtlasEntry, Int, Int, @graphics.Paint) -> Unit
+pub fn[L : @text.FontLoader] Renderer::draw_loaded_font_atlas_with_renderer_resources(Self, L, String, Double, Double, @text.LayoutConfig, RendererResources, String, String, @graphics.Paint) -> Result[CachedFontAtlasDrawResult, @text.FontLoadError]
+pub fn[L : @text.FontLoader] Renderer::draw_loaded_font_cached_with_renderer_resources(Self, L, String, Double, Double, @text.LayoutConfig, RendererResources, String, String, @graphics.Paint) -> Result[CachedFontTextDrawResult, @text.FontLoadError]
 pub fn Renderer::draw_nine_patch_bmp_bytes_cached(Self, Bytes, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_nine_patch_bmp_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, Int, Int, @graphics.NinePatchInsets, RendererResources, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_nine_patch_pixmap_cached(Self, @graphics.Pixmap, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageSampling) -> CachedPixmapDrawResult
@@ -281,6 +283,8 @@ pub fn RendererResources::get_or_decode_png_image(Self, String, Bytes) -> Result
 pub fn RendererResources::get_or_decode_png_image_result(Self, String, Bytes) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError]
 pub fn RendererResources::get_or_decode_rgba_image(Self, String, Int, Int, Bytes) -> Result[@graphics.Pixmap, @graphics.PixmapDecodeError]
 pub fn RendererResources::get_or_decode_rgba_image_result(Self, String, Int, Int, Bytes) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError]
+pub fn[L : @text.FontLoader] RendererResources::get_or_load_font_face(Self, String, L) -> Result[@text.FontFace, @text.FontLoadError]
+pub fn[L : @text.FontLoader] RendererResources::get_or_load_font_face_result(Self, String, L) -> Result[@text.FontFaceCacheParseResult, @text.FontLoadError]
 pub fn RendererResources::get_text_mask_cache(Self) -> @text.TextMaskCache
 pub fn RendererResources::get_text_resources(Self) -> RendererTextResources
 pub fn RendererResources::new(Int, Int) -> Self

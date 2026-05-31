@@ -18,6 +18,12 @@ pub fn FontData::get_data(self : FontData) -> Bytes {
 }
 
 ///|
+/// Get the face index inside a font collection.
+pub fn FontData::get_font_index(self : FontData) -> Int {
+  self.font_index
+}
+
+///|
 /// Font metrics information
 pub struct FontMetrics {
   units_per_em : Int

@@ -249,6 +249,105 @@ test "FontFaceCache::get_or_parse_result reports cache misses" {
 }
 
 ///|
+test "MemoryFontLoader loads registered font data and faces" {
+  let loader = MemoryFontLoader::new()
+  assert_true(loader.is_empty())
+  let data = FontData::new(make_structural_font(), font_index=2)
+  assert_eq(data.get_font_index(), 2)
+  ignore(loader.insert("ui", data))
+  assert_eq(loader.len(), 1)
+  assert_true(loader.contains("ui"))
+
+  match load_font_data(loader, "ui") {
+    Ok(loaded) => {
+      assert_eq(loaded.get_font_index(), 2)
+      assert_eq(loaded.get_data(), data.get_data())
+    }
+    Err(_) => abort("expected memory font data")
+  }
+
+  match load_font_face(loader, "ui") {
+    Ok(face) => assert_eq(face.get_units_per_em(), 10)
+    Err(_) => abort("expected memory font face")
+  }
+
+  loader.remove("ui")
+  assert_true(!loader.contains("ui"))
+  match load_font_data(loader, "ui") {
+    Err(FontLoadError::MissingFontData("ui")) => ()
+    _ => abort("expected missing font data")
+  }
+}
+
+///|
+test "FileFontLoader reports missing and unreadable font sources" {
+  let loader = FileFontLoader::new()
+  match load_font_data(loader, "ui") {
+    Err(FontLoadError::MissingFontData("ui")) => ()
+    _ => abort("expected missing file font source")
+  }
+
+  let source = FontFileSource::new(
+    "/private/tmp/sun-font-loader-missing.ttf",
+    font_index=3,
+  )
+  assert_eq(source.get_path(), "/private/tmp/sun-font-loader-missing.ttf")
+  assert_eq(source.get_font_index(), 3)
+  ignore(loader.insert("ui", source))
+  assert_eq(loader.len(), 1)
+  assert_true(loader.contains("ui"))
+  match load_font_data(loader, "ui") {
+    Err(
+      FontLoadError::FontFileReadFailed(
+        "ui",
+        "/private/tmp/sun-font-loader-missing.ttf"
+      )
+    ) => ()
+    _ => abort("expected unreadable file font source")
+  }
+}
+
+///|
+test "FontFaceCache::get_or_load_result loads misses and reports hits" {
+  let cache = FontFaceCache::new()
+  let loader = MemoryFontLoader::new()
+  ignore(loader.insert("ui", FontData::new(make_structural_font())))
+
+  match cache.get_or_load_result("ui", loader) {
+    Ok(first) => {
+      assert_true(first.did_parse())
+      assert_true(!first.did_hit_cache())
+      assert_eq(first.get_face().get_units_per_em(), 10)
+    }
+    Err(_) => abort("expected loaded font face")
+  }
+  assert_eq(cache.len(), 1)
+
+  loader.clear()
+  match cache.get_or_load_result("ui", loader) {
+    Ok(second) => {
+      assert_true(!second.did_parse())
+      assert_true(second.did_hit_cache())
+      assert_eq(second.get_face().get_units_per_em(), 10)
+    }
+    Err(_) => abort("expected font load cache hit")
+  }
+
+  let bad_loader = MemoryFontLoader::new()
+  ignore(bad_loader.insert("bad", FontData::new(b"bad")))
+  match cache.get_or_load_result("bad", bad_loader) {
+    Err(
+      FontLoadError::FontParseFailed(
+        "bad",
+        FontParseError::UnexpectedEndOfData(0, 12, 3)
+      )
+    ) => ()
+    _ => abort("expected loader-backed parse error")
+  }
+  assert_true(!cache.contains("bad"))
+}
+
+///|
 test "parse_font_result parses cmap format 4 mappings" {
   let bytes = make_structural_font_with_cmap(make_cmap_format4_mapping())
   match parse_font_result(bytes) {

@@ -498,6 +498,26 @@ pub fn RendererResources::get_font_face_cache(
 }
 
 ///|
+/// Return a cached font face or load and parse it through a font loader.
+pub fn[L : @text.FontLoader] RendererResources::get_or_load_font_face(
+  self : RendererResources,
+  font_key : String,
+  loader : L,
+) -> Result[@text.FontFace, @text.FontLoadError] {
+  self.font_cache.get_or_load(font_key, loader)
+}
+
+///|
+/// Return a cached font face or load and parse it, reporting cache hits.
+pub fn[L : @text.FontLoader] RendererResources::get_or_load_font_face_result(
+  self : RendererResources,
+  font_key : String,
+  loader : L,
+) -> Result[@text.FontFaceCacheParseResult, @text.FontLoadError] {
+  self.font_cache.get_or_load_result(font_key, loader)
+}
+
+///|
 /// Get the reusable text rendering resources.
 pub fn RendererResources::get_text_resources(
   self : RendererResources,
@@ -1765,6 +1785,39 @@ pub fn Renderer::draw_font_bytes_cached_with_renderer_resources(
 }
 
 ///|
+/// Load a font face through renderer resources, then draw through the rendered
+/// text-mask cache.
+pub fn[L : @text.FontLoader] Renderer::draw_loaded_font_cached_with_renderer_resources(
+  self : Renderer,
+  loader : L,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  font_key : String,
+  text_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedFontTextDrawResult, @text.FontLoadError] {
+  match resources.get_or_load_font_face_result(font_key, loader) {
+    Ok(load_result) => {
+      let text_result = self.draw_text_face_cached_with_renderer_resources(
+        load_result.get_face(),
+        text,
+        x,
+        y,
+        config,
+        resources,
+        text_key,
+        paint,
+      )
+      Ok({ did_parse_font: load_result.did_parse(), text_result })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
 /// Parse an ordered font-byte stack through renderer resources, then draw a
 /// cached fallback line through the shared text-mask cache.
 pub fn Renderer::draw_font_bytes_fallback_line_cached_with_renderer_resources(
@@ -1950,6 +2003,39 @@ pub fn Renderer::draw_font_bytes_atlas_with_renderer_resources(
         paint,
       )
       Ok({ did_parse_font: parse_result.did_parse(), atlas_result })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Load a font face through renderer resources, then draw through glyph cache
+/// and atlas resources.
+pub fn[L : @text.FontLoader] Renderer::draw_loaded_font_atlas_with_renderer_resources(
+  self : Renderer,
+  loader : L,
+  text : String,
+  x : Double,
+  y : Double,
+  config : @text.LayoutConfig,
+  resources : RendererResources,
+  font_key : String,
+  glyph_key_prefix : String,
+  paint : @graphics.Paint,
+) -> Result[CachedFontAtlasDrawResult, @text.FontLoadError] {
+  match resources.get_or_load_font_face_result(font_key, loader) {
+    Ok(load_result) => {
+      let atlas_result = self.draw_text_face_atlas_with_renderer_resources(
+        load_result.get_face(),
+        text,
+        x,
+        y,
+        config,
+        resources,
+        glyph_key_prefix,
+        paint,
+      )
+      Ok({ did_parse_font: load_result.did_parse(), atlas_result })
     }
     Err(error) => Err(error)
   }

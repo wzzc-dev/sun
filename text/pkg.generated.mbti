@@ -21,6 +21,10 @@ pub fn layout_text(Font, String, LayoutConfig) -> LayoutResult
 
 pub fn layout_text_face(FontFace, String, LayoutConfig) -> TextLayout
 
+pub fn[L : FontLoader] load_font_data(L, String) -> Result[FontData, FontLoadError]
+
+pub fn[L : FontLoader] load_font_face(L, String) -> Result[FontFace, FontLoadError]
+
 pub fn parse_font(Bytes) -> Font
 
 pub fn parse_font_result(Bytes) -> Result[Font, FontParseError]
@@ -73,6 +77,18 @@ pub fn CoverageMask::get_pixels(Self) -> FixedArray[Byte]
 pub fn CoverageMask::get_width(Self) -> Int
 pub fn CoverageMask::new(Int, Int, FixedArray[Byte]) -> Self
 
+pub struct FileFontLoader {
+  mut sources : Map[String, FontFileSource]
+} derive(@debug.Debug)
+pub fn FileFontLoader::clear(Self) -> Unit
+pub fn FileFontLoader::contains(Self, String) -> Bool
+pub fn FileFontLoader::insert(Self, String, FontFileSource) -> FontFileSource
+pub fn FileFontLoader::is_empty(Self) -> Bool
+pub fn FileFontLoader::len(Self) -> Int
+pub fn FileFontLoader::new() -> Self
+pub fn FileFontLoader::remove(Self, String) -> Unit
+pub impl FontLoader for FileFontLoader
+
 pub struct Font {
   head : FontHead
   hhea : FontHhea
@@ -95,6 +111,7 @@ pub struct FontData {
   font_index : Int
 } derive(@debug.Debug)
 pub fn FontData::get_data(Self) -> Bytes
+pub fn FontData::get_font_index(Self) -> Int
 pub fn FontData::new(Bytes, font_index? : Int) -> Self
 pub fn FontData::parse(Self) -> Result[FontFace, FontParseError]
 
@@ -123,6 +140,8 @@ pub fn FontFaceCache::capacity(Self) -> Int
 pub fn FontFaceCache::clear(Self) -> Unit
 pub fn FontFaceCache::contains(Self, String) -> Bool
 pub fn FontFaceCache::get(Self, String) -> FontFace?
+pub fn[L : FontLoader] FontFaceCache::get_or_load(Self, String, L) -> Result[FontFace, FontLoadError]
+pub fn[L : FontLoader] FontFaceCache::get_or_load_result(Self, String, L) -> Result[FontFaceCacheParseResult, FontLoadError]
 pub fn FontFaceCache::get_or_parse(Self, String, Bytes) -> Result[FontFace, FontParseError]
 pub fn FontFaceCache::get_or_parse_result(Self, String, Bytes) -> Result[FontFaceCacheParseResult, FontParseError]
 pub fn FontFaceCache::insert(Self, String, FontFace) -> FontFace
@@ -163,6 +182,14 @@ pub fn FontFallbackSpan::get_face_index(Self) -> Int
 pub fn FontFallbackSpan::get_text(Self) -> String
 pub fn FontFallbackSpan::is_missing(Self) -> Bool
 
+pub struct FontFileSource {
+  path : String
+  font_index : Int
+} derive(Eq, @debug.Debug)
+pub fn FontFileSource::get_font_index(Self) -> Int
+pub fn FontFileSource::get_path(Self) -> String
+pub fn FontFileSource::new(String, font_index? : Int) -> Self
+
 pub struct FontHead {
   units_per_em : Int
   index_to_loc_format : Int
@@ -173,6 +200,12 @@ pub struct FontHhea {
   descent : Int
   line_gap : Int
   num_h_metrics : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum FontLoadError {
+  MissingFontData(String)
+  FontFileReadFailed(String, String)
+  FontParseFailed(String, FontParseError)
 } derive(Eq, @debug.Debug)
 
 pub struct FontMetrics {
@@ -425,6 +458,18 @@ pub struct LongHorMetric {
   lsb : Int
 } derive(Eq, @debug.Debug)
 
+pub struct MemoryFontLoader {
+  mut fonts : Map[String, FontData]
+} derive(@debug.Debug)
+pub fn MemoryFontLoader::clear(Self) -> Unit
+pub fn MemoryFontLoader::contains(Self, String) -> Bool
+pub fn MemoryFontLoader::insert(Self, String, FontData) -> FontData
+pub fn MemoryFontLoader::is_empty(Self) -> Bool
+pub fn MemoryFontLoader::len(Self) -> Int
+pub fn MemoryFontLoader::new() -> Self
+pub fn MemoryFontLoader::remove(Self, String) -> Unit
+pub impl FontLoader for MemoryFontLoader
+
 pub struct Paragraph {
   text : String
   lines : Array[TextLine]
@@ -569,4 +614,7 @@ pub fn TextMaskCacheRenderResult::get_mask(Self) -> CoverageMask
 // Type aliases
 
 // Traits
+pub(open) trait FontLoader {
+  fn load_font_data(Self, String) -> Result[FontData, FontLoadError]
+}
 
