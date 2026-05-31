@@ -116,6 +116,7 @@ Application / GUI
 - `MemorySurface` 记录每次 validated present 的目标 rect、row stride 与聚合像素/字节 telemetry，让 headless 测试能直接审查 present lifecycle
 - `MemorySurface` 可在保留像素内容的同时 reset present telemetry，让多帧 headless 测试能复用 reference surface 并重新统计 present lifecycle
 - `MemorySurface` 暴露隔离 full/rect `Pixmap` snapshot 与 PPM(P6) bytes 导出，让 headless 示例和测试直接消费离屏像素输出
+- `Pixmap` 与 `MemorySurface` 暴露 full/rect BMP(BGRA) bytes 导出，让 headless 工具能生成保留 alpha 的无依赖像素文件
 - `Pixmap` 与 `MemorySurface` 暴露隔离 full/rect raw RGBA bytes，让 headless fixture 能直接断言像素字节而不共享可变 backing storage
 - `Pixmap` 与 `MemorySurface` 暴露 full/rect 轻量 RGBA byte checksum，让 headless 回归和 benchmark telemetry 可以复用同一套确定性像素摘要
 - `PresentRectPayload`/`PresentBatch` 将 dirty present plan 物化为 packed rect payload，复用同一批量提交、present byte 与 source byte 成本统计语义

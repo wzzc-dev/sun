@@ -153,6 +153,22 @@ test "MemorySurface::to_ppm_bytes exports current RGB pixels" {
 }
 
 ///|
+test "MemorySurface::to_bmp_bytes exports current BGRA pixels" {
+  let surface = MemorySurface::new(1, 2)
+  let pixels : FixedArray[Byte] = FixedArray::make(8, 0)
+  write_rgba(pixels, 0, Color::new(r=9, g=8, b=7, a=6))
+  write_rgba(pixels, 4, Color::new(r=1, g=2, b=3, a=4))
+  assert_true(surface.present_pixels(1, 2, 4, pixels) == Ok(()))
+
+  let expected : Array[Byte] = [
+    66, 77, 62, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 0, 0, 2, 0,
+    0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 3, 2, 1, 4, 7, 8, 9, 6,
+  ]
+  assert_eq(surface.to_bmp_bytes(), Bytes::from_array(expected))
+}
+
+///|
 test "MemorySurface::checksum reports deterministic raw byte checksum" {
   let surface = MemorySurface::new(2, 1)
   let pixels : FixedArray[Byte] = FixedArray::make(8, 0)
@@ -220,6 +236,26 @@ test "MemorySurface::to_ppm_rect_bytes exports a surface rectangle" {
 }
 
 ///|
+test "MemorySurface::to_bmp_rect_bytes exports a surface rectangle" {
+  let surface = MemorySurface::new(3, 1)
+  let pixels : FixedArray[Byte] = FixedArray::make(12, 0)
+  write_rgba(pixels, 0, Color::red())
+  write_rgba(pixels, 4, Color::green())
+  write_rgba(pixels, 8, Color::blue())
+  assert_true(surface.present_pixels(3, 1, 12, pixels) == Ok(()))
+
+  let expected : Array[Byte] = [
+    66, 77, 62, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 2, 0, 0, 0, 1, 0,
+    0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 255, 0, 255, 255, 0, 0, 255,
+  ]
+  match surface.to_bmp_rect_bytes(PixelRect::new(x=1, y=0, width=2, height=1)) {
+    Ok(bmp) => assert_eq(bmp, Bytes::from_array(expected))
+    Err(_) => abort("expected surface rect bmp")
+  }
+}
+
+///|
 test "MemorySurface::to_rgba_rect_bytes exports packed surface rectangle" {
   let surface = MemorySurface::new(3, 1)
   let pixels : FixedArray[Byte] = FixedArray::make(12, 0)
@@ -261,6 +297,10 @@ test "MemorySurface rect snapshots reject invalid rectangles" {
   match surface.to_ppm_rect_bytes(PixelRect::new(x=0, y=0, width=0, height=1)) {
     Err(PresentError::InvalidDimensions(0, 1)) => ()
     _ => abort("expected surface rect ppm dimension error")
+  }
+  match surface.to_bmp_rect_bytes(PixelRect::new(x=0, y=0, width=0, height=1)) {
+    Err(PresentError::InvalidDimensions(0, 1)) => ()
+    _ => abort("expected surface rect bmp dimension error")
   }
   match
     surface.to_rgba_rect_bytes(PixelRect::new(x=0, y=0, width=1, height=0)) {
@@ -446,6 +486,24 @@ test "Pixmap::to_ppm_rect_bytes exports a source rectangle" {
 }
 
 ///|
+test "Pixmap::to_bmp_rect_bytes exports a source rectangle" {
+  let pixmap = Pixmap::new(3, 1)
+  pixmap.set_pixel(0, 0, Color::red())
+  pixmap.set_pixel(1, 0, Color::new(r=4, g=5, b=6, a=7))
+  pixmap.set_pixel(2, 0, Color::new(r=8, g=9, b=10, a=11))
+  let expected : Array[Byte] = [
+    66, 77, 62, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 2, 0, 0, 0, 1, 0,
+    0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 6, 5, 4, 7, 10, 9, 8, 11,
+  ]
+
+  match pixmap.to_bmp_rect_bytes(PixelRect::new(x=1, y=0, width=2, height=1)) {
+    Ok(bmp) => assert_eq(bmp, Bytes::from_array(expected))
+    Err(_) => abort("expected pixmap rect bmp")
+  }
+}
+
+///|
 test "Pixmap::checksum_rect reports deterministic rect checksum" {
   let pixmap = Pixmap::new(3, 1)
   pixmap.set_pixel(0, 0, Color::red())
@@ -482,6 +540,10 @@ test "Pixmap rect snapshots reuse present rect validation" {
   match pixmap.to_ppm_rect_bytes(PixelRect::new(x=0, y=0, width=1, height=0)) {
     Err(PresentError::InvalidDimensions(1, 0)) => ()
     _ => abort("expected pixmap rect ppm dimension error")
+  }
+  match pixmap.to_bmp_rect_bytes(PixelRect::new(x=0, y=0, width=1, height=0)) {
+    Err(PresentError::InvalidDimensions(1, 0)) => ()
+    _ => abort("expected pixmap rect bmp dimension error")
   }
   match
     pixmap.to_rgba_rect_bytes(PixelRect::new(x=-1, y=0, width=1, height=1)) {

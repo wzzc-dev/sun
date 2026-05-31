@@ -65,6 +65,32 @@ test "Pixmap::to_ppm_bytes encodes empty dimensions" {
 }
 
 ///|
+test "Pixmap::to_bmp_bytes encodes deterministic BGRA output" {
+  let pixmap = Pixmap::new(2, 2)
+  pixmap.set_pixel(0, 0, Color::new(r=255, g=0, b=0, a=255))
+  pixmap.set_pixel(1, 0, Color::new(r=0, g=255, b=0, a=128))
+  pixmap.set_pixel(0, 1, Color::new(r=0, g=0, b=255, a=64))
+  pixmap.set_pixel(1, 1, Color::transparent())
+  let expected : Array[Byte] = [
+    66, 77, 70, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 2, 0, 0, 0, 2, 0,
+    0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 255, 0, 0, 64, 0, 0, 0, 0, 0, 0, 255, 255, 0, 255, 0, 128,
+  ]
+  assert_eq(pixmap.to_bmp_bytes(), Bytes::from_array(expected))
+}
+
+///|
+test "Pixmap::to_bmp_bytes encodes empty dimensions" {
+  let pixmap = Pixmap::new(0, 0)
+  let expected : Array[Byte] = [
+    66, 77, 54, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 1, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0,
+  ]
+  assert_eq(pixmap.to_bmp_bytes(), Bytes::from_array(expected))
+}
+
+///|
 test "PixmapCache stores copies and manages entries" {
   let cache = PixmapCache::new()
   assert_true(cache.is_empty())

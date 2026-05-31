@@ -128,6 +128,27 @@ pub fn Pixmap::to_ppm_bytes(self : Pixmap) -> Bytes {
 }
 
 ///|
+/// Encode this pixmap as a deterministic 32-bit BMP image.
+///
+/// Pixels are written in standard bottom-up BMP row order with BGRA channels,
+/// preserving the pixmap alpha channel for tools that understand 32-bit BMP.
+pub fn Pixmap::to_bmp_bytes(self : Pixmap) -> Bytes {
+  let out : Array[Byte] = []
+  append_bmp_header(out, self.width, self.height)
+  for y_offset in 0..<self.height {
+    let y = self.height - 1 - y_offset
+    for x in 0..<self.width {
+      let offset = (y * self.width + x) * 4
+      out.push(self.pixels[offset + 2])
+      out.push(self.pixels[offset + 1])
+      out.push(self.pixels[offset])
+      out.push(self.pixels[offset + 3])
+    }
+  }
+  Bytes::from_array(out)
+}
+
+///|
 /// Small keyed cache for reusable pixmap resources.
 pub struct PixmapCache {
   mut pixmaps : Map[String, Pixmap]
@@ -382,6 +403,42 @@ fn append_ppm_decimal(out : Array[Byte], value : Int) -> Unit {
 ///|
 fn append_ppm_byte(out : Array[Byte], value : Int) -> Unit {
   out.push(value.land(0xFF).to_byte())
+}
+
+///|
+fn append_bmp_header(out : Array[Byte], width : Int, height : Int) -> Unit {
+  let pixel_byte_count = width * height * 4
+  append_bmp_u16_le(out, 0x4D42) // BM
+  append_bmp_u32_le(out, 54 + pixel_byte_count)
+  append_bmp_u16_le(out, 0)
+  append_bmp_u16_le(out, 0)
+  append_bmp_u32_le(out, 54)
+
+  append_bmp_u32_le(out, 40)
+  append_bmp_u32_le(out, width)
+  append_bmp_u32_le(out, height)
+  append_bmp_u16_le(out, 1)
+  append_bmp_u16_le(out, 32)
+  append_bmp_u32_le(out, 0)
+  append_bmp_u32_le(out, pixel_byte_count)
+  append_bmp_u32_le(out, 0)
+  append_bmp_u32_le(out, 0)
+  append_bmp_u32_le(out, 0)
+  append_bmp_u32_le(out, 0)
+}
+
+///|
+fn append_bmp_u16_le(out : Array[Byte], value : Int) -> Unit {
+  out.push(value.land(0xFF).to_byte())
+  out.push((value / 256).land(0xFF).to_byte())
+}
+
+///|
+fn append_bmp_u32_le(out : Array[Byte], value : Int) -> Unit {
+  out.push(value.land(0xFF).to_byte())
+  out.push((value / 256).land(0xFF).to_byte())
+  out.push((value / 65536).land(0xFF).to_byte())
+  out.push((value / 16777216).land(0xFF).to_byte())
 }
 
 ///|
