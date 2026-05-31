@@ -1520,6 +1520,101 @@ test "RenderPipeline bytes nine-patch replay uses RendererResources image cache"
 }
 
 ///|
+test "RenderPipeline RGBA bytes nine-patch replay uses RendererResources image cache" {
+  let panel = make_renderer_test_nine_patch_source()
+  let insets = @graphics.NinePatchInsets::new(left=1, top=1, right=1, bottom=1)
+  let resources = RendererResources::with_capacities(16, 16, 1, 4, 4)
+  let renderer = Renderer::new(@graphics.Canvas::new(10, 5))
+  let first_pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_nine_patch_rgba_bytes_keyed(
+      "rgba-panel",
+      panel.to_rgba_bytes(),
+      3,
+      3,
+      0,
+      0,
+      5,
+      5,
+      insets,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    )
+  let plan = first_pipeline.resource_plan()
+  assert_eq(plan.get_command_count(), 2)
+  assert_eq(plan.get_image_count(), 1)
+  assert_eq(plan.get_keyed_image_count(), 1)
+  assert_eq(plan.get_resource_count(), 1)
+  assert_eq(plan.get_keyed_resource_count(), 1)
+  assert_eq(plan.get_image_source_pixel_count(), 9)
+  let images = plan.get_image_dependencies()
+  assert_true(images[0].get_resource_key() == Some("rgba-panel"))
+  assert_eq(images[0].get_source_width(), 3)
+  assert_eq(images[0].get_source_height(), 3)
+
+  let first = renderer.draw_pipeline_with_renderer_resources(
+    first_pipeline, resources,
+  )
+  assert_eq(first.get_command_count(), 2)
+  assert_eq(first.get_clear_count(), 1)
+  assert_eq(first.get_image_count(), 1)
+  assert_eq(first.get_keyed_image_count(), 1)
+  assert_eq(first.get_image_cache_insert_count(), 1)
+  assert_eq(first.get_image_cache_hit_count(), 0)
+  assert_eq(first.get_resource_cache_miss_count(), 1)
+  assert_eq(first.get_resource_cache_hit_count(), 0)
+  assert_true(resources.contains_image("rgba-panel"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(2, 2),
+    @graphics.Color::new(r=50, g=0, b=0),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(4, 4),
+    @graphics.Color::new(r=90, g=0, b=0),
+  )
+
+  let second = renderer.draw_pipeline_with_renderer_resources(
+    RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_nine_patch_rgba_bytes_keyed(
+      "rgba-panel",
+      Bytes::from_array([]),
+      3,
+      3,
+      5,
+      0,
+      5,
+      5,
+      insets,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ),
+    resources,
+  )
+  assert_eq(second.get_command_count(), 2)
+  assert_eq(second.get_image_count(), 1)
+  assert_eq(second.get_keyed_image_count(), 1)
+  assert_eq(second.get_image_cache_insert_count(), 0)
+  assert_eq(second.get_image_cache_hit_count(), 1)
+  assert_eq(second.get_resource_cache_miss_count(), 0)
+  assert_eq(second.get_resource_cache_hit_count(), 1)
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::white(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(7, 2),
+    @graphics.Color::new(r=50, g=0, b=0),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(9, 4),
+    @graphics.Color::new(r=90, g=0, b=0),
+  )
+}
+
+///|
 test "RenderPipeline bytes sampled replay uses RendererResources image cache" {
   let sprite = make_renderer_test_tile_source()
   let resources = RendererResources::with_capacities(16, 16, 2, 4, 4)
@@ -2872,6 +2967,19 @@ test "RenderPipeline diff retains keyed resource commands" {
       paint,
       @graphics.ImageSampling::Nearest,
     )
+    .draw_nine_patch_rgba_bytes_keyed(
+      "rgba-panel",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      4,
+      4,
+      2,
+      2,
+      insets,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
     .draw_pixmap_rect_keyed(
       "sprite",
       previous_icon,
@@ -3105,6 +3213,19 @@ test "RenderPipeline diff retains keyed resource commands" {
       paint,
       @graphics.ImageSampling::Nearest,
     )
+    .draw_nine_patch_rgba_bytes_keyed(
+      "rgba-panel",
+      Bytes::from_array([0]),
+      2,
+      2,
+      4,
+      4,
+      2,
+      2,
+      insets,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
     .draw_pixmap_rect_keyed(
       "sprite",
       next_icon,
@@ -3167,7 +3288,7 @@ test "RenderPipeline diff retains keyed resource commands" {
     )
 
   let retained = RenderPipeline::diff(previous, next, 8, 8)
-  assert_eq(retained.get_retained_command_count(), 27)
+  assert_eq(retained.get_retained_command_count(), 28)
   assert_eq(retained.get_changed_command_count(), 0)
   assert_true(!retained.has_changes())
   assert_true(!retained.has_dirty())
