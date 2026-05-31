@@ -143,8 +143,10 @@ pub enum RenderCommand {
   DrawRgbaBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.Paint)
   DrawSampledBmpBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledPngBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
+  DrawSampledRgbaBytesKeyed(String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledBmpBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledPngBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
+  DrawSampledRgbaBytesRectKeyed(String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawBmpBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawPngBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, @graphics.Paint)
   DrawRgbaBytesRectKeyed(String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, @graphics.Paint)
@@ -199,6 +201,8 @@ pub fn RenderPipeline::draw_sampled_bmp_bytes_keyed(Self, String, Bytes, Int, In
 pub fn RenderPipeline::draw_sampled_bmp_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling) -> Self
 pub fn RenderPipeline::draw_sampled_png_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling) -> Self
 pub fn RenderPipeline::draw_sampled_png_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling) -> Self
+pub fn RenderPipeline::draw_sampled_rgba_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling) -> Self
+pub fn RenderPipeline::draw_sampled_rgba_bytes_rect_keyed(Self, String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling) -> Self
 pub fn RenderPipeline::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_text_face_keyed(Self, String, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_tiled_bmp_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint) -> Self

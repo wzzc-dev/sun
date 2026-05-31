@@ -908,6 +908,153 @@ test "RenderPipeline RGBA bytes replay uses RendererResources image cache" {
 }
 
 ///|
+test "RenderPipeline RGBA bytes sampled replay uses RendererResources image cache" {
+  let sprite = make_renderer_test_tile_source()
+  let src_right = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let resources = RendererResources::with_capacities(16, 16, 2, 4, 4)
+  let renderer = Renderer::new(@graphics.Canvas::new(8, 1))
+  let first_pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_sampled_rgba_bytes_keyed(
+      "rgba-sampled",
+      sprite.to_rgba_bytes(),
+      2,
+      1,
+      0,
+      0,
+      4,
+      1,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_sampled_rgba_bytes_rect_keyed(
+      "rgba-sampled-sprite",
+      sprite.to_rgba_bytes(),
+      2,
+      1,
+      src_right,
+      4,
+      0,
+      2,
+      1,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    )
+  let plan = first_pipeline.resource_plan()
+  assert_eq(plan.get_command_count(), 3)
+  assert_eq(plan.get_image_count(), 2)
+  assert_eq(plan.get_keyed_image_count(), 2)
+  assert_eq(plan.get_resource_count(), 2)
+  assert_eq(plan.get_keyed_resource_count(), 2)
+  assert_eq(plan.get_image_source_pixel_count(), 3)
+  let images = plan.get_image_dependencies()
+  assert_true(images[0].get_resource_key() == Some("rgba-sampled"))
+  assert_eq(images[0].get_source_width(), 2)
+  assert_eq(images[0].get_source_height(), 1)
+  assert_true(images[1].get_resource_key() == Some("rgba-sampled-sprite"))
+  assert_eq(images[1].get_source_width(), 1)
+  assert_eq(images[1].get_source_height(), 1)
+
+  let first = renderer.draw_pipeline_with_renderer_resources(
+    first_pipeline, resources,
+  )
+  assert_eq(first.get_command_count(), 3)
+  assert_eq(first.get_clear_count(), 1)
+  assert_eq(first.get_image_count(), 2)
+  assert_eq(first.get_keyed_image_count(), 2)
+  assert_eq(first.get_image_cache_insert_count(), 2)
+  assert_eq(first.get_image_cache_hit_count(), 0)
+  assert_eq(first.get_resource_cache_miss_count(), 2)
+  assert_eq(first.get_resource_cache_hit_count(), 0)
+  assert_true(resources.contains_image("rgba-sampled"))
+  assert_true(resources.contains_image("rgba-sampled-sprite"))
+  assert_eq(resources.get_image_cache().len(), 2)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(1, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(2, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(3, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(4, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(5, 0),
+    @graphics.Color::green(),
+  )
+
+  let second = renderer.draw_pipeline_with_renderer_resources(
+    RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_sampled_rgba_bytes_keyed(
+      "rgba-sampled",
+      Bytes::from_array([]),
+      2,
+      1,
+      0,
+      0,
+      4,
+      1,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_sampled_rgba_bytes_rect_keyed(
+      "rgba-sampled-sprite",
+      Bytes::from_array([]),
+      2,
+      1,
+      src_right,
+      6,
+      0,
+      2,
+      1,
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Nearest,
+    ),
+    resources,
+  )
+  assert_eq(second.get_command_count(), 3)
+  assert_eq(second.get_image_count(), 2)
+  assert_eq(second.get_keyed_image_count(), 2)
+  assert_eq(second.get_image_cache_insert_count(), 0)
+  assert_eq(second.get_image_cache_hit_count(), 2)
+  assert_eq(second.get_resource_cache_miss_count(), 0)
+  assert_eq(second.get_resource_cache_hit_count(), 2)
+  assert_eq(resources.get_image_cache().len(), 2)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(3, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(4, 0),
+    @graphics.Color::white(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(6, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(7, 0),
+    @graphics.Color::green(),
+  )
+}
+
+///|
 test "RenderPipeline bytes source-rect replay uses RendererResources image cache" {
   let atlas = make_renderer_test_tile_source()
   let src_left = @graphics.PixelRect::new(x=0, y=0, width=1, height=1)
@@ -2499,6 +2646,18 @@ test "RenderPipeline diff retains keyed resource commands" {
       paint,
       @graphics.ImageSampling::Nearest,
     )
+    .draw_sampled_rgba_bytes_keyed(
+      "rgba-sampled",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      4,
+      2,
+      2,
+      1,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
     .draw_sampled_bmp_bytes_rect_keyed(
       "bmp-sampled-sprite",
       previous_icon.to_bmp_bytes(),
@@ -2513,6 +2672,19 @@ test "RenderPipeline diff retains keyed resource commands" {
     .draw_sampled_png_bytes_rect_keyed(
       "png-sampled-sprite",
       must_renderer_test_png_bytes(previous_icon),
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      6,
+      2,
+      2,
+      1,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_sampled_rgba_bytes_rect_keyed(
+      "rgba-sampled-sprite",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
       @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
       6,
       2,
@@ -2695,6 +2867,18 @@ test "RenderPipeline diff retains keyed resource commands" {
       paint,
       @graphics.ImageSampling::Nearest,
     )
+    .draw_sampled_rgba_bytes_keyed(
+      "rgba-sampled",
+      Bytes::from_array([0]),
+      2,
+      2,
+      4,
+      2,
+      2,
+      1,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
     .draw_sampled_bmp_bytes_rect_keyed(
       "bmp-sampled-sprite",
       next_icon.to_bmp_bytes(),
@@ -2709,6 +2893,19 @@ test "RenderPipeline diff retains keyed resource commands" {
     .draw_sampled_png_bytes_rect_keyed(
       "png-sampled-sprite",
       must_renderer_test_png_bytes(next_icon),
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      6,
+      2,
+      2,
+      1,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_sampled_rgba_bytes_rect_keyed(
+      "rgba-sampled-sprite",
+      Bytes::from_array([0]),
+      2,
+      2,
       @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
       6,
       2,
@@ -2837,7 +3034,7 @@ test "RenderPipeline diff retains keyed resource commands" {
     )
 
   let retained = RenderPipeline::diff(previous, next, 8, 8)
-  assert_eq(retained.get_retained_command_count(), 24)
+  assert_eq(retained.get_retained_command_count(), 26)
   assert_eq(retained.get_changed_command_count(), 0)
   assert_true(!retained.has_changes())
   assert_true(!retained.has_dirty())
