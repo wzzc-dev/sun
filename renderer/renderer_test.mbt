@@ -1367,6 +1367,135 @@ test "Renderer cached BMP transformed image path uses RendererResources" {
 }
 
 ///|
+test "Renderer sampled cached image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(3, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let image = make_renderer_test_bicubic_source()
+
+  let first = renderer.draw_sampled_pixmap_cached_with_renderer_resources(
+    image,
+    0,
+    0,
+    3,
+    1,
+    resources,
+    "sampled",
+    @graphics.Paint::new(),
+    @graphics.ImageSampling::Bicubic,
+  )
+  assert_true(first.did_insert_pixmap())
+  assert_true(!first.did_hit_cache())
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    canvas.get_pixmap().get_pixel(0, 0),
+    @graphics.Color::new(r=34, g=0, b=0, a=255),
+  )
+
+  image.set_pixel(1, 0, @graphics.Color::blue())
+  image.set_pixel(3, 0, @graphics.Color::blue())
+  canvas.clear(@graphics.Color::white())
+  let src_rect = @graphics.PixelRect::new(x=0, y=0, width=4, height=1)
+  let second = renderer.draw_sampled_pixmap_rect_cached_with_renderer_resources(
+    image,
+    src_rect,
+    0,
+    0,
+    3,
+    1,
+    resources,
+    "sampled",
+    @graphics.Paint::new(),
+    @graphics.ImageSampling::Bilinear,
+  )
+  assert_true(!second.did_insert_pixmap())
+  assert_true(second.did_hit_cache())
+  assert_eq(
+    canvas.get_pixmap().get_pixel(1, 0),
+    @graphics.Color::new(r=128, g=0, b=0, a=255),
+  )
+}
+
+///|
+test "Renderer sampled cached BMP image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(3, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let image = make_renderer_test_bicubic_source()
+
+  match
+    renderer.draw_sampled_bmp_bytes_cached_with_renderer_resources(
+      image.to_bmp_bytes(),
+      0,
+      0,
+      3,
+      1,
+      resources,
+      "sampled-bmp",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Bicubic,
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached sampled BMP draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(
+    canvas.get_pixmap().get_pixel(0, 0),
+    @graphics.Color::new(r=34, g=0, b=0, a=255),
+  )
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_sampled_bmp_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      @graphics.PixelRect::new(x=0, y=0, width=4, height=1),
+      0,
+      0,
+      3,
+      1,
+      resources,
+      "sampled-bmp",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Bilinear,
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached sampled BMP hit")
+  }
+  assert_eq(
+    canvas.get_pixmap().get_pixel(1, 0),
+    @graphics.Color::new(r=128, g=0, b=0, a=255),
+  )
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_sampled_bmp_bytes_cached_with_renderer_resources(
+      Bytes::from_array([66, 77]),
+      0,
+      0,
+      3,
+      1,
+      resources,
+      "broken-sampled-bmp",
+      @graphics.Paint::new(),
+      @graphics.ImageSampling::Bicubic,
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
+    _ => abort("expected sampled BMP decode error")
+  }
+  assert_true(!resources.contains_image("broken-sampled-bmp"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+}
+
+///|
 test "Renderer quality cached image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(4, 2)
   canvas.clear(@graphics.Color::white())
@@ -2427,6 +2556,16 @@ fn make_renderer_test_tile_source() -> @graphics.Pixmap {
   let src = @graphics.Pixmap::new(2, 1)
   src.set_pixel(0, 0, @graphics.Color::red())
   src.set_pixel(1, 0, @graphics.Color::green())
+  src
+}
+
+///|
+fn make_renderer_test_bicubic_source() -> @graphics.Pixmap {
+  let src = @graphics.Pixmap::new(4, 1)
+  src.set_pixel(0, 0, @graphics.Color::black())
+  src.set_pixel(1, 0, @graphics.Color::red())
+  src.set_pixel(2, 0, @graphics.Color::black())
+  src.set_pixel(3, 0, @graphics.Color::red())
   src
 }
 

@@ -2264,6 +2264,243 @@ pub fn Renderer::draw_nine_patch_bmp_bytes_cached_with_renderer_resources(
 }
 
 ///|
+/// Draw a sampled scaled image through a caller-owned pixmap cache.
+pub fn Renderer::draw_sampled_pixmap_cached(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> CachedPixmapDrawResult {
+  let result = image_cache.get_or_insert_result(image_key, pixmap)
+  self.canvas.draw_sampled_pixmap(
+    result.get_pixmap(),
+    x,
+    y,
+    width,
+    height,
+    paint,
+    sampling,
+  )
+  { did_insert_pixmap: result.did_insert() }
+}
+
+///|
+/// Draw a sampled scaled image through renderer-owned resources.
+pub fn Renderer::draw_sampled_pixmap_cached_with_renderer_resources(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> CachedPixmapDrawResult {
+  self.draw_sampled_pixmap_cached(
+    pixmap,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
+/// Draw a sampled scaled image source rectangle through a caller-owned pixmap
+/// cache.
+pub fn Renderer::draw_sampled_pixmap_rect_cached(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> CachedPixmapDrawResult {
+  let result = image_cache.get_or_insert_result(image_key, pixmap)
+  self.canvas.draw_sampled_pixmap_rect(
+    result.get_pixmap(),
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    paint,
+    sampling,
+  )
+  { did_insert_pixmap: result.did_insert() }
+}
+
+///|
+/// Draw a sampled scaled image source rectangle through renderer-owned
+/// resources.
+pub fn Renderer::draw_sampled_pixmap_rect_cached_with_renderer_resources(
+  self : Renderer,
+  pixmap : @graphics.Pixmap,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> CachedPixmapDrawResult {
+  self.draw_sampled_pixmap_rect_cached(
+    pixmap,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
+/// Decode BMP bytes through a pixmap cache and draw a sampled scaled image.
+pub fn Renderer::draw_sampled_bmp_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_bmp_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_sampled_pixmap(
+        result.get_pixmap(),
+        x,
+        y,
+        width,
+        height,
+        paint,
+        sampling,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode BMP bytes through renderer-owned resources and draw a sampled scaled
+/// image.
+pub fn Renderer::draw_sampled_bmp_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_sampled_bmp_bytes_cached(
+    image_data,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
+/// Decode BMP bytes through a pixmap cache and draw a sampled scaled source
+/// rectangle.
+pub fn Renderer::draw_sampled_bmp_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_bmp_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_sampled_pixmap_rect(
+        result.get_pixmap(),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        sampling,
+      )
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode BMP bytes through renderer-owned resources and draw a sampled scaled
+/// source rectangle.
+pub fn Renderer::draw_sampled_bmp_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+  sampling : @graphics.ImageSampling,
+) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_sampled_bmp_bytes_rect_cached(
+    image_data,
+    src_rect,
+    x,
+    y,
+    width,
+    height,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+    sampling,
+  )
+}
+
+///|
 /// Draw a scaled image through a caller-owned pixmap cache and quality policy.
 pub fn Renderer::draw_quality_pixmap_cached(
   self : Renderer,
