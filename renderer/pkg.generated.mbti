@@ -144,6 +144,7 @@ pub enum RenderCommand {
   DrawSampledBmpBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledPngBytesKeyed(String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledRgbaBytesKeyed(String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
+  DrawQualityRgbaBytesKeyed(String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality)
   DrawSampledBmpBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledPngBytesRectKeyed(String, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
   DrawSampledRgbaBytesRectKeyed(String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling)
@@ -198,6 +199,7 @@ pub fn RenderPipeline::draw_pixmap_rect(Self, @graphics.Pixmap, @graphics.PixelR
 pub fn RenderPipeline::draw_pixmap_rect_keyed(Self, String, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_png_bytes_keyed(Self, String, Bytes, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_png_bytes_rect_keyed(Self, String, Bytes, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_quality_rgba_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageQuality) -> Self
 pub fn RenderPipeline::draw_rgba_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_rgba_bytes_rect_keyed(Self, String, Bytes, Int, Int, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
 pub fn RenderPipeline::draw_sampled_bmp_bytes_keyed(Self, String, Bytes, Int, Int, Int, Int, @graphics.Paint, @graphics.ImageSampling) -> Self
