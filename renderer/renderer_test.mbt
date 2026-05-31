@@ -72,6 +72,76 @@ test "draw_coverage_mask uses paint opacity" {
 }
 
 ///|
+test "RenderPipeline replays vector and image commands" {
+  let canvas = @graphics.Canvas::new(8, 5)
+  let renderer = Renderer::new(canvas)
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::blue())
+  let fill_paint = @graphics.Paint::new().set_color(@graphics.Color::red())
+  let stroke_paint = @graphics.Paint::new()
+    .set_color(@graphics.Color::black())
+    .set_style(@graphics.PaintStyle::Stroke)
+    .set_stroke_width(2.0)
+  let path = @graphics.Path::new().move_to(0.0, 3.0).line_to(7.0, 3.0)
+  let pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .fill_rect(0.0, 0.0, 2.0, 2.0, fill_paint)
+    .stroke_path(path, stroke_paint)
+    .draw_pixmap(icon, 6, 0, @graphics.Paint::new())
+
+  assert_eq(pipeline.len(), 4)
+  assert_true(!pipeline.is_empty())
+  assert_eq(pipeline.get_commands().length(), 4)
+  let result = renderer.draw_pipeline(pipeline)
+  assert_eq(result.get_command_count(), 4)
+  assert_eq(result.get_clear_count(), 1)
+  assert_eq(result.get_fill_count(), 1)
+  assert_eq(result.get_stroke_count(), 1)
+  assert_eq(result.get_image_count(), 1)
+  assert_eq(result.get_text_count(), 0)
+
+  let pixmap = renderer.get_canvas().get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(pixmap.get_pixel(6, 0), @graphics.Color::blue())
+  assert_eq(pixmap.get_pixel(3, 2), @graphics.Color::black())
+  assert_eq(pixmap.get_pixel(7, 4), @graphics.Color::white())
+}
+
+///|
+test "RenderPipeline replays parsed text commands and can be cleared" {
+  let pipeline = RenderPipeline::new().clear_canvas(@graphics.Color::white())
+  assert_eq(pipeline.len(), 1)
+  pipeline.clear_commands()
+  assert_true(pipeline.is_empty())
+
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
+  let config = @text.LayoutConfig::new(
+    max_width=12.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  ignore(
+    pipeline
+    .clear_canvas(@graphics.Color::white())
+    .draw_text_face(
+      face,
+      "A",
+      1.0,
+      1.0,
+      config,
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ),
+  )
+  let canvas = @graphics.Canvas::new(12, 12)
+  let renderer = Renderer::new(canvas)
+  let result = pipeline.replay(renderer)
+  assert_eq(result.get_command_count(), 2)
+  assert_eq(result.get_clear_count(), 1)
+  assert_eq(result.get_text_count(), 1)
+  assert_true(pixmap_has_ink(renderer.get_canvas().get_pixmap()))
+}
+
+///|
 test "Renderer::draw_text renders parsed TTF bytes to pixmap" {
   let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
   let canvas = @graphics.Canvas::new(12, 12)

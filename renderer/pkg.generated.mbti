@@ -130,6 +130,51 @@ pub fn FontBytesFallbackSource::get_font_data(Self) -> Bytes
 pub fn FontBytesFallbackSource::get_font_key(Self) -> String
 pub fn FontBytesFallbackSource::new(String, Bytes) -> Self
 
+pub enum RenderCommand {
+  Clear(@graphics.Color)
+  FillRect(Double, Double, Double, Double, @graphics.Paint)
+  StrokeRect(Double, Double, Double, Double, @graphics.Paint)
+  FillPath(@graphics.Path, @graphics.Paint)
+  StrokePath(@graphics.Path, @graphics.Paint)
+  DrawPixmap(@graphics.Pixmap, Int, Int, @graphics.Paint)
+  DrawPixmapRect(@graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint)
+  DrawTextFace(@text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint)
+} derive(@debug.Debug)
+
+pub struct RenderPipeline {
+  commands : Array[RenderCommand]
+} derive(@debug.Debug)
+pub fn RenderPipeline::clear_canvas(Self, @graphics.Color) -> Self
+pub fn RenderPipeline::clear_commands(Self) -> Unit
+pub fn RenderPipeline::draw_pixmap(Self, @graphics.Pixmap, Int, Int, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_pixmap_rect(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.Paint) -> Self
+pub fn RenderPipeline::draw_text_face(Self, @text.FontFace, String, Double, Double, @text.LayoutConfig, @graphics.Paint) -> Self
+pub fn RenderPipeline::fill_path(Self, @graphics.Path, @graphics.Paint) -> Self
+pub fn RenderPipeline::fill_rect(Self, Double, Double, Double, Double, @graphics.Paint) -> Self
+pub fn RenderPipeline::get_commands(Self) -> Array[RenderCommand]
+pub fn RenderPipeline::is_empty(Self) -> Bool
+pub fn RenderPipeline::len(Self) -> Int
+pub fn RenderPipeline::new() -> Self
+pub fn RenderPipeline::push(Self, RenderCommand) -> Self
+pub fn RenderPipeline::replay(Self, Renderer) -> RenderPipelineReplayResult
+pub fn RenderPipeline::stroke_path(Self, @graphics.Path, @graphics.Paint) -> Self
+pub fn RenderPipeline::stroke_rect(Self, Double, Double, Double, Double, @graphics.Paint) -> Self
+
+pub struct RenderPipelineReplayResult {
+  command_count : Int
+  clear_count : Int
+  fill_count : Int
+  stroke_count : Int
+  image_count : Int
+  text_count : Int
+} derive(Eq, @debug.Debug)
+pub fn RenderPipelineReplayResult::get_clear_count(Self) -> Int
+pub fn RenderPipelineReplayResult::get_command_count(Self) -> Int
+pub fn RenderPipelineReplayResult::get_fill_count(Self) -> Int
+pub fn RenderPipelineReplayResult::get_image_count(Self) -> Int
+pub fn RenderPipelineReplayResult::get_stroke_count(Self) -> Int
+pub fn RenderPipelineReplayResult::get_text_count(Self) -> Int
+
 pub struct Renderer {
   canvas : @graphics.Canvas
 } derive(@debug.Debug)
@@ -153,6 +198,7 @@ pub fn Renderer::draw_nine_patch_png_bytes_cached(Self, Bytes, Int, Int, Int, In
 pub fn Renderer::draw_nine_patch_png_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, Int, Int, @graphics.NinePatchInsets, RendererResources, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_nine_patch_rgba_bytes_cached(Self, Bytes, Int, Int, Int, Int, Int, Int, @graphics.NinePatchInsets, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_nine_patch_rgba_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, Int, Int, Int, Int, @graphics.NinePatchInsets, RendererResources, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError]
+pub fn Renderer::draw_pipeline(Self, RenderPipeline) -> RenderPipelineReplayResult
 pub fn Renderer::draw_pixmap_cached(Self, @graphics.Pixmap, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::draw_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, RendererResources, String, @graphics.Paint) -> CachedPixmapDrawResult
 pub fn Renderer::draw_pixmap_rect_cached(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> CachedPixmapDrawResult
