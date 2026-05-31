@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+scripts/check_core_warnings.sh
+
 moon check
 
 # The renderer packages have executable unit tests. GUI backends are compiled

@@ -24,6 +24,10 @@ The gate runs `moon check`, executable tests for the renderer and present
 packages (`graphics`, `text`, `renderer`, and `softbuffer`), executable tests
 for framework-free window packages (`core` and `dpi`), native build checks for
 the window examples, and `moon test --build-only` for the full workspace.
+Before the full workspace check, it also runs `scripts/check_core_warnings.sh`.
+That script treats warnings as errors for the pure rendering packages and
+headless examples across supported backends, while keeping `.local_repos/window`
+warnings tracked separately.
 
 The `renderer` package includes the integration regressions that cross package
 boundaries, including parsed TTF bytes through text layout, glyph rasterization,

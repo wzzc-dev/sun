@@ -225,7 +225,7 @@ Application / GUI
 - [x] 建立根项目验证脚本 `scripts/check_ci.sh`
 - [x] 生成并纳入 `graphics/pkg.generated.mbti`
 - [x] 清理 `text` 核心包 unused constructor warning，将 `TextDirection::RightToLeft` 与 Unicode line-break class 构造路径转化为可测试行为
-- [ ] 将其余核心 warning 分批清理到可审查水平
+- [x] 增加 `scripts/check_core_warnings.sh`，用 `moon check --deny-warn` 守住 graphics/text/renderer/softbuffer 与 headless examples 的核心 warning baseline，并在 CI gate 中先于全 workspace 检查执行
 - [x] 为渲染快照测试确定稳定格式（灰度 mask 文本 dump）
 
 #### 1.1 修复字形渲染缺陷
@@ -528,7 +528,7 @@ Application / GUI
 - [ ] 添加更多单元测试与快照测试
 - [ ] 代码覆盖率分析
 - [ ] 性能分析与优化
-- [ ] 建立 warning baseline：核心包优先清理，`.local_repos/window` 单独追踪
+- [x] 建立 warning baseline：核心包通过 `scripts/check_core_warnings.sh` 以 warnings-as-errors 检查，`.local_repos/window` warning 保持单独追踪
 
 ### 架构改进
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
