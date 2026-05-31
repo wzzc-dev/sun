@@ -1167,6 +1167,92 @@ test "Renderer cached BMP image path uses RendererResources" {
 }
 
 ///|
+test "RendererResources PNG decode helpers reuse image cache" {
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 2)
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::green())
+  let png = must_renderer_test_png_bytes(icon)
+
+  match resources.get_or_decode_png_image_result("icon", png) {
+    Ok(first) => {
+      assert_true(first.did_decode())
+      assert_true(!first.did_hit_cache())
+      assert_eq(first.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+    }
+    Err(_) => abort("expected PNG resource decode")
+  }
+  assert_true(resources.contains_image("icon"))
+
+  match resources.get_or_decode_png_image("icon", Bytes::from_array([0, 0])) {
+    Ok(cached) => assert_eq(cached.get_pixel(0, 0), @graphics.Color::green())
+    Err(_) => abort("expected PNG resource cache hit")
+  }
+}
+
+///|
+test "Renderer cached PNG image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(3, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 2)
+  let icon = @graphics.Pixmap::new(1, 1)
+  icon.set_pixel(0, 0, @graphics.Color::green())
+
+  match
+    renderer.draw_png_bytes_cached_with_renderer_resources(
+      must_renderer_test_png_bytes(icon),
+      0,
+      0,
+      resources,
+      "icon",
+      @graphics.Paint::new(),
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached PNG draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_png_bytes_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      1,
+      0,
+      resources,
+      "icon",
+      @graphics.Paint::new(),
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached PNG hit")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+
+  match
+    renderer.draw_png_bytes_cached_with_renderer_resources(
+      Bytes::from_array([137, 80]),
+      2,
+      0,
+      resources,
+      "broken",
+      @graphics.Paint::new(),
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 8, 2)) => ()
+    _ => abort("expected cached PNG draw decode error")
+  }
+  assert_true(!resources.contains_image("broken"))
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::white())
+}
+
+///|
 test "Renderer cached RGBA image path uses RendererResources" {
   let canvas = @graphics.Canvas::new(3, 1)
   canvas.clear(@graphics.Color::white())
@@ -1306,6 +1392,54 @@ test "Renderer cached RGBA source rect path uses RendererResources" {
   }
   assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
   assert_eq(canvas.get_pixmap().get_pixel(3, 0), @graphics.Color::green())
+}
+
+///|
+test "Renderer cached PNG source rect path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(3, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 1)
+  let atlas = @graphics.Pixmap::new(3, 1)
+  atlas.set_pixel(0, 0, @graphics.Color::red())
+  atlas.set_pixel(1, 0, @graphics.Color::green())
+  atlas.set_pixel(2, 0, @graphics.Color::blue())
+  let green_rect = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let blue_rect = @graphics.PixelRect::new(x=2, y=0, width=1, height=1)
+
+  match
+    renderer.draw_png_bytes_rect_cached_with_renderer_resources(
+      must_renderer_test_png_bytes(atlas),
+      green_rect,
+      0,
+      0,
+      resources,
+      "atlas-png",
+      @graphics.Paint::new(),
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached PNG source rect draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+
+  match
+    renderer.draw_png_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      blue_rect,
+      1,
+      0,
+      resources,
+      "atlas-png",
+      @graphics.Paint::new(),
+    ) {
+    Ok(second) => assert_true(second.did_hit_cache())
+    Err(_) => abort("expected cached PNG source rect hit")
+  }
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::blue())
 }
 
 ///|
@@ -3067,6 +3201,14 @@ fn make_renderer_test_tile_source() -> @graphics.Pixmap {
   src.set_pixel(0, 0, @graphics.Color::red())
   src.set_pixel(1, 0, @graphics.Color::green())
   src
+}
+
+///|
+fn must_renderer_test_png_bytes(pixmap : @graphics.Pixmap) -> Bytes {
+  match pixmap.to_png_bytes() {
+    Ok(bytes) => bytes
+    Err(_) => abort("expected PNG fixture encode")
+  }
 }
 
 ///|

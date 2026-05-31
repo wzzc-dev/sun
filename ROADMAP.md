@@ -175,6 +175,7 @@ Application / GUI
 - Renderer/`RendererResources` 支持 cached Pixmap/BMP tiled source-rect draw path，让 GUI pattern/background 资源复用同一 image cache
 - Renderer/`RendererResources` 支持 cached Pixmap/BMP transform-aware sampled/quality draw path，让旋转、缩放和局部变换下的 GUI 图像资源继续复用 image cache
 - Renderer/`RendererResources` 支持 cached raw RGBA bytes image/source-rect/tiled/nine-patch/sampled/quality/transform-aware draw path，让无容器像素资源可直接进入 image cache、atlas 子图、pattern/background、GUI 面板边框与 transformed 缩放绘制入口
+- Renderer/`RendererResources` 支持 cached PNG bytes full/source-rect draw path，让最小 PNG fixture 与 GUI 图像资源可直接进入 image cache 并复用 atlas 子图绘制入口
 - Layer 支持 resize 时保留重叠像素并标记新 cache dirty
 - LayerTree 支持位置、尺寸、可见性、opacity、移除、替换和重排触发的旧/新 bounds invalidation
 - LayerTree 可将 dirty 合成到 frame canvas 并提交到 `Surface` partial present
@@ -394,6 +395,7 @@ Application / GUI
 - [x] 增加 `Pixmap::to_ppm_bytes` 与 `Pixmap::to_ppm_rect_bytes` 确定性 PPM(P6) 导出，覆盖 header、RGB 顺序、alpha 丢弃、空尺寸、局部矩形与 headless 示例输出路径
 - [x] 增加 `Pixmap`/`MemorySurface` full/rect 确定性 RGBA PNG 导出，覆盖 PNG signature/IHDR/IDAT/IEND、CRC/Adler、局部矩形与空尺寸错误路径
 - [x] 增加 `Pixmap::from_png_bytes` 与 `PixmapCache::get_or_decode_png` 最小 RGBA PNG fixture 解码，覆盖导出 PNG roundtrip、signature/CRC 结构错误、cache hit 与错误不污染 cache
+- [x] 将 cached PNG bytes full/source-rect draw path 接入 Renderer/`RendererResources`，覆盖首帧 decode、命中跳过解码、错误不污染 cache 与 atlas 子图复用
 - [x] 增加 `Pixmap`/`MemorySurface` full/rect raw RGBA bytes 导出，覆盖字节顺序、packed rect 与非法 rect 错误路径
 - [x] 增加 `Pixmap`/`MemorySurface` full/rect 轻量 checksum API，覆盖 raw RGBA byte 摘要、非法 rect 错误与 benchmark 复用路径
 - [x] 增加 `Pixmap::from_rgba_bytes` 与 `PixmapCache::get_or_decode_rgba`，覆盖 packed RGBA 输入、空尺寸、长度/尺寸错误、缓存命中与拷贝隔离
@@ -522,7 +524,7 @@ Application / GUI
 - [x] 初步分离渲染后端：`graphics.Surface` + `softbuffer.NativeSurface`
 - [ ] 抽象字体加载接口
 - [ ] 实现渲染管线（Render Pipeline）
-- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert/decode telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态并暴露 residency 查询和 snapshot telemetry，并接入 checked font-byte text draw path、cached image draw path、raw RGBA/BMP bytes cached full/source-rect/tiled/nine-patch/sampled/quality/transform-aware draw path，后续补 PNG/JPEG 与 font loader 集成策略
+- [ ] 设计资源缓存：font cache 已有带 LRU entry limit 的 `FontFaceCache` 与 membership/hit/parse telemetry，glyph/text mask cache 已有带 LRU entry limit 的 `GlyphMaskCache`/`TextMaskCache` 与 membership/hit/miss telemetry，glyph atlas 已有最小 `GlyphMaskAtlas` 与 occupancy/can-fit telemetry 及 rotate-on-full helper，image cache 已有带 LRU entry limit 的 `PixmapCache` 与 membership/hit/insert/decode telemetry，renderer 已有 `RendererResources` 统一复用 font/text/glyph cache、atlas 与 image cache 状态并暴露 residency 查询和 snapshot telemetry，并接入 checked font-byte text draw path、cached image draw path、raw RGBA/BMP bytes cached full/source-rect/tiled/nine-patch/sampled/quality/transform-aware draw path，以及 PNG bytes cached full/source-rect draw path，后续补更完整 PNG/JPEG 与 font loader 集成策略
 
 ---
 

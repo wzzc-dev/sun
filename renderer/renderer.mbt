@@ -144,6 +144,12 @@ pub struct CachedBmpPixmapDrawResult {
 } derive(Debug)
 
 ///|
+/// Result of decoding PNG bytes through a pixmap cache and drawing them.
+pub struct CachedPngPixmapDrawResult {
+  did_decode_pixmap : Bool
+} derive(Debug)
+
+///|
 /// Result of decoding raw RGBA bytes through a pixmap cache and drawing them.
 pub struct CachedRgbaPixmapDrawResult {
   did_decode_pixmap : Bool
@@ -549,6 +555,26 @@ pub fn RendererResources::get_or_decode_bmp_image_result(
   image_data : Bytes,
 ) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError] {
   self.image_cache.get_or_decode_bmp_result(image_key, image_data)
+}
+
+///|
+/// Return a cached image pixmap or decode PNG bytes into the image cache.
+pub fn RendererResources::get_or_decode_png_image(
+  self : RendererResources,
+  image_key : String,
+  image_data : Bytes,
+) -> Result[@graphics.Pixmap, @graphics.PixmapDecodeError] {
+  self.image_cache.get_or_decode_png(image_key, image_data)
+}
+
+///|
+/// Return a cached image pixmap or decode PNG bytes, reporting cache hits.
+pub fn RendererResources::get_or_decode_png_image_result(
+  self : RendererResources,
+  image_key : String,
+  image_data : Bytes,
+) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError] {
+  self.image_cache.get_or_decode_png_result(image_key, image_data)
 }
 
 ///|
@@ -1358,6 +1384,22 @@ pub fn CachedBmpPixmapDrawResult::did_hit_cache(
 }
 
 ///|
+/// Return whether this draw decoded PNG bytes into the image cache.
+pub fn CachedPngPixmapDrawResult::did_decode_pixmap(
+  self : CachedPngPixmapDrawResult,
+) -> Bool {
+  self.did_decode_pixmap
+}
+
+///|
+/// Return whether this draw reused a cached decoded pixmap.
+pub fn CachedPngPixmapDrawResult::did_hit_cache(
+  self : CachedPngPixmapDrawResult,
+) -> Bool {
+  !self.did_decode_pixmap
+}
+
+///|
 /// Return whether this draw decoded RGBA bytes into the image cache.
 pub fn CachedRgbaPixmapDrawResult::did_decode_pixmap(
   self : CachedRgbaPixmapDrawResult,
@@ -2146,6 +2188,47 @@ pub fn Renderer::draw_bmp_bytes_cached_with_renderer_resources(
 }
 
 ///|
+/// Decode PNG bytes through a caller-owned pixmap cache and draw the image.
+pub fn Renderer::draw_png_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_png_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_pixmap(result.get_pixmap(), x, y, paint)
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw the image.
+pub fn Renderer::draw_png_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  x : Int,
+  y : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_png_bytes_cached(
+    image_data,
+    x,
+    y,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+  )
+}
+
+///|
 /// Decode raw RGBA bytes through a caller-owned pixmap cache and draw the image.
 pub fn Renderer::draw_rgba_bytes_cached(
   self : Renderer,
@@ -2283,6 +2366,50 @@ pub fn Renderer::draw_bmp_bytes_rect_cached_with_renderer_resources(
   paint : @graphics.Paint,
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_bmp_bytes_rect_cached(
+    image_data,
+    src_rect,
+    x,
+    y,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+  )
+}
+
+///|
+/// Decode PNG bytes through a pixmap cache and draw a source rectangle.
+pub fn Renderer::draw_png_bytes_rect_cached(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match image_cache.get_or_decode_png_result(image_key, image_data) {
+    Ok(result) => {
+      self.canvas.draw_pixmap_rect(result.get_pixmap(), src_rect, x, y, paint)
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode PNG bytes through renderer-owned resources and draw a source rectangle.
+pub fn Renderer::draw_png_bytes_rect_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedPngPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_png_bytes_rect_cached(
     image_data,
     src_rect,
     x,
