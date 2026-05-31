@@ -27,6 +27,8 @@ pub(all) enum ImageQuality {
 /// Error returned when decoding pixmap bytes.
 pub(all) enum PixmapDecodeError {
   UnexpectedEndOfData(Int, Int, Int)
+  InvalidRgbaDimensions(Int, Int)
+  RgbaByteLengthMismatch(Int, Int)
   InvalidBmpSignature(Byte, Byte)
   UnsupportedBmpHeaderSize(Int)
   UnsupportedBmpColorPlanes(Int)
@@ -159,6 +161,34 @@ pub fn Pixmap::to_bmp_bytes(self : Pixmap) -> Bytes {
     }
   }
   Bytes::from_array(out)
+}
+
+///|
+/// Decode tightly packed RGBA bytes into a pixmap.
+///
+/// The input must contain exactly `width * height * 4` bytes in row-major
+/// RGBA order. Decoded pixels are copied so later mutations to the returned
+/// pixmap cannot alias caller-owned byte storage.
+pub fn Pixmap::from_rgba_bytes(
+  width : Int,
+  height : Int,
+  data : Bytes,
+) -> Result[Pixmap, PixmapDecodeError] {
+  guard width >= 0 && height >= 0 else {
+    return Err(PixmapDecodeError::InvalidRgbaDimensions(width, height))
+  }
+  let expected_len = width * height * 4
+  guard data.length() == expected_len else {
+    return Err(
+      PixmapDecodeError::RgbaByteLengthMismatch(expected_len, data.length()),
+    )
+  }
+  let pixmap = Pixmap::new(width, height)
+  let pixels = pixmap.get_pixels()
+  for i in 0..<expected_len {
+    pixels[i] = data[i]
+  }
+  Ok(pixmap)
 }
 
 ///|
@@ -361,6 +391,43 @@ pub fn PixmapCache::get_or_decode_bmp_result(
     Some(cached) => Ok({ pixmap: cached, did_decode: false })
     None =>
       match Pixmap::from_bmp_bytes(data) {
+        Ok(decoded) => {
+          let pixmap = self.insert(key, decoded)
+          Ok({ pixmap, did_decode: true })
+        }
+        Err(error) => Err(error)
+      }
+  }
+}
+
+///|
+/// Return a cached pixmap or decode raw RGBA bytes and cache the pixmap.
+pub fn PixmapCache::get_or_decode_rgba(
+  self : PixmapCache,
+  key : String,
+  width : Int,
+  height : Int,
+  data : Bytes,
+) -> Result[Pixmap, PixmapDecodeError] {
+  match self.get_or_decode_rgba_result(key, width, height, data) {
+    Ok(result) => Ok(result.get_pixmap())
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Return a cached pixmap or decode raw RGBA bytes, reporting cache hits.
+pub fn PixmapCache::get_or_decode_rgba_result(
+  self : PixmapCache,
+  key : String,
+  width : Int,
+  height : Int,
+  data : Bytes,
+) -> Result[PixmapCacheDecodeResult, PixmapDecodeError] {
+  match self.get(key) {
+    Some(cached) => Ok({ pixmap: cached, did_decode: false })
+    None =>
+      match Pixmap::from_rgba_bytes(width, height, data) {
         Ok(decoded) => {
           let pixmap = self.insert(key, decoded)
           Ok({ pixmap, did_decode: true })

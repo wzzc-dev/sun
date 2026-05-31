@@ -46,6 +46,44 @@ test "Pixmap::to_rgba_bytes exports raw RGBA bytes" {
 }
 
 ///|
+test "Pixmap::from_rgba_bytes decodes packed raw pixels" {
+  let bytes = Bytes::from_array([1, 2, 3, 4, 5, 6, 7, 8])
+  match Pixmap::from_rgba_bytes(2, 1, bytes) {
+    Ok(decoded) => {
+      assert_eq(decoded.get_width(), 2)
+      assert_eq(decoded.get_height(), 1)
+      assert_eq(decoded.get_pixel(0, 0), Color::new(r=1, g=2, b=3, a=4))
+      assert_eq(decoded.get_pixel(1, 0), Color::new(r=5, g=6, b=7, a=8))
+      decoded.set_pixel(0, 0, Color::red())
+      assert_eq(bytes, Bytes::from_array([1, 2, 3, 4, 5, 6, 7, 8]))
+    }
+    Err(_) => abort("expected RGBA decode")
+  }
+
+  match Pixmap::from_rgba_bytes(0, 0, Bytes::from_array([])) {
+    Ok(empty) => {
+      assert_eq(empty.get_width(), 0)
+      assert_eq(empty.get_height(), 0)
+      assert_eq(empty.to_rgba_bytes(), Bytes::from_array([]))
+    }
+    Err(_) => abort("expected empty RGBA decode")
+  }
+}
+
+///|
+test "Pixmap::from_rgba_bytes reports structural errors" {
+  match Pixmap::from_rgba_bytes(-1, 1, Bytes::from_array([])) {
+    Err(PixmapDecodeError::InvalidRgbaDimensions(-1, 1)) => ()
+    _ => abort("expected RGBA dimensions error")
+  }
+
+  match Pixmap::from_rgba_bytes(2, 1, Bytes::from_array([1, 2, 3, 4])) {
+    Err(PixmapDecodeError::RgbaByteLengthMismatch(8, 4)) => ()
+    _ => abort("expected RGBA length mismatch")
+  }
+}
+
+///|
 test "Pixmap::to_ppm_bytes encodes deterministic P6 RGB output" {
   let pixmap = Pixmap::new(2, 1)
   pixmap.set_pixel(0, 0, Color::new(r=1, g=2, b=3, a=4))
@@ -312,6 +350,49 @@ test "PixmapCache::get_or_decode_bmp_result decodes misses and reports hits" {
     Err(_) => abort("expected cached BMP pixmap hit")
   }
   assert_eq(cache.len(), 1)
+}
+
+///|
+test "PixmapCache::get_or_decode_rgba_result decodes misses and reports hits" {
+  let cache = PixmapCache::new()
+  let pixels = Bytes::from_array([0, 255, 0, 255])
+
+  match cache.get_or_decode_rgba_result("icon", 1, 1, pixels) {
+    Ok(first) => {
+      assert_true(first.did_decode())
+      assert_true(!first.did_hit_cache())
+      assert_eq(first.get_pixmap().get_pixel(0, 0), Color::green())
+      let first_pixmap = first.get_pixmap()
+      first_pixmap.set_pixel(0, 0, Color::red())
+    }
+    Err(_) => abort("expected RGBA cache decode")
+  }
+  assert_eq(cache.len(), 1)
+  match cache.get("icon") {
+    Some(cached) => assert_eq(cached.get_pixel(0, 0), Color::green())
+    None => abort("expected cached decoded RGBA pixmap")
+  }
+
+  match cache.get_or_decode_rgba_result("icon", 1, 1, Bytes::from_array([])) {
+    Ok(second) => {
+      assert_true(!second.did_decode())
+      assert_true(second.did_hit_cache())
+      assert_eq(second.get_pixmap().get_pixel(0, 0), Color::green())
+    }
+    Err(_) => abort("expected cached RGBA pixmap hit")
+  }
+  assert_eq(cache.len(), 1)
+}
+
+///|
+test "PixmapCache::get_or_decode_rgba leaves cache unchanged on decode errors" {
+  let cache = PixmapCache::new()
+  match cache.get_or_decode_rgba("bad", 2, 1, Bytes::from_array([1, 2, 3, 4])) {
+    Err(PixmapDecodeError::RgbaByteLengthMismatch(8, 4)) => ()
+    _ => abort("expected RGBA cache decode error")
+  }
+  assert_true(cache.is_empty())
+  assert_true(!cache.contains("bad"))
 }
 
 ///|

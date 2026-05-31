@@ -783,6 +783,30 @@ test "RendererResources decodes BMP images into image cache" {
 }
 
 ///|
+test "RendererResources decodes RGBA images into image cache" {
+  let resources = RendererResources::new(16, 16)
+  let pixels = Bytes::from_array([0, 255, 0, 255])
+
+  match resources.get_or_decode_rgba_image_result("icon", 1, 1, pixels) {
+    Ok(first) => {
+      assert_true(first.did_decode())
+      assert_true(!first.did_hit_cache())
+      assert_eq(first.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+    }
+    Err(_) => abort("expected renderer resources RGBA decode")
+  }
+  assert_true(resources.contains_image("icon"))
+  assert_eq(resources.snapshot().get_image_count(), 1)
+
+  match
+    resources.get_or_decode_rgba_image("icon", 1, 1, Bytes::from_array([])) {
+    Ok(second) => assert_eq(second.get_pixel(0, 0), @graphics.Color::green())
+    Err(_) => abort("expected renderer resources RGBA cache hit")
+  }
+  assert_eq(resources.snapshot().get_image_count(), 1)
+}
+
+///|
 test "Renderer::draw_pixmap_cached reuses cached pixmap copies" {
   let canvas = @graphics.Canvas::new(3, 1)
   canvas.clear(@graphics.Color::white())
@@ -1137,6 +1161,74 @@ test "Renderer cached BMP image path uses RendererResources" {
     ) {
     Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
     _ => abort("expected cached BMP draw decode error")
+  }
+  assert_true(!resources.contains_image("broken"))
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::white())
+}
+
+///|
+test "Renderer cached RGBA image path uses RendererResources" {
+  let canvas = @graphics.Canvas::new(3, 1)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_capacities(16, 16, 1, 1, 2)
+  let pixels = Bytes::from_array([0, 255, 0, 255])
+
+  match
+    renderer.draw_rgba_bytes_cached_with_renderer_resources(
+      pixels,
+      1,
+      1,
+      0,
+      0,
+      resources,
+      "icon",
+      @graphics.Paint::new(),
+    ) {
+    Ok(first) => {
+      assert_true(first.did_decode_pixmap())
+      assert_true(!first.did_hit_cache())
+    }
+    Err(_) => abort("expected cached RGBA draw")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_rgba_bytes_cached_with_renderer_resources(
+      Bytes::from_array([]),
+      1,
+      1,
+      1,
+      0,
+      resources,
+      "icon",
+      @graphics.Paint::new(),
+    ) {
+    Ok(second) => {
+      assert_true(!second.did_decode_pixmap())
+      assert_true(second.did_hit_cache())
+    }
+    Err(_) => abort("expected cached RGBA hit")
+  }
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::green())
+
+  match
+    renderer.draw_rgba_bytes_cached_with_renderer_resources(
+      Bytes::from_array([1, 2, 3, 4]),
+      2,
+      1,
+      2,
+      0,
+      resources,
+      "broken",
+      @graphics.Paint::new(),
+    ) {
+    Err(@graphics.PixmapDecodeError::RgbaByteLengthMismatch(8, 4)) => ()
+    _ => abort("expected cached RGBA draw decode error")
   }
   assert_true(!resources.contains_image("broken"))
   assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::white())

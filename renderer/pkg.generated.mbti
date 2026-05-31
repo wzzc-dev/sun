@@ -110,6 +110,12 @@ pub struct CachedPixmapDrawResult {
 pub fn CachedPixmapDrawResult::did_hit_cache(Self) -> Bool
 pub fn CachedPixmapDrawResult::did_insert_pixmap(Self) -> Bool
 
+pub struct CachedRgbaPixmapDrawResult {
+  did_decode_pixmap : Bool
+} derive(@debug.Debug)
+pub fn CachedRgbaPixmapDrawResult::did_decode_pixmap(Self) -> Bool
+pub fn CachedRgbaPixmapDrawResult::did_hit_cache(Self) -> Bool
+
 pub struct FontBytesFallbackSource {
   font_key : String
   font_data : Bytes
@@ -151,6 +157,8 @@ pub fn Renderer::draw_quality_pixmap_cached(Self, @graphics.Pixmap, Int, Int, In
 pub fn Renderer::draw_quality_pixmap_cached_with_renderer_resources(Self, @graphics.Pixmap, Int, Int, Int, Int, RendererResources, String, @graphics.Paint, @graphics.ImageQuality) -> CachedPixmapDrawResult
 pub fn Renderer::draw_quality_pixmap_rect_cached(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, Int, Int, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageQuality) -> CachedPixmapDrawResult
 pub fn Renderer::draw_quality_pixmap_rect_cached_with_renderer_resources(Self, @graphics.Pixmap, @graphics.PixelRect, Int, Int, Int, Int, RendererResources, String, @graphics.Paint, @graphics.ImageQuality) -> CachedPixmapDrawResult
+pub fn Renderer::draw_rgba_bytes_cached(Self, Bytes, Int, Int, Int, Int, @graphics.PixmapCache, String, @graphics.Paint) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError]
+pub fn Renderer::draw_rgba_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, Int, Int, RendererResources, String, @graphics.Paint) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_sampled_bmp_bytes_cached(Self, Bytes, Int, Int, Int, Int, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_sampled_bmp_bytes_cached_with_renderer_resources(Self, Bytes, Int, Int, Int, Int, RendererResources, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
 pub fn Renderer::draw_sampled_bmp_bytes_rect_cached(Self, Bytes, @graphics.PixelRect, Int, Int, Int, Int, @graphics.PixmapCache, String, @graphics.Paint, @graphics.ImageSampling) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError]
@@ -213,6 +221,8 @@ pub fn RendererResources::get_glyph_mask_cache(Self) -> @text.GlyphMaskCache
 pub fn RendererResources::get_image_cache(Self) -> @graphics.PixmapCache
 pub fn RendererResources::get_or_decode_bmp_image(Self, String, Bytes) -> Result[@graphics.Pixmap, @graphics.PixmapDecodeError]
 pub fn RendererResources::get_or_decode_bmp_image_result(Self, String, Bytes) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError]
+pub fn RendererResources::get_or_decode_rgba_image(Self, String, Int, Int, Bytes) -> Result[@graphics.Pixmap, @graphics.PixmapDecodeError]
+pub fn RendererResources::get_or_decode_rgba_image_result(Self, String, Int, Int, Bytes) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError]
 pub fn RendererResources::get_text_mask_cache(Self) -> @text.TextMaskCache
 pub fn RendererResources::get_text_resources(Self) -> RendererTextResources
 pub fn RendererResources::new(Int, Int) -> Self

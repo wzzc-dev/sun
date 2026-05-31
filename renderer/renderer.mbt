@@ -144,6 +144,12 @@ pub struct CachedBmpPixmapDrawResult {
 } derive(Debug)
 
 ///|
+/// Result of decoding raw RGBA bytes through a pixmap cache and drawing them.
+pub struct CachedRgbaPixmapDrawResult {
+  did_decode_pixmap : Bool
+} derive(Debug)
+
+///|
 priv struct GlyphAtlasMaskPlacement {
   width : Int
   height : Int
@@ -543,6 +549,32 @@ pub fn RendererResources::get_or_decode_bmp_image_result(
   image_data : Bytes,
 ) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError] {
   self.image_cache.get_or_decode_bmp_result(image_key, image_data)
+}
+
+///|
+/// Return a cached image pixmap or decode raw RGBA bytes into the image cache.
+pub fn RendererResources::get_or_decode_rgba_image(
+  self : RendererResources,
+  image_key : String,
+  width : Int,
+  height : Int,
+  image_data : Bytes,
+) -> Result[@graphics.Pixmap, @graphics.PixmapDecodeError] {
+  self.image_cache.get_or_decode_rgba(image_key, width, height, image_data)
+}
+
+///|
+/// Return a cached image pixmap or decode raw RGBA bytes, reporting cache hits.
+pub fn RendererResources::get_or_decode_rgba_image_result(
+  self : RendererResources,
+  image_key : String,
+  width : Int,
+  height : Int,
+  image_data : Bytes,
+) -> Result[@graphics.PixmapCacheDecodeResult, @graphics.PixmapDecodeError] {
+  self.image_cache.get_or_decode_rgba_result(
+    image_key, width, height, image_data,
+  )
 }
 
 ///|
@@ -1326,6 +1358,22 @@ pub fn CachedBmpPixmapDrawResult::did_hit_cache(
 }
 
 ///|
+/// Return whether this draw decoded RGBA bytes into the image cache.
+pub fn CachedRgbaPixmapDrawResult::did_decode_pixmap(
+  self : CachedRgbaPixmapDrawResult,
+) -> Bool {
+  self.did_decode_pixmap
+}
+
+///|
+/// Return whether this draw reused a cached decoded pixmap.
+pub fn CachedRgbaPixmapDrawResult::did_hit_cache(
+  self : CachedRgbaPixmapDrawResult,
+) -> Bool {
+  !self.did_decode_pixmap
+}
+
+///|
 /// Draw text through the real text rasterization pipeline.
 pub fn Renderer::draw_text(
   self : Renderer,
@@ -2089,6 +2137,56 @@ pub fn Renderer::draw_bmp_bytes_cached_with_renderer_resources(
 ) -> Result[CachedBmpPixmapDrawResult, @graphics.PixmapDecodeError] {
   self.draw_bmp_bytes_cached(
     image_data,
+    x,
+    y,
+    resources.get_image_cache(),
+    image_key,
+    paint,
+  )
+}
+
+///|
+/// Decode raw RGBA bytes through a caller-owned pixmap cache and draw the image.
+pub fn Renderer::draw_rgba_bytes_cached(
+  self : Renderer,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  x : Int,
+  y : Int,
+  image_cache : @graphics.PixmapCache,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError] {
+  match
+    image_cache.get_or_decode_rgba_result(
+      image_key, image_width, image_height, image_data,
+    ) {
+    Ok(result) => {
+      self.canvas.draw_pixmap(result.get_pixmap(), x, y, paint)
+      Ok({ did_decode_pixmap: result.did_decode() })
+    }
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Decode raw RGBA bytes through renderer-owned resources and draw the image.
+pub fn Renderer::draw_rgba_bytes_cached_with_renderer_resources(
+  self : Renderer,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  x : Int,
+  y : Int,
+  resources : RendererResources,
+  image_key : String,
+  paint : @graphics.Paint,
+) -> Result[CachedRgbaPixmapDrawResult, @graphics.PixmapDecodeError] {
+  self.draw_rgba_bytes_cached(
+    image_data,
+    image_width,
+    image_height,
     x,
     y,
     resources.get_image_cache(),
