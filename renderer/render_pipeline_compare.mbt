@@ -20,6 +20,10 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     Some(same) => return same
     None => ()
   }
+  match render_tiled_image_commands_are_same(a, b) {
+    Some(same) => return same
+    None => ()
+  }
   match (a, b) {
     (RenderCommand::Clear(a_color), RenderCommand::Clear(b_color)) =>
       a_color == b_color
@@ -53,86 +57,6 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     ) =>
       render_paths_are_same(a_path, b_path) &&
       render_paint_is_same(a_paint, b_paint)
-    (
-      RenderCommand::DrawTiledBmpBytesRectKeyed(
-        a_key,
-        _,
-        a_src,
-        ax,
-        ay,
-        aw,
-        ah,
-        a_paint
-      ),
-      RenderCommand::DrawTiledBmpBytesRectKeyed(
-        b_key,
-        _,
-        b_src,
-        bx,
-        by,
-        bw,
-        bh,
-        b_paint
-      ),
-    ) =>
-      render_keyed_image_source_rect_is_same(
-        a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
-      )
-    (
-      RenderCommand::DrawTiledPngBytesRectKeyed(
-        a_key,
-        _,
-        a_src,
-        ax,
-        ay,
-        aw,
-        ah,
-        a_paint
-      ),
-      RenderCommand::DrawTiledPngBytesRectKeyed(
-        b_key,
-        _,
-        b_src,
-        bx,
-        by,
-        bw,
-        bh,
-        b_paint
-      ),
-    ) =>
-      render_keyed_image_source_rect_is_same(
-        a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
-      )
-    (
-      RenderCommand::DrawTiledRgbaBytesRectKeyed(
-        a_key,
-        _,
-        a_image_width,
-        a_image_height,
-        a_src,
-        ax,
-        ay,
-        aw,
-        ah,
-        a_paint
-      ),
-      RenderCommand::DrawTiledRgbaBytesRectKeyed(
-        b_key,
-        _,
-        b_image_width,
-        b_image_height,
-        b_src,
-        bx,
-        by,
-        bw,
-        bh,
-        b_paint
-      ),
-    ) =>
-      render_keyed_image_dimensions_source_rect_is_same(
-        a_key, b_key, a_image_width, a_image_height, b_image_width, b_image_height,
-        a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
-      )
     (
       RenderCommand::DrawNinePatchBmpBytesKeyed(
         a_key,
