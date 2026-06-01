@@ -68,6 +68,105 @@ fn render_point_image_commands_are_same(
 }
 
 ///|
+fn render_sampled_image_commands_are_same(
+  a : RenderCommand,
+  b : RenderCommand,
+) -> Bool? {
+  match (a, b) {
+    (
+      RenderCommand::DrawSampledBmpBytesKeyed(
+        a_key,
+        _,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawSampledBmpBytesKeyed(
+        b_key,
+        _,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_image_rect_is_same(
+          a_key, b_key, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    (
+      RenderCommand::DrawSampledPngBytesKeyed(
+        a_key,
+        _,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawSampledPngBytesKeyed(
+        b_key,
+        _,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_image_rect_is_same(
+          a_key, b_key, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    (
+      RenderCommand::DrawSampledRgbaBytesKeyed(
+        a_key,
+        _,
+        a_image_width,
+        a_image_height,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawSampledRgbaBytesKeyed(
+        b_key,
+        _,
+        b_image_width,
+        b_image_height,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_image_dimensions_rect_is_same(
+          a_key, b_key, a_image_width, a_image_height, b_image_width, b_image_height,
+          ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    _ => None
+  }
+}
+
+///|
 fn render_keyed_image_point_is_same(
   a_key : String,
   b_key : String,

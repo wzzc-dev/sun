@@ -4,6 +4,10 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     Some(same) => return same
     None => ()
   }
+  match render_sampled_image_commands_are_same(a, b) {
+    Some(same) => return same
+    None => ()
+  }
   match (a, b) {
     (RenderCommand::Clear(a_color), RenderCommand::Clear(b_color)) =>
       a_color == b_color
@@ -37,89 +41,6 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     ) =>
       render_paths_are_same(a_path, b_path) &&
       render_paint_is_same(a_paint, b_paint)
-    (
-      RenderCommand::DrawSampledBmpBytesKeyed(
-        a_key,
-        _,
-        ax,
-        ay,
-        aw,
-        ah,
-        a_paint,
-        a_sampling
-      ),
-      RenderCommand::DrawSampledBmpBytesKeyed(
-        b_key,
-        _,
-        bx,
-        by,
-        bw,
-        bh,
-        b_paint,
-        b_sampling
-      ),
-    ) =>
-      render_keyed_image_rect_is_same(
-        a_key, b_key, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
-      ) &&
-      a_sampling == b_sampling
-    (
-      RenderCommand::DrawSampledPngBytesKeyed(
-        a_key,
-        _,
-        ax,
-        ay,
-        aw,
-        ah,
-        a_paint,
-        a_sampling
-      ),
-      RenderCommand::DrawSampledPngBytesKeyed(
-        b_key,
-        _,
-        bx,
-        by,
-        bw,
-        bh,
-        b_paint,
-        b_sampling
-      ),
-    ) =>
-      render_keyed_image_rect_is_same(
-        a_key, b_key, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
-      ) &&
-      a_sampling == b_sampling
-    (
-      RenderCommand::DrawSampledRgbaBytesKeyed(
-        a_key,
-        _,
-        a_image_width,
-        a_image_height,
-        ax,
-        ay,
-        aw,
-        ah,
-        a_paint,
-        a_sampling
-      ),
-      RenderCommand::DrawSampledRgbaBytesKeyed(
-        b_key,
-        _,
-        b_image_width,
-        b_image_height,
-        bx,
-        by,
-        bw,
-        bh,
-        b_paint,
-        b_sampling
-      ),
-    ) =>
-      render_keyed_image_dimensions_rect_is_same(
-        a_key, b_key, a_image_width, a_image_height, b_image_width, b_image_height,
-        ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
-      ) &&
-      a_sampling == b_sampling
     (
       RenderCommand::DrawQualityBmpBytesKeyed(
         a_key,
