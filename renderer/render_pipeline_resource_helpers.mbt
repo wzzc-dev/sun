@@ -41,12 +41,12 @@ fn render_pipeline_make_rect_image_dependency(
 }
 
 ///|
-fn render_pipeline_make_bmp_bytes_image_dependency(
+fn render_pipeline_make_decoded_image_dependency(
   command_index : Int,
   resource_key : String,
-  image_data : Bytes,
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
 ) -> RenderPipelineImageDependency {
-  match @graphics.Pixmap::from_bmp_bytes(image_data) {
+  match decoded {
     Ok(pixmap) =>
       render_pipeline_make_image_dependency(
         command_index,
@@ -65,18 +65,19 @@ fn render_pipeline_make_bmp_bytes_image_dependency(
 }
 
 ///|
-fn render_pipeline_make_png_bytes_image_dependency(
+fn render_pipeline_make_decoded_rect_image_dependency(
   command_index : Int,
   resource_key : String,
-  image_data : Bytes,
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
+  src_rect : @graphics.PixelRect,
 ) -> RenderPipelineImageDependency {
-  match @graphics.Pixmap::from_png_bytes(image_data) {
+  match decoded {
     Ok(pixmap) =>
-      render_pipeline_make_image_dependency(
+      render_pipeline_make_rect_image_dependency(
         command_index,
         Some(resource_key),
-        pixmap.get_width(),
-        pixmap.get_height(),
+        pixmap,
+        src_rect,
       )
     Err(_) =>
       render_pipeline_make_image_dependency(
@@ -86,6 +87,32 @@ fn render_pipeline_make_png_bytes_image_dependency(
         0,
       )
   }
+}
+
+///|
+fn render_pipeline_make_bmp_bytes_image_dependency(
+  command_index : Int,
+  resource_key : String,
+  image_data : Bytes,
+) -> RenderPipelineImageDependency {
+  render_pipeline_make_decoded_image_dependency(
+    command_index,
+    resource_key,
+    @graphics.Pixmap::from_bmp_bytes(image_data),
+  )
+}
+
+///|
+fn render_pipeline_make_png_bytes_image_dependency(
+  command_index : Int,
+  resource_key : String,
+  image_data : Bytes,
+) -> RenderPipelineImageDependency {
+  render_pipeline_make_decoded_image_dependency(
+    command_index,
+    resource_key,
+    @graphics.Pixmap::from_png_bytes(image_data),
+  )
 }
 
 ///|
@@ -96,23 +123,11 @@ fn render_pipeline_make_rgba_bytes_image_dependency(
   image_width : Int,
   image_height : Int,
 ) -> RenderPipelineImageDependency {
-  match
-    @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-    Ok(pixmap) =>
-      render_pipeline_make_image_dependency(
-        command_index,
-        Some(resource_key),
-        pixmap.get_width(),
-        pixmap.get_height(),
-      )
-    Err(_) =>
-      render_pipeline_make_image_dependency(
-        command_index,
-        Some(resource_key),
-        0,
-        0,
-      )
-  }
+  render_pipeline_make_decoded_image_dependency(
+    command_index,
+    resource_key,
+    @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+  )
 }
 
 ///|
@@ -122,22 +137,12 @@ fn render_pipeline_make_bmp_bytes_rect_image_dependency(
   image_data : Bytes,
   src_rect : @graphics.PixelRect,
 ) -> RenderPipelineImageDependency {
-  match @graphics.Pixmap::from_bmp_bytes(image_data) {
-    Ok(pixmap) =>
-      render_pipeline_make_rect_image_dependency(
-        command_index,
-        Some(resource_key),
-        pixmap,
-        src_rect,
-      )
-    Err(_) =>
-      render_pipeline_make_image_dependency(
-        command_index,
-        Some(resource_key),
-        0,
-        0,
-      )
-  }
+  render_pipeline_make_decoded_rect_image_dependency(
+    command_index,
+    resource_key,
+    @graphics.Pixmap::from_bmp_bytes(image_data),
+    src_rect,
+  )
 }
 
 ///|
@@ -147,22 +152,12 @@ fn render_pipeline_make_png_bytes_rect_image_dependency(
   image_data : Bytes,
   src_rect : @graphics.PixelRect,
 ) -> RenderPipelineImageDependency {
-  match @graphics.Pixmap::from_png_bytes(image_data) {
-    Ok(pixmap) =>
-      render_pipeline_make_rect_image_dependency(
-        command_index,
-        Some(resource_key),
-        pixmap,
-        src_rect,
-      )
-    Err(_) =>
-      render_pipeline_make_image_dependency(
-        command_index,
-        Some(resource_key),
-        0,
-        0,
-      )
-  }
+  render_pipeline_make_decoded_rect_image_dependency(
+    command_index,
+    resource_key,
+    @graphics.Pixmap::from_png_bytes(image_data),
+    src_rect,
+  )
 }
 
 ///|
@@ -174,23 +169,12 @@ fn render_pipeline_make_rgba_bytes_rect_image_dependency(
   image_height : Int,
   src_rect : @graphics.PixelRect,
 ) -> RenderPipelineImageDependency {
-  match
-    @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-    Ok(pixmap) =>
-      render_pipeline_make_rect_image_dependency(
-        command_index,
-        Some(resource_key),
-        pixmap,
-        src_rect,
-      )
-    Err(_) =>
-      render_pipeline_make_image_dependency(
-        command_index,
-        Some(resource_key),
-        0,
-        0,
-      )
-  }
+  render_pipeline_make_decoded_rect_image_dependency(
+    command_index,
+    resource_key,
+    @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+    src_rect,
+  )
 }
 
 ///|
