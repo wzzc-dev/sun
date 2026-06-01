@@ -308,6 +308,51 @@ test "RenderPipeline diff keeps resource commands conservatively dirty" {
 }
 
 ///|
+test "RenderPipeline diff retains keyed point image commands by identity" {
+  let previous_icon = @graphics.Pixmap::new(2, 2)
+  previous_icon.set_pixel(0, 0, @graphics.Color::red())
+  let next_icon = @graphics.Pixmap::new(2, 2)
+  next_icon.set_pixel(0, 0, @graphics.Color::blue())
+  let paint = @graphics.Paint::new()
+  let previous = RenderPipeline::new()
+    .draw_pixmap_keyed("icon", previous_icon, 0, 0, paint)
+    .draw_bmp_bytes_keyed("bmp", previous_icon.to_bmp_bytes(), 1, 0, paint)
+    .draw_png_bytes_keyed(
+      "png",
+      must_renderer_test_png_bytes(previous_icon),
+      2,
+      0,
+      paint,
+    )
+    .draw_rgba_bytes_keyed(
+      "rgba",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      3,
+      0,
+      paint,
+    )
+  let next = RenderPipeline::new()
+    .draw_pixmap_keyed("icon", next_icon, 0, 0, paint)
+    .draw_bmp_bytes_keyed("bmp", next_icon.to_bmp_bytes(), 1, 0, paint)
+    .draw_png_bytes_keyed(
+      "png",
+      must_renderer_test_png_bytes(next_icon),
+      2,
+      0,
+      paint,
+    )
+    .draw_rgba_bytes_keyed("rgba", next_icon.to_rgba_bytes(), 2, 2, 3, 0, paint)
+
+  let diff = RenderPipeline::diff(previous, next, 8, 4)
+  assert_eq(diff.get_retained_command_count(), 4)
+  assert_eq(diff.get_changed_command_count(), 0)
+  assert_true(!diff.has_changes())
+  assert_true(!diff.has_dirty())
+}
+
+///|
 test "RenderPipeline batch plan groups contiguous command categories" {
   let icon = @graphics.Pixmap::new(2, 2)
   let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))
