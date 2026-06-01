@@ -555,6 +555,74 @@ fn render_transformed_sampled_image_commands_are_same(
 }
 
 ///|
+fn render_transformed_quality_image_commands_are_same(
+  a : RenderCommand,
+  b : RenderCommand,
+) -> Bool? {
+  match (a, b) {
+    (
+      RenderCommand::DrawTransformedQualityPngBytesKeyed(
+        a_key,
+        _,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_quality
+      ),
+      RenderCommand::DrawTransformedQualityPngBytesKeyed(
+        b_key,
+        _,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_quality
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_rect_is_same(
+          a_key, b_key, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_quality == b_quality,
+      )
+    (
+      RenderCommand::DrawTransformedQualityPngBytesRectKeyed(
+        a_key,
+        _,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_quality
+      ),
+      RenderCommand::DrawTransformedQualityPngBytesRectKeyed(
+        b_key,
+        _,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_quality
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_source_rect_is_same(
+          a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_quality == b_quality,
+      )
+    _ => None
+  }
+}
+
+///|
 fn render_keyed_image_point_is_same(
   a_key : String,
   b_key : String,

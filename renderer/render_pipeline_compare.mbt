@@ -16,6 +16,10 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     Some(same) => return same
     None => ()
   }
+  match render_transformed_quality_image_commands_are_same(a, b) {
+    Some(same) => return same
+    None => ()
+  }
   match (a, b) {
     (RenderCommand::Clear(a_color), RenderCommand::Clear(b_color)) =>
       a_color == b_color
@@ -49,60 +53,6 @@ fn render_commands_are_same(a : RenderCommand, b : RenderCommand) -> Bool {
     ) =>
       render_paths_are_same(a_path, b_path) &&
       render_paint_is_same(a_paint, b_paint)
-    (
-      RenderCommand::DrawTransformedQualityPngBytesKeyed(
-        a_key,
-        _,
-        ax,
-        ay,
-        aw,
-        ah,
-        a_paint,
-        a_quality
-      ),
-      RenderCommand::DrawTransformedQualityPngBytesKeyed(
-        b_key,
-        _,
-        bx,
-        by,
-        bw,
-        bh,
-        b_paint,
-        b_quality
-      ),
-    ) =>
-      render_keyed_transformed_image_rect_is_same(
-        a_key, b_key, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
-      ) &&
-      a_quality == b_quality
-    (
-      RenderCommand::DrawTransformedQualityPngBytesRectKeyed(
-        a_key,
-        _,
-        a_src,
-        ax,
-        ay,
-        aw,
-        ah,
-        a_paint,
-        a_quality
-      ),
-      RenderCommand::DrawTransformedQualityPngBytesRectKeyed(
-        b_key,
-        _,
-        b_src,
-        bx,
-        by,
-        bw,
-        bh,
-        b_paint,
-        b_quality
-      ),
-    ) =>
-      render_keyed_transformed_image_source_rect_is_same(
-        a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
-      ) &&
-      a_quality == b_quality
     (
       RenderCommand::DrawSampledBmpBytesRectKeyed(
         a_key,
