@@ -41,17 +41,23 @@ pub fn RenderPipeline::replay(
         image_count += 1
       }
       RenderCommand::DrawBmpBytesKeyed(_, image_data, x, y, paint) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) => canvas.draw_pixmap(pixmap, x, y, paint)
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          x,
+          y,
+          paint,
+        )
         image_count += 1
       }
       RenderCommand::DrawPngBytesKeyed(_, image_data, x, y, paint) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) => canvas.draw_pixmap(pixmap, x, y, paint)
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          x,
+          y,
+          paint,
+        )
         image_count += 1
       }
       RenderCommand::DrawRgbaBytesKeyed(
@@ -63,13 +69,13 @@ pub fn RenderPipeline::replay(
         y,
         paint
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) => canvas.draw_pixmap(pixmap, x, y, paint)
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          x,
+          y,
+          paint,
+        )
         image_count += 1
       }
       RenderCommand::DrawSampledBmpBytesKeyed(
@@ -82,13 +88,16 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_sampled_pixmap(
-              pixmap, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_sampled_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawSampledPngBytesKeyed(
@@ -101,13 +110,16 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_sampled_pixmap(
-              pixmap, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_sampled_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawSampledRgbaBytesKeyed(
@@ -122,16 +134,16 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) =>
-            canvas.draw_sampled_pixmap(
-              pixmap, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_sampled_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawQualityBmpBytesKeyed(
@@ -144,13 +156,16 @@ pub fn RenderPipeline::replay(
         paint,
         quality
       ) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_quality_pixmap(
-              pixmap, x, y, width, height, paint, quality,
-            )
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_quality_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
         image_count += 1
       }
       RenderCommand::DrawQualityBmpBytesRectKeyed(
@@ -164,13 +179,17 @@ pub fn RenderPipeline::replay(
         paint,
         quality
       ) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_quality_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, quality,
-            )
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_quality_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
         image_count += 1
       }
       RenderCommand::DrawQualityPngBytesKeyed(
@@ -183,13 +202,16 @@ pub fn RenderPipeline::replay(
         paint,
         quality
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_quality_pixmap(
-              pixmap, x, y, width, height, paint, quality,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_quality_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
         image_count += 1
       }
       RenderCommand::DrawQualityPngBytesRectKeyed(
@@ -203,13 +225,17 @@ pub fn RenderPipeline::replay(
         paint,
         quality
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_quality_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, quality,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_quality_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
         image_count += 1
       }
       RenderCommand::DrawQualityRgbaBytesKeyed(
@@ -224,16 +250,16 @@ pub fn RenderPipeline::replay(
         paint,
         quality
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) =>
-            canvas.draw_quality_pixmap(
-              pixmap, x, y, width, height, paint, quality,
-            )
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_quality_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
         image_count += 1
       }
       RenderCommand::DrawQualityRgbaBytesRectKeyed(
@@ -249,16 +275,17 @@ pub fn RenderPipeline::replay(
         paint,
         quality
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) =>
-            canvas.draw_quality_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, quality,
-            )
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_quality_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
         image_count += 1
       }
       RenderCommand::DrawTransformedSampledBmpBytesKeyed(
@@ -271,13 +298,16 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_transformed_sampled_pixmap(
-              pixmap, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_transformed_sampled_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawTransformedSampledBmpBytesRectKeyed(
@@ -291,13 +321,17 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_transformed_sampled_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_transformed_sampled_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawTransformedSampledPngBytesKeyed(
@@ -310,13 +344,16 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_transformed_sampled_pixmap(
-              pixmap, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_transformed_sampled_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawTransformedSampledPngBytesRectKeyed(
@@ -330,13 +367,17 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_transformed_sampled_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_transformed_sampled_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawTransformedQualityPngBytesKeyed(
@@ -349,13 +390,16 @@ pub fn RenderPipeline::replay(
         paint,
         quality
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_transformed_quality_pixmap(
-              pixmap, x, y, width, height, paint, quality,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_transformed_quality_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
         image_count += 1
       }
       RenderCommand::DrawTransformedQualityPngBytesRectKeyed(
@@ -369,13 +413,17 @@ pub fn RenderPipeline::replay(
         paint,
         quality
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_transformed_quality_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, quality,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_transformed_quality_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
         image_count += 1
       }
       RenderCommand::DrawTransformedSampledRgbaBytesKeyed(
@@ -390,16 +438,16 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) =>
-            canvas.draw_transformed_sampled_pixmap(
-              pixmap, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_transformed_sampled_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawTransformedSampledRgbaBytesRectKeyed(
@@ -415,16 +463,17 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) =>
-            canvas.draw_transformed_sampled_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_transformed_sampled_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawSampledBmpBytesRectKeyed(
@@ -438,13 +487,17 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_sampled_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_sampled_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawSampledPngBytesRectKeyed(
@@ -458,13 +511,17 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_sampled_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_sampled_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawSampledRgbaBytesRectKeyed(
@@ -480,30 +537,39 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) =>
-            canvas.draw_sampled_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_sampled_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawBmpBytesRectKeyed(_, image_data, src_rect, x, y, paint) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) => canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          src_rect,
+          x,
+          y,
+          paint,
+        )
         image_count += 1
       }
       RenderCommand::DrawPngBytesRectKeyed(_, image_data, src_rect, x, y, paint) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) => canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          src_rect,
+          x,
+          y,
+          paint,
+        )
         image_count += 1
       }
       RenderCommand::DrawRgbaBytesRectKeyed(
@@ -516,13 +582,14 @@ pub fn RenderPipeline::replay(
         y,
         paint
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) => canvas.draw_pixmap_rect(pixmap, src_rect, x, y, paint)
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          src_rect,
+          x,
+          y,
+          paint,
+        )
         image_count += 1
       }
       RenderCommand::DrawTiledBmpBytesRectKeyed(
@@ -535,13 +602,16 @@ pub fn RenderPipeline::replay(
         height,
         paint
       ) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_tiled_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint,
-            )
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_tiled_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+        )
         image_count += 1
       }
       RenderCommand::DrawTiledPngBytesRectKeyed(
@@ -554,13 +624,16 @@ pub fn RenderPipeline::replay(
         height,
         paint
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_tiled_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_tiled_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+        )
         image_count += 1
       }
       RenderCommand::DrawTiledRgbaBytesRectKeyed(
@@ -575,16 +648,16 @@ pub fn RenderPipeline::replay(
         height,
         paint
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) =>
-            canvas.draw_tiled_pixmap_rect(
-              pixmap, src_rect, x, y, width, height, paint,
-            )
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_tiled_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+        )
         image_count += 1
       }
       RenderCommand::DrawNinePatchBmpBytesKeyed(
@@ -598,13 +671,17 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_bmp_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_nine_patch_pixmap(
-              pixmap, x, y, width, height, insets, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline BMP bytes")
-        }
+        render_pipeline_draw_nine_patch_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          x,
+          y,
+          width,
+          height,
+          insets,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawNinePatchPngBytesKeyed(
@@ -618,13 +695,17 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match @graphics.Pixmap::from_png_bytes(image_data) {
-          Ok(pixmap) =>
-            canvas.draw_nine_patch_pixmap(
-              pixmap, x, y, width, height, insets, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline PNG bytes")
-        }
+        render_pipeline_draw_nine_patch_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Png(image_data),
+          x,
+          y,
+          width,
+          height,
+          insets,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawNinePatchRgbaBytesKeyed(
@@ -640,16 +721,17 @@ pub fn RenderPipeline::replay(
         paint,
         sampling
       ) => {
-        match
-          @graphics.Pixmap::from_rgba_bytes(
-            image_width, image_height, image_data,
-          ) {
-          Ok(pixmap) =>
-            canvas.draw_nine_patch_pixmap(
-              pixmap, x, y, width, height, insets, paint, sampling,
-            )
-          Err(_) => abort("failed to decode pipeline RGBA bytes")
-        }
+        render_pipeline_draw_nine_patch_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          x,
+          y,
+          width,
+          height,
+          insets,
+          paint,
+          sampling,
+        )
         image_count += 1
       }
       RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, paint) => {

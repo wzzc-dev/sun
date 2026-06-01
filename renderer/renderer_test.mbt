@@ -108,6 +108,55 @@ test "RenderPipeline replays vector and image commands" {
 }
 
 ///|
+test "RenderPipeline replays byte image commands and analyzes dirty bounds" {
+  let source = @graphics.Pixmap::new(2, 2)
+  source.set_pixel(0, 0, @graphics.Color::red())
+  source.set_pixel(1, 0, @graphics.Color::green())
+  source.set_pixel(0, 1, @graphics.Color::blue())
+  source.set_pixel(1, 1, @graphics.Color::black())
+  let paint = @graphics.Paint::new()
+  let pipeline = RenderPipeline::new()
+    .draw_bmp_bytes_keyed("bmp", source.to_bmp_bytes(), 0, 0, paint)
+    .draw_png_bytes_rect_keyed(
+      "png-sprite",
+      must_renderer_test_png_bytes(source),
+      @graphics.PixelRect::new(x=1, y=0, width=1, height=1),
+      3,
+      0,
+      paint,
+    )
+    .draw_rgba_bytes_rect_keyed(
+      "rgba-sprite",
+      source.to_rgba_bytes(),
+      2,
+      2,
+      @graphics.PixelRect::new(x=0, y=1, width=1, height=1),
+      4,
+      1,
+      paint,
+    )
+
+  let analysis = pipeline.analyze(5, 3)
+  assert_eq(analysis.get_command_count(), 3)
+  assert_eq(analysis.get_image_count(), 3)
+  assert_eq(analysis.get_dirty_rect_count(), 3)
+  assert_true(
+    analysis.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=5, height=2)),
+  )
+
+  let renderer = Renderer::new(@graphics.Canvas::new(5, 3))
+  let result = renderer.draw_pipeline(pipeline)
+  assert_eq(result.get_image_count(), 3)
+  let pixmap = renderer.get_canvas().get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(pixmap.get_pixel(1, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(0, 1), @graphics.Color::blue())
+  assert_eq(pixmap.get_pixel(3, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(4, 1), @graphics.Color::blue())
+}
+
+///|
 test "RenderPipeline analyzes dirty bounds and present plan" {
   let icon = @graphics.Pixmap::new(2, 2)
   let pipeline = RenderPipeline::new()

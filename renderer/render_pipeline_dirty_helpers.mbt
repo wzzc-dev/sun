@@ -27,14 +27,14 @@ fn render_command_estimated_dirty_rect(
     RenderCommand::DrawPixmapKeyed(_, pixmap, x, y, _) =>
       render_pixmap_estimated_dirty_rect(pixmap, x, y)
     RenderCommand::DrawBmpBytesKeyed(_, image_data, x, y, _) =>
-      render_decoded_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         x,
         y,
       )
     RenderCommand::DrawPngBytesKeyed(_, image_data, x, y, _) =>
-      render_decoded_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         x,
         y,
       )
@@ -47,8 +47,8 @@ fn render_command_estimated_dirty_rect(
       y,
       _
     ) =>
-      render_decoded_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         x,
         y,
       )
@@ -62,8 +62,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_scaled_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         x,
         y,
         width,
@@ -79,8 +79,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_scaled_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         x,
         y,
         width,
@@ -98,8 +98,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_scaled_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         x,
         y,
         width,
@@ -115,8 +115,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_scaled_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         x,
         y,
         width,
@@ -133,8 +133,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_scaled_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         src_rect,
         x,
         y,
@@ -151,8 +151,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_scaled_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         x,
         y,
         width,
@@ -169,8 +169,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_scaled_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         src_rect,
         x,
         y,
@@ -189,8 +189,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_scaled_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         x,
         y,
         width,
@@ -209,8 +209,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_scaled_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         src_rect,
         x,
         y,
@@ -227,8 +227,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_transformed_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_transformed_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         x,
         y,
         width,
@@ -245,8 +245,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_transformed_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         src_rect,
         x,
         y,
@@ -263,8 +263,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_transformed_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_transformed_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         x,
         y,
         width,
@@ -281,8 +281,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_transformed_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         src_rect,
         x,
         y,
@@ -299,8 +299,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_transformed_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_transformed_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         x,
         y,
         width,
@@ -317,8 +317,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_transformed_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         src_rect,
         x,
         y,
@@ -337,8 +337,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_transformed_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_transformed_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         x,
         y,
         width,
@@ -357,8 +357,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_transformed_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         src_rect,
         x,
         y,
@@ -376,8 +376,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_scaled_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         src_rect,
         x,
         y,
@@ -395,8 +395,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_scaled_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         src_rect,
         x,
         y,
@@ -416,8 +416,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_scaled_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         src_rect,
         x,
         y,
@@ -425,15 +425,15 @@ fn render_command_estimated_dirty_rect(
         height,
       )
     RenderCommand::DrawBmpBytesRectKeyed(_, image_data, src_rect, x, y, _) =>
-      render_decoded_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         src_rect,
         x,
         y,
       )
     RenderCommand::DrawPngBytesRectKeyed(_, image_data, src_rect, x, y, _) =>
-      render_decoded_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         src_rect,
         x,
         y,
@@ -448,8 +448,8 @@ fn render_command_estimated_dirty_rect(
       y,
       _
     ) =>
-      render_decoded_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         src_rect,
         x,
         y,
@@ -464,8 +464,8 @@ fn render_command_estimated_dirty_rect(
       height,
       _
     ) =>
-      render_decoded_tiled_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_tiled_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         src_rect,
         x,
         y,
@@ -482,8 +482,8 @@ fn render_command_estimated_dirty_rect(
       height,
       _
     ) =>
-      render_decoded_tiled_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_tiled_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         src_rect,
         x,
         y,
@@ -502,8 +502,8 @@ fn render_command_estimated_dirty_rect(
       height,
       _
     ) =>
-      render_decoded_tiled_pixmap_rect_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_tiled_image_bytes_rect_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         src_rect,
         x,
         y,
@@ -521,8 +521,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_nine_patch_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_bmp_bytes(image_data),
+      render_nine_patch_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Bmp(image_data),
         x,
         y,
         width,
@@ -539,8 +539,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_nine_patch_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_png_bytes(image_data),
+      render_nine_patch_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Png(image_data),
         x,
         y,
         width,
@@ -559,8 +559,8 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      render_decoded_nine_patch_pixmap_estimated_dirty_rect(
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+      render_nine_patch_image_bytes_estimated_dirty_rect(
+        RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
         x,
         y,
         width,

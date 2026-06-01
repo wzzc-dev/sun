@@ -95,10 +95,10 @@ fn render_pipeline_make_bmp_bytes_image_dependency(
   resource_key : String,
   image_data : Bytes,
 ) -> RenderPipelineImageDependency {
-  render_pipeline_make_decoded_image_dependency(
+  render_pipeline_make_image_bytes_dependency(
     command_index,
     resource_key,
-    @graphics.Pixmap::from_bmp_bytes(image_data),
+    RenderPipelineImageBytes::Bmp(image_data),
   )
 }
 
@@ -108,10 +108,10 @@ fn render_pipeline_make_png_bytes_image_dependency(
   resource_key : String,
   image_data : Bytes,
 ) -> RenderPipelineImageDependency {
-  render_pipeline_make_decoded_image_dependency(
+  render_pipeline_make_image_bytes_dependency(
     command_index,
     resource_key,
-    @graphics.Pixmap::from_png_bytes(image_data),
+    RenderPipelineImageBytes::Png(image_data),
   )
 }
 
@@ -123,10 +123,10 @@ fn render_pipeline_make_rgba_bytes_image_dependency(
   image_width : Int,
   image_height : Int,
 ) -> RenderPipelineImageDependency {
-  render_pipeline_make_decoded_image_dependency(
+  render_pipeline_make_image_bytes_dependency(
     command_index,
     resource_key,
-    @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+    RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
   )
 }
 
@@ -137,10 +137,10 @@ fn render_pipeline_make_bmp_bytes_rect_image_dependency(
   image_data : Bytes,
   src_rect : @graphics.PixelRect,
 ) -> RenderPipelineImageDependency {
-  render_pipeline_make_decoded_rect_image_dependency(
+  render_pipeline_make_image_bytes_rect_dependency(
     command_index,
     resource_key,
-    @graphics.Pixmap::from_bmp_bytes(image_data),
+    RenderPipelineImageBytes::Bmp(image_data),
     src_rect,
   )
 }
@@ -152,10 +152,10 @@ fn render_pipeline_make_png_bytes_rect_image_dependency(
   image_data : Bytes,
   src_rect : @graphics.PixelRect,
 ) -> RenderPipelineImageDependency {
-  render_pipeline_make_decoded_rect_image_dependency(
+  render_pipeline_make_image_bytes_rect_dependency(
     command_index,
     resource_key,
-    @graphics.Pixmap::from_png_bytes(image_data),
+    RenderPipelineImageBytes::Png(image_data),
     src_rect,
   )
 }
@@ -169,10 +169,10 @@ fn render_pipeline_make_rgba_bytes_rect_image_dependency(
   image_height : Int,
   src_rect : @graphics.PixelRect,
 ) -> RenderPipelineImageDependency {
-  render_pipeline_make_decoded_rect_image_dependency(
+  render_pipeline_make_image_bytes_rect_dependency(
     command_index,
     resource_key,
-    @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+    RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
     src_rect,
   )
 }
