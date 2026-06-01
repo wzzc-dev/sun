@@ -644,6 +644,188 @@ test "RenderPipeline diff retains keyed quality image commands by identity" {
 }
 
 ///|
+test "RenderPipeline diff retains keyed transformed sampled image commands by identity" {
+  let previous_icon = @graphics.Pixmap::new(2, 2)
+  previous_icon.set_pixel(0, 0, @graphics.Color::red())
+  let next_icon = @graphics.Pixmap::new(2, 2)
+  next_icon.set_pixel(0, 0, @graphics.Color::blue())
+  let source = @graphics.PixelRect::new(x=0, y=0, width=1, height=1)
+  let paint = @graphics.Paint::new()
+  let previous = RenderPipeline::new()
+    .draw_transformed_sampled_bmp_bytes_keyed(
+      "bmp",
+      previous_icon.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.5,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_transformed_sampled_bmp_bytes_rect_keyed(
+      "bmp-rect",
+      previous_icon.to_bmp_bytes(),
+      source,
+      0.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Bilinear,
+    )
+    .draw_transformed_sampled_png_bytes_keyed(
+      "png",
+      must_renderer_test_png_bytes(previous_icon),
+      2.5,
+      0.0,
+      2.5,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Bicubic,
+    )
+    .draw_transformed_sampled_png_bytes_rect_keyed(
+      "png-rect",
+      must_renderer_test_png_bytes(previous_icon),
+      source,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_transformed_sampled_rgba_bytes_keyed(
+      "rgba",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      5.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Bilinear,
+    )
+    .draw_transformed_sampled_rgba_bytes_rect_keyed(
+      "rgba-rect",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      source,
+      4.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Bicubic,
+    )
+  let next = RenderPipeline::new()
+    .draw_transformed_sampled_bmp_bytes_keyed(
+      "bmp",
+      next_icon.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.5,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_transformed_sampled_bmp_bytes_rect_keyed(
+      "bmp-rect",
+      next_icon.to_bmp_bytes(),
+      source,
+      0.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Bilinear,
+    )
+    .draw_transformed_sampled_png_bytes_keyed(
+      "png",
+      must_renderer_test_png_bytes(next_icon),
+      2.5,
+      0.0,
+      2.5,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Bicubic,
+    )
+    .draw_transformed_sampled_png_bytes_rect_keyed(
+      "png-rect",
+      must_renderer_test_png_bytes(next_icon),
+      source,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_transformed_sampled_rgba_bytes_keyed(
+      "rgba",
+      next_icon.to_rgba_bytes(),
+      2,
+      2,
+      5.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Bilinear,
+    )
+    .draw_transformed_sampled_rgba_bytes_rect_keyed(
+      "rgba-rect",
+      next_icon.to_rgba_bytes(),
+      2,
+      2,
+      source,
+      4.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Bicubic,
+    )
+
+  let retained = RenderPipeline::diff(previous, next, 8, 5)
+  assert_eq(retained.get_retained_command_count(), 6)
+  assert_eq(retained.get_changed_command_count(), 0)
+  assert_true(!retained.has_changes())
+  assert_true(!retained.has_dirty())
+
+  let sampling_changed = RenderPipeline::diff(
+    RenderPipeline::new().draw_transformed_sampled_png_bytes_rect_keyed(
+      "png-rect",
+      must_renderer_test_png_bytes(previous_icon),
+      source,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    ),
+    RenderPipeline::new().draw_transformed_sampled_png_bytes_rect_keyed(
+      "png-rect",
+      must_renderer_test_png_bytes(next_icon),
+      source,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageSampling::Bilinear,
+    ),
+    8,
+    5,
+  )
+  assert_eq(sampling_changed.get_retained_command_count(), 0)
+  assert_eq(sampling_changed.get_changed_command_count(), 1)
+  assert_true(sampling_changed.has_dirty())
+}
+
+///|
 test "RenderPipeline batch plan groups contiguous command categories" {
   let icon = @graphics.Pixmap::new(2, 2)
   let face = unwrap_font_face(@text.FontFace::from_bytes(make_minimal_ttf()))

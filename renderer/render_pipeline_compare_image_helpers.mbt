@@ -361,6 +361,200 @@ fn render_quality_image_commands_are_same(
 }
 
 ///|
+fn render_transformed_sampled_image_commands_are_same(
+  a : RenderCommand,
+  b : RenderCommand,
+) -> Bool? {
+  match (a, b) {
+    (
+      RenderCommand::DrawTransformedSampledBmpBytesKeyed(
+        a_key,
+        _,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawTransformedSampledBmpBytesKeyed(
+        b_key,
+        _,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_rect_is_same(
+          a_key, b_key, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    (
+      RenderCommand::DrawTransformedSampledBmpBytesRectKeyed(
+        a_key,
+        _,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawTransformedSampledBmpBytesRectKeyed(
+        b_key,
+        _,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_source_rect_is_same(
+          a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    (
+      RenderCommand::DrawTransformedSampledPngBytesKeyed(
+        a_key,
+        _,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawTransformedSampledPngBytesKeyed(
+        b_key,
+        _,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_rect_is_same(
+          a_key, b_key, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    (
+      RenderCommand::DrawTransformedSampledPngBytesRectKeyed(
+        a_key,
+        _,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawTransformedSampledPngBytesRectKeyed(
+        b_key,
+        _,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_source_rect_is_same(
+          a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    (
+      RenderCommand::DrawTransformedSampledRgbaBytesKeyed(
+        a_key,
+        _,
+        a_image_width,
+        a_image_height,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawTransformedSampledRgbaBytesKeyed(
+        b_key,
+        _,
+        b_image_width,
+        b_image_height,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_dimensions_rect_is_same(
+          a_key, b_key, a_image_width, a_image_height, b_image_width, b_image_height,
+          ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    (
+      RenderCommand::DrawTransformedSampledRgbaBytesRectKeyed(
+        a_key,
+        _,
+        a_image_width,
+        a_image_height,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawTransformedSampledRgbaBytesRectKeyed(
+        b_key,
+        _,
+        b_image_width,
+        b_image_height,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_dimensions_source_rect_is_same(
+          a_key, b_key, a_image_width, a_image_height, b_image_width, b_image_height,
+          a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    _ => None
+  }
+}
+
+///|
 fn render_keyed_image_point_is_same(
   a_key : String,
   b_key : String,
