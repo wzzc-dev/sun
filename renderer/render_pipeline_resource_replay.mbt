@@ -1,4 +1,33 @@
 ///|
+priv struct RenderPipelineImageCacheReplayCounters {
+  mut keyed_image_count : Int
+  mut image_cache_hit_count : Int
+  mut image_cache_insert_count : Int
+}
+
+///|
+fn RenderPipelineImageCacheReplayCounters::new() -> RenderPipelineImageCacheReplayCounters {
+  {
+    keyed_image_count: 0,
+    image_cache_hit_count: 0,
+    image_cache_insert_count: 0,
+  }
+}
+
+///|
+fn RenderPipelineImageCacheReplayCounters::record_cached_image(
+  self : RenderPipelineImageCacheReplayCounters,
+  did_hit_cache : Bool,
+) -> Unit {
+  if did_hit_cache {
+    self.image_cache_hit_count += 1
+  } else {
+    self.image_cache_insert_count += 1
+  }
+  self.keyed_image_count += 1
+}
+
+///|
 /// Replay all queued commands, using RendererResources for keyed resources.
 pub fn RenderPipeline::replay_with_renderer_resources(
   self : RenderPipeline,
@@ -27,9 +56,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
   let mut keyed_font_count = 0
   let mut font_cache_hit_count = 0
   let mut font_parse_count = 0
-  let mut keyed_image_count = 0
-  let mut image_cache_hit_count = 0
-  let mut image_cache_insert_count = 0
+  let image_cache_counters = RenderPipelineImageCacheReplayCounters::new()
   let mut keyed_text_count = 0
   let mut text_cache_hit_count = 0
   let mut text_mask_render_count = 0
@@ -69,12 +96,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
         let result = renderer.draw_pixmap_cached_with_renderer_resources(
           pixmap, x, y, resources, resource_key, paint,
         )
-        if result.did_hit_cache() {
-          image_cache_hit_count += 1
-        } else {
-          image_cache_insert_count += 1
-        }
-        keyed_image_count += 1
+        image_cache_counters.record_cached_image(result.did_hit_cache())
         image_count += 1
       }
       RenderCommand::DrawBmpBytesKeyed(resource_key, image_data, x, y, paint) =>
@@ -83,12 +105,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -99,12 +116,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -124,12 +136,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -149,12 +156,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, x, y, width, height, resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -174,12 +176,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, x, y, width, height, resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -202,12 +199,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -227,12 +219,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, x, y, width, height, resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -254,12 +241,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -279,12 +261,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, x, y, width, height, resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -306,12 +283,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -334,12 +306,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -363,12 +330,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -388,12 +350,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, x, y, width, height, resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -415,12 +372,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -440,12 +392,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, x, y, width, height, resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -467,12 +414,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -492,12 +434,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, x, y, width, height, resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -519,12 +456,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -547,12 +479,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -576,12 +503,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -603,12 +525,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -630,12 +547,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -659,12 +571,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -682,12 +589,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, src_rect, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -705,12 +607,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, src_rect, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -731,12 +628,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -756,12 +648,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, src_rect, x, y, width, height, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -781,12 +668,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             image_data, src_rect, x, y, width, height, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -809,12 +691,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -836,12 +713,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -863,12 +735,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -892,12 +759,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -917,12 +779,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
         let result = renderer.draw_pixmap_rect_cached_with_renderer_resources(
           pixmap, src_rect, x, y, resources, resource_key, paint,
         )
-        if result.did_hit_cache() {
-          image_cache_hit_count += 1
-        } else {
-          image_cache_insert_count += 1
-        }
-        keyed_image_count += 1
+        image_cache_counters.record_cached_image(result.did_hit_cache())
         image_count += 1
       }
       RenderCommand::DrawTextFace(face, text, x, y, config, paint) => {
@@ -1095,9 +952,9 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
     keyed_font_count,
     font_cache_hit_count,
     font_parse_count,
-    keyed_image_count,
-    image_cache_hit_count,
-    image_cache_insert_count,
+    keyed_image_count: image_cache_counters.keyed_image_count,
+    image_cache_hit_count: image_cache_counters.image_cache_hit_count,
+    image_cache_insert_count: image_cache_counters.image_cache_insert_count,
     keyed_text_count,
     text_cache_hit_count,
     text_mask_render_count,
@@ -1142,9 +999,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
   let mut keyed_font_count = 0
   let mut font_cache_hit_count = 0
   let mut font_parse_count = 0
-  let mut keyed_image_count = 0
-  let mut image_cache_hit_count = 0
-  let mut image_cache_insert_count = 0
+  let image_cache_counters = RenderPipelineImageCacheReplayCounters::new()
   let mut keyed_text_count = 0
   let mut text_cache_hit_count = 0
   let mut text_mask_render_count = 0
@@ -1184,12 +1039,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         let result = renderer.draw_pixmap_cached_with_renderer_resources(
           pixmap, x, y, resources, resource_key, paint,
         )
-        if result.did_hit_cache() {
-          image_cache_hit_count += 1
-        } else {
-          image_cache_insert_count += 1
-        }
-        keyed_image_count += 1
+        image_cache_counters.record_cached_image(result.did_hit_cache())
         image_count += 1
       }
       RenderCommand::DrawBmpBytesKeyed(resource_key, image_data, x, y, paint) =>
@@ -1198,12 +1048,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -1214,12 +1059,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -1239,12 +1079,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -1264,12 +1099,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, x, y, width, height, resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -1289,12 +1119,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, x, y, width, height, resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -1317,12 +1142,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -1342,12 +1162,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, x, y, width, height, resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -1369,12 +1184,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -1394,12 +1204,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, x, y, width, height, resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -1421,12 +1226,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -1449,12 +1249,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -1478,12 +1273,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -1505,12 +1295,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -1532,12 +1317,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -1561,12 +1341,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -1584,12 +1359,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, src_rect, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -1607,12 +1377,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, src_rect, x, y, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -1633,12 +1398,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -1658,12 +1418,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, src_rect, x, y, width, height, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -1683,12 +1438,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, src_rect, x, y, width, height, resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -1711,12 +1461,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             resources, resource_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -1738,12 +1483,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -1765,12 +1505,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -1794,12 +1529,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -1819,12 +1549,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         let result = renderer.draw_pixmap_rect_cached_with_renderer_resources(
           pixmap, src_rect, x, y, resources, resource_key, paint,
         )
-        if result.did_hit_cache() {
-          image_cache_hit_count += 1
-        } else {
-          image_cache_insert_count += 1
-        }
-        keyed_image_count += 1
+        image_cache_counters.record_cached_image(result.did_hit_cache())
         image_count += 1
       }
       RenderCommand::DrawTextFace(face, text, x, y, config, paint) => {
@@ -2030,12 +1755,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, x, y, width, height, resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -2057,12 +1777,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline BMP bytes")
@@ -2082,12 +1797,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, x, y, width, height, resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -2109,12 +1819,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -2137,12 +1842,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -2166,12 +1866,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             resources, resource_key, paint, sampling,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline RGBA bytes")
@@ -2191,12 +1886,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             image_data, x, y, width, height, resources, resource_key, paint, quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -2218,12 +1908,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             quality,
           ) {
           Ok(result) => {
-            if result.did_hit_cache() {
-              image_cache_hit_count += 1
-            } else {
-              image_cache_insert_count += 1
-            }
-            keyed_image_count += 1
+            image_cache_counters.record_cached_image(result.did_hit_cache())
             image_count += 1
           }
           Err(_) => abort("failed to decode pipeline PNG bytes")
@@ -2383,9 +2068,9 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
     keyed_font_count,
     font_cache_hit_count,
     font_parse_count,
-    keyed_image_count,
-    image_cache_hit_count,
-    image_cache_insert_count,
+    keyed_image_count: image_cache_counters.keyed_image_count,
+    image_cache_hit_count: image_cache_counters.image_cache_hit_count,
+    image_cache_insert_count: image_cache_counters.image_cache_insert_count,
     keyed_text_count,
     text_cache_hit_count,
     text_mask_render_count,
