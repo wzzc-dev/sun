@@ -23,49 +23,21 @@ fn render_command_estimated_dirty_rect(
     RenderCommand::StrokePath(path, paint) =>
       render_path_estimated_dirty_rect(path, paint.stroke_width.max(0.0) / 2.0)
     RenderCommand::DrawPixmap(pixmap, x, y, _) =>
-      non_empty_pixel_rect(
-        @graphics.PixelRect::new(
-          x~,
-          y~,
-          width=pixmap.get_width(),
-          height=pixmap.get_height(),
-        ),
-      )
+      render_pixmap_estimated_dirty_rect(pixmap, x, y)
     RenderCommand::DrawPixmapKeyed(_, pixmap, x, y, _) =>
-      non_empty_pixel_rect(
-        @graphics.PixelRect::new(
-          x~,
-          y~,
-          width=pixmap.get_width(),
-          height=pixmap.get_height(),
-        ),
-      )
+      render_pixmap_estimated_dirty_rect(pixmap, x, y)
     RenderCommand::DrawBmpBytesKeyed(_, image_data, x, y, _) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          non_empty_pixel_rect(
-            @graphics.PixelRect::new(
-              x~,
-              y~,
-              width=pixmap.get_width(),
-              height=pixmap.get_height(),
-            ),
-          )
-        Err(_) => None
-      }
+      render_decoded_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        x,
+        y,
+      )
     RenderCommand::DrawPngBytesKeyed(_, image_data, x, y, _) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          non_empty_pixel_rect(
-            @graphics.PixelRect::new(
-              x~,
-              y~,
-              width=pixmap.get_width(),
-              height=pixmap.get_height(),
-            ),
-          )
-        Err(_) => None
-      }
+      render_decoded_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        x,
+        y,
+      )
     RenderCommand::DrawRgbaBytesKeyed(
       _,
       image_data,
@@ -75,19 +47,11 @@ fn render_command_estimated_dirty_rect(
       y,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          non_empty_pixel_rect(
-            @graphics.PixelRect::new(
-              x~,
-              y~,
-              width=pixmap.get_width(),
-              height=pixmap.get_height(),
-            ),
-          )
-        Err(_) => None
-      }
+      render_decoded_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        x,
+        y,
+      )
     RenderCommand::DrawSampledBmpBytesKeyed(
       _,
       image_data,
@@ -98,11 +62,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawSampledPngBytesKeyed(
       _,
       image_data,
@@ -113,11 +79,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawSampledRgbaBytesKeyed(
       _,
       image_data,
@@ -130,12 +98,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawQualityBmpBytesKeyed(
       _,
       image_data,
@@ -146,11 +115,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawQualityBmpBytesRectKeyed(
       _,
       image_data,
@@ -162,13 +133,14 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawQualityPngBytesKeyed(
       _,
       image_data,
@@ -179,11 +151,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawQualityPngBytesRectKeyed(
       _,
       image_data,
@@ -195,13 +169,14 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawQualityRgbaBytesKeyed(
       _,
       image_data,
@@ -214,12 +189,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawQualityRgbaBytesRectKeyed(
       _,
       image_data,
@@ -233,14 +209,14 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTransformedSampledBmpBytesKeyed(
       _,
       image_data,
@@ -251,13 +227,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          render_transformed_pixmap_estimated_dirty_rect(
-            pixmap, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_transformed_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTransformedSampledBmpBytesRectKeyed(
       _,
       image_data,
@@ -269,13 +245,14 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          render_transformed_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTransformedSampledPngBytesKeyed(
       _,
       image_data,
@@ -286,13 +263,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_transformed_pixmap_estimated_dirty_rect(
-            pixmap, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_transformed_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTransformedSampledPngBytesRectKeyed(
       _,
       image_data,
@@ -304,13 +281,14 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_transformed_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTransformedQualityPngBytesKeyed(
       _,
       image_data,
@@ -321,13 +299,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_transformed_pixmap_estimated_dirty_rect(
-            pixmap, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_transformed_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTransformedQualityPngBytesRectKeyed(
       _,
       image_data,
@@ -339,13 +317,14 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_transformed_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTransformedSampledRgbaBytesKeyed(
       _,
       image_data,
@@ -358,14 +337,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          render_transformed_pixmap_estimated_dirty_rect(
-            pixmap, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_transformed_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTransformedSampledRgbaBytesRectKeyed(
       _,
       image_data,
@@ -379,14 +357,14 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          render_transformed_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawSampledBmpBytesRectKeyed(
       _,
       image_data,
@@ -398,13 +376,14 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawSampledPngBytesRectKeyed(
       _,
       image_data,
@@ -416,13 +395,14 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawSampledRgbaBytesRectKeyed(
       _,
       image_data,
@@ -436,26 +416,28 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          render_scaled_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawBmpBytesRectKeyed(_, image_data, src_rect, x, y, _) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
-        Err(_) => None
-      }
+      render_decoded_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        src_rect,
+        x,
+        y,
+      )
     RenderCommand::DrawPngBytesRectKeyed(_, image_data, src_rect, x, y, _) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
-        Err(_) => None
-      }
+      render_decoded_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        src_rect,
+        x,
+        y,
+      )
     RenderCommand::DrawRgbaBytesRectKeyed(
       _,
       image_data,
@@ -466,12 +448,12 @@ fn render_command_estimated_dirty_rect(
       y,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
-        Err(_) => None
-      }
+      render_decoded_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        src_rect,
+        x,
+        y,
+      )
     RenderCommand::DrawTiledBmpBytesRectKeyed(
       _,
       image_data,
@@ -482,13 +464,14 @@ fn render_command_estimated_dirty_rect(
       height,
       _
     ) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          render_tiled_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_tiled_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTiledPngBytesRectKeyed(
       _,
       image_data,
@@ -499,13 +482,14 @@ fn render_command_estimated_dirty_rect(
       height,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_tiled_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_tiled_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawTiledRgbaBytesRectKeyed(
       _,
       image_data,
@@ -518,14 +502,14 @@ fn render_command_estimated_dirty_rect(
       height,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          render_tiled_pixmap_rect_estimated_dirty_rect(
-            pixmap, src_rect, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_tiled_pixmap_rect_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawNinePatchBmpBytesKeyed(
       _,
       image_data,
@@ -537,13 +521,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_bmp_bytes(image_data) {
-        Ok(pixmap) =>
-          render_nine_patch_pixmap_estimated_dirty_rect(
-            pixmap, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_nine_patch_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_bmp_bytes(image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawNinePatchPngBytesKeyed(
       _,
       image_data,
@@ -555,13 +539,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match @graphics.Pixmap::from_png_bytes(image_data) {
-        Ok(pixmap) =>
-          render_nine_patch_pixmap_estimated_dirty_rect(
-            pixmap, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_nine_patch_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_png_bytes(image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawNinePatchRgbaBytesKeyed(
       _,
       image_data,
@@ -575,14 +559,13 @@ fn render_command_estimated_dirty_rect(
       _,
       _
     ) =>
-      match
-        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data) {
-        Ok(pixmap) =>
-          render_nine_patch_pixmap_estimated_dirty_rect(
-            pixmap, x, y, width, height,
-          )
-        Err(_) => None
-      }
+      render_decoded_nine_patch_pixmap_estimated_dirty_rect(
+        @graphics.Pixmap::from_rgba_bytes(image_width, image_height, image_data),
+        x,
+        y,
+        width,
+        height,
+      )
     RenderCommand::DrawPixmapRect(pixmap, src_rect, x, y, _) =>
       render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
     RenderCommand::DrawPixmapRectKeyed(_, pixmap, src_rect, x, y, _) =>
@@ -713,6 +696,149 @@ fn render_command_estimated_dirty_rect(
       )
     }
   }
+}
+
+///|
+fn render_decoded_pixmap_estimated_dirty_rect(
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
+  x : Int,
+  y : Int,
+) -> @graphics.PixelRect? {
+  match decoded {
+    Ok(pixmap) => render_pixmap_estimated_dirty_rect(pixmap, x, y)
+    Err(_) => None
+  }
+}
+
+///|
+fn render_decoded_scaled_pixmap_estimated_dirty_rect(
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> @graphics.PixelRect? {
+  match decoded {
+    Ok(pixmap) =>
+      render_scaled_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
+    Err(_) => None
+  }
+}
+
+///|
+fn render_decoded_transformed_pixmap_estimated_dirty_rect(
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+) -> @graphics.PixelRect? {
+  match decoded {
+    Ok(pixmap) =>
+      render_transformed_pixmap_estimated_dirty_rect(
+        pixmap, x, y, width, height,
+      )
+    Err(_) => None
+  }
+}
+
+///|
+fn render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
+  src_rect : @graphics.PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+) -> @graphics.PixelRect? {
+  match decoded {
+    Ok(pixmap) =>
+      render_transformed_pixmap_rect_estimated_dirty_rect(
+        pixmap, src_rect, x, y, width, height,
+      )
+    Err(_) => None
+  }
+}
+
+///|
+fn render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> @graphics.PixelRect? {
+  match decoded {
+    Ok(pixmap) =>
+      render_scaled_pixmap_rect_estimated_dirty_rect(
+        pixmap, src_rect, x, y, width, height,
+      )
+    Err(_) => None
+  }
+}
+
+///|
+fn render_decoded_pixmap_rect_estimated_dirty_rect(
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+) -> @graphics.PixelRect? {
+  match decoded {
+    Ok(pixmap) =>
+      render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
+    Err(_) => None
+  }
+}
+
+///|
+fn render_decoded_tiled_pixmap_rect_estimated_dirty_rect(
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> @graphics.PixelRect? {
+  match decoded {
+    Ok(pixmap) =>
+      render_tiled_pixmap_rect_estimated_dirty_rect(
+        pixmap, src_rect, x, y, width, height,
+      )
+    Err(_) => None
+  }
+}
+
+///|
+fn render_decoded_nine_patch_pixmap_estimated_dirty_rect(
+  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> @graphics.PixelRect? {
+  match decoded {
+    Ok(pixmap) =>
+      render_nine_patch_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
+    Err(_) => None
+  }
+}
+
+///|
+fn render_pixmap_estimated_dirty_rect(
+  pixmap : @graphics.Pixmap,
+  x : Int,
+  y : Int,
+) -> @graphics.PixelRect? {
+  non_empty_pixel_rect(
+    @graphics.PixelRect::new(
+      x~,
+      y~,
+      width=pixmap.get_width(),
+      height=pixmap.get_height(),
+    ),
+  )
 }
 
 ///|
