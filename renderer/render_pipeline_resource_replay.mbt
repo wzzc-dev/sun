@@ -107,6 +107,43 @@ fn RenderPipelineTextCacheReplayCounters::record_cached_text_spans(
 }
 
 ///|
+priv struct RenderPipelineFontCacheReplayCounters {
+  mut keyed_font_count : Int
+  mut font_cache_hit_count : Int
+  mut font_parse_count : Int
+}
+
+///|
+fn RenderPipelineFontCacheReplayCounters::new() -> RenderPipelineFontCacheReplayCounters {
+  { keyed_font_count: 0, font_cache_hit_count: 0, font_parse_count: 0 }
+}
+
+///|
+fn RenderPipelineFontCacheReplayCounters::record_font_lookup(
+  self : RenderPipelineFontCacheReplayCounters,
+  did_hit_cache : Bool,
+) -> Unit {
+  if did_hit_cache {
+    self.font_cache_hit_count += 1
+  } else {
+    self.font_parse_count += 1
+  }
+  self.keyed_font_count += 1
+}
+
+///|
+fn RenderPipelineFontCacheReplayCounters::record_font_lookups(
+  self : RenderPipelineFontCacheReplayCounters,
+  keyed_count : Int,
+  cache_hit_count : Int,
+  parse_count : Int,
+) -> Unit {
+  self.keyed_font_count += keyed_count
+  self.font_cache_hit_count += cache_hit_count
+  self.font_parse_count += parse_count
+}
+
+///|
 /// Replay all queued commands, using RendererResources for keyed resources.
 pub fn RenderPipeline::replay_with_renderer_resources(
   self : RenderPipeline,
@@ -132,11 +169,9 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
   let mut stroke_count = 0
   let mut image_count = 0
   let mut text_count = 0
-  let mut keyed_font_count = 0
-  let mut font_cache_hit_count = 0
-  let mut font_parse_count = 0
   let image_cache_counters = RenderPipelineImageCacheReplayCounters::new()
   let text_cache_counters = RenderPipelineTextCacheReplayCounters::new()
+  let font_cache_counters = RenderPipelineFontCacheReplayCounters::new()
   let mut keyed_atlas_text_count = 0
   let mut glyph_cache_hit_count = 0
   let mut glyph_mask_render_count = 0
@@ -765,18 +800,13 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             font_data, text, x, y, config, resources, font_key, text_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_font_cache() {
-              font_cache_hit_count += 1
-            } else {
-              font_parse_count += 1
-            }
+            font_cache_counters.record_font_lookup(result.did_hit_font_cache())
             text_cache_counters.record_cached_text_mask(
               result.did_hit_text_cache(),
             )
           }
           Err(error) => return Err(error)
         }
-        keyed_font_count += 1
         text_count += 1
       }
       RenderCommand::DrawFontBytesAtlasKeyed(
@@ -795,11 +825,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             paint,
           ) {
           Ok(result) => {
-            if result.did_hit_font_cache() {
-              font_cache_hit_count += 1
-            } else {
-              font_parse_count += 1
-            }
+            font_cache_counters.record_font_lookup(result.did_hit_font_cache())
             glyph_cache_hit_count += result.get_cache_hit_count()
             glyph_mask_render_count += result.get_rasterized_glyph_count()
             atlas_cache_hit_count += result.get_atlas_hit_count()
@@ -810,7 +836,6 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
           }
           Err(error) => return Err(error)
         }
-        keyed_font_count += 1
         keyed_atlas_text_count += 1
         text_count += 1
       }
@@ -828,8 +853,11 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             sources, text, x, y, config, resources, text_key_prefix, paint,
           ) {
           Ok(result) => {
-            font_parse_count += result.get_parsed_font_count()
-            font_cache_hit_count += result.get_font_cache_hit_count()
+            font_cache_counters.record_font_lookups(
+              sources.length(),
+              result.get_font_cache_hit_count(),
+              result.get_parsed_font_count(),
+            )
             text_cache_counters.record_cached_text_spans(
               result.get_text_cache_hit_count(),
               result.get_rendered_mask_count(),
@@ -838,7 +866,6 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
           }
           Err(error) => return Err(error)
         }
-        keyed_font_count += sources.length()
         text_count += 1
       }
       RenderCommand::DrawFontBytesFallbackAtlasKeyed(
@@ -855,8 +882,11 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             sources, text, x, y, config, resources, glyph_key_prefix, paint,
           ) {
           Ok(result) => {
-            font_parse_count += result.get_parsed_font_count()
-            font_cache_hit_count += result.get_font_cache_hit_count()
+            font_cache_counters.record_font_lookups(
+              sources.length(),
+              result.get_font_cache_hit_count(),
+              result.get_parsed_font_count(),
+            )
             glyph_cache_hit_count += result.get_cache_hit_count()
             glyph_mask_render_count += result.get_rasterized_glyph_count()
             atlas_cache_hit_count += result.get_atlas_hit_count()
@@ -868,7 +898,6 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
           }
           Err(error) => return Err(error)
         }
-        keyed_font_count += sources.length()
         text_count += 1
       }
       RenderCommand::DrawLoadedFontKeyed(_, _, _, _, _, _, _) =>
@@ -892,9 +921,9 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
       image_count,
       text_count,
     },
-    keyed_font_count,
-    font_cache_hit_count,
-    font_parse_count,
+    keyed_font_count: font_cache_counters.keyed_font_count,
+    font_cache_hit_count: font_cache_counters.font_cache_hit_count,
+    font_parse_count: font_cache_counters.font_parse_count,
     keyed_image_count: image_cache_counters.keyed_image_count,
     image_cache_hit_count: image_cache_counters.image_cache_hit_count,
     image_cache_insert_count: image_cache_counters.image_cache_insert_count,
@@ -939,11 +968,9 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
   let mut stroke_count = 0
   let mut image_count = 0
   let mut text_count = 0
-  let mut keyed_font_count = 0
-  let mut font_cache_hit_count = 0
-  let mut font_parse_count = 0
   let image_cache_counters = RenderPipelineImageCacheReplayCounters::new()
   let text_cache_counters = RenderPipelineTextCacheReplayCounters::new()
+  let font_cache_counters = RenderPipelineFontCacheReplayCounters::new()
   let mut keyed_atlas_text_count = 0
   let mut glyph_cache_hit_count = 0
   let mut glyph_mask_render_count = 0
@@ -1431,11 +1458,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             font_data, text, x, y, config, resources, font_key, text_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_font_cache() {
-              font_cache_hit_count += 1
-            } else {
-              font_parse_count += 1
-            }
+            font_cache_counters.record_font_lookup(result.did_hit_font_cache())
             text_cache_counters.record_cached_text_mask(
               result.did_hit_text_cache(),
             )
@@ -1443,7 +1466,6 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
           Err(error) =>
             return Err(@text.FontLoadError::FontParseFailed(font_key, error))
         }
-        keyed_font_count += 1
         text_count += 1
       }
       RenderCommand::DrawFontBytesAtlasKeyed(
@@ -1462,11 +1484,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             paint,
           ) {
           Ok(result) => {
-            if result.did_hit_font_cache() {
-              font_cache_hit_count += 1
-            } else {
-              font_parse_count += 1
-            }
+            font_cache_counters.record_font_lookup(result.did_hit_font_cache())
             glyph_cache_hit_count += result.get_cache_hit_count()
             glyph_mask_render_count += result.get_rasterized_glyph_count()
             atlas_cache_hit_count += result.get_atlas_hit_count()
@@ -1478,7 +1496,6 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
           Err(error) =>
             return Err(@text.FontLoadError::FontParseFailed(font_key, error))
         }
-        keyed_font_count += 1
         keyed_atlas_text_count += 1
         text_count += 1
       }
@@ -1519,14 +1536,16 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         let result = renderer.draw_text_fallback_line_cached_with_renderer_resources(
           faces, text, x, y, config, resources, text_key_prefix, paint,
         )
-        font_parse_count += command_font_parse_count
-        font_cache_hit_count += command_font_cache_hit_count
+        font_cache_counters.record_font_lookups(
+          sources.length(),
+          command_font_cache_hit_count,
+          command_font_parse_count,
+        )
         text_cache_counters.record_cached_text_spans(
           result.get_cache_hit_count(),
           result.get_rendered_mask_count(),
           result.get_drawn_span_count(),
         )
-        keyed_font_count += sources.length()
         text_count += 1
       }
       RenderCommand::DrawFontBytesFallbackAtlasKeyed(
@@ -1566,8 +1585,11 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         let result = renderer.draw_text_fallback_line_atlas_with_renderer_resources(
           faces, text, x, y, config, resources, glyph_key_prefix, paint,
         )
-        font_parse_count += command_font_parse_count
-        font_cache_hit_count += command_font_cache_hit_count
+        font_cache_counters.record_font_lookups(
+          sources.length(),
+          command_font_cache_hit_count,
+          command_font_parse_count,
+        )
         glyph_cache_hit_count += result.get_cache_hit_count()
         glyph_mask_render_count += result.get_rasterized_glyph_count()
         atlas_cache_hit_count += result.get_atlas_hit_count()
@@ -1575,7 +1597,6 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         if result.did_clear_atlas() {
           atlas_clear_count += 1
         }
-        keyed_font_count += sources.length()
         keyed_atlas_text_count += result.get_drawn_span_count()
         text_count += 1
       }
@@ -1734,18 +1755,13 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             loader, text, x, y, config, resources, font_key, text_key, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_font_cache() {
-              font_cache_hit_count += 1
-            } else {
-              font_parse_count += 1
-            }
+            font_cache_counters.record_font_lookup(result.did_hit_font_cache())
             text_cache_counters.record_cached_text_mask(
               result.did_hit_text_cache(),
             )
           }
           Err(error) => return Err(error)
         }
-        keyed_font_count += 1
         text_count += 1
       }
       RenderCommand::DrawLoadedFontFallbackKeyed(
@@ -1776,14 +1792,16 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         let result = renderer.draw_text_fallback_line_cached_with_renderer_resources(
           faces, text, x, y, config, resources, text_key_prefix, paint,
         )
-        font_parse_count += command_font_parse_count
-        font_cache_hit_count += command_font_cache_hit_count
+        font_cache_counters.record_font_lookups(
+          font_keys.length(),
+          command_font_cache_hit_count,
+          command_font_parse_count,
+        )
         text_cache_counters.record_cached_text_spans(
           result.get_cache_hit_count(),
           result.get_rendered_mask_count(),
           result.get_drawn_span_count(),
         )
-        keyed_font_count += font_keys.length()
         text_count += 1
       }
       RenderCommand::DrawLoadedFontFallbackAtlasKeyed(
@@ -1814,8 +1832,11 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         let result = renderer.draw_text_fallback_line_atlas_with_renderer_resources(
           faces, text, x, y, config, resources, glyph_key_prefix, paint,
         )
-        font_parse_count += command_font_parse_count
-        font_cache_hit_count += command_font_cache_hit_count
+        font_cache_counters.record_font_lookups(
+          font_keys.length(),
+          command_font_cache_hit_count,
+          command_font_parse_count,
+        )
         glyph_cache_hit_count += result.get_cache_hit_count()
         glyph_mask_render_count += result.get_rasterized_glyph_count()
         atlas_cache_hit_count += result.get_atlas_hit_count()
@@ -1823,7 +1844,6 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
         if result.did_clear_atlas() {
           atlas_clear_count += 1
         }
-        keyed_font_count += font_keys.length()
         keyed_atlas_text_count += result.get_drawn_span_count()
         text_count += 1
       }
@@ -1841,11 +1861,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             loader, text, x, y, config, resources, font_key, glyph_key_prefix, paint,
           ) {
           Ok(result) => {
-            if result.did_hit_font_cache() {
-              font_cache_hit_count += 1
-            } else {
-              font_parse_count += 1
-            }
+            font_cache_counters.record_font_lookup(result.did_hit_font_cache())
             glyph_cache_hit_count += result.get_cache_hit_count()
             glyph_mask_render_count += result.get_rasterized_glyph_count()
             atlas_cache_hit_count += result.get_atlas_hit_count()
@@ -1856,7 +1872,6 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
           }
           Err(error) => return Err(error)
         }
-        keyed_font_count += 1
         keyed_atlas_text_count += 1
         text_count += 1
       }
@@ -1871,9 +1886,9 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
       image_count,
       text_count,
     },
-    keyed_font_count,
-    font_cache_hit_count,
-    font_parse_count,
+    keyed_font_count: font_cache_counters.keyed_font_count,
+    font_cache_hit_count: font_cache_counters.font_cache_hit_count,
+    font_parse_count: font_cache_counters.font_parse_count,
     keyed_image_count: image_cache_counters.keyed_image_count,
     image_cache_hit_count: image_cache_counters.image_cache_hit_count,
     image_cache_insert_count: image_cache_counters.image_cache_insert_count,
