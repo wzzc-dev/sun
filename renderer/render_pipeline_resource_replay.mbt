@@ -144,6 +144,48 @@ fn RenderPipelineFontCacheReplayCounters::record_font_lookups(
 }
 
 ///|
+priv struct RenderPipelineAtlasCacheReplayCounters {
+  mut keyed_atlas_text_count : Int
+  mut glyph_cache_hit_count : Int
+  mut glyph_mask_render_count : Int
+  mut atlas_cache_hit_count : Int
+  mut atlas_insert_count : Int
+  mut atlas_clear_count : Int
+}
+
+///|
+fn RenderPipelineAtlasCacheReplayCounters::new() -> RenderPipelineAtlasCacheReplayCounters {
+  {
+    keyed_atlas_text_count: 0,
+    glyph_cache_hit_count: 0,
+    glyph_mask_render_count: 0,
+    atlas_cache_hit_count: 0,
+    atlas_insert_count: 0,
+    atlas_clear_count: 0,
+  }
+}
+
+///|
+fn RenderPipelineAtlasCacheReplayCounters::record_atlas_text(
+  self : RenderPipelineAtlasCacheReplayCounters,
+  glyph_cache_hit_count : Int,
+  glyph_mask_render_count : Int,
+  atlas_cache_hit_count : Int,
+  atlas_insert_count : Int,
+  did_clear_atlas : Bool,
+  drawn_span_count : Int,
+) -> Unit {
+  self.glyph_cache_hit_count += glyph_cache_hit_count
+  self.glyph_mask_render_count += glyph_mask_render_count
+  self.atlas_cache_hit_count += atlas_cache_hit_count
+  self.atlas_insert_count += atlas_insert_count
+  if did_clear_atlas {
+    self.atlas_clear_count += 1
+  }
+  self.keyed_atlas_text_count += drawn_span_count
+}
+
+///|
 /// Replay all queued commands, using RendererResources for keyed resources.
 pub fn RenderPipeline::replay_with_renderer_resources(
   self : RenderPipeline,
@@ -172,12 +214,7 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
   let image_cache_counters = RenderPipelineImageCacheReplayCounters::new()
   let text_cache_counters = RenderPipelineTextCacheReplayCounters::new()
   let font_cache_counters = RenderPipelineFontCacheReplayCounters::new()
-  let mut keyed_atlas_text_count = 0
-  let mut glyph_cache_hit_count = 0
-  let mut glyph_mask_render_count = 0
-  let mut atlas_cache_hit_count = 0
-  let mut atlas_insert_count = 0
-  let mut atlas_clear_count = 0
+  let atlas_cache_counters = RenderPipelineAtlasCacheReplayCounters::new()
   for command in self.commands {
     match command {
       RenderCommand::Clear(color) => {
@@ -826,17 +863,17 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
           ) {
           Ok(result) => {
             font_cache_counters.record_font_lookup(result.did_hit_font_cache())
-            glyph_cache_hit_count += result.get_cache_hit_count()
-            glyph_mask_render_count += result.get_rasterized_glyph_count()
-            atlas_cache_hit_count += result.get_atlas_hit_count()
-            atlas_insert_count += result.get_atlas_inserted_count()
-            if result.did_clear_atlas() {
-              atlas_clear_count += 1
-            }
+            atlas_cache_counters.record_atlas_text(
+              result.get_cache_hit_count(),
+              result.get_rasterized_glyph_count(),
+              result.get_atlas_hit_count(),
+              result.get_atlas_inserted_count(),
+              result.did_clear_atlas(),
+              1,
+            )
           }
           Err(error) => return Err(error)
         }
-        keyed_atlas_text_count += 1
         text_count += 1
       }
       RenderCommand::DrawFontBytesFallbackKeyed(
@@ -887,14 +924,14 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
               result.get_font_cache_hit_count(),
               result.get_parsed_font_count(),
             )
-            glyph_cache_hit_count += result.get_cache_hit_count()
-            glyph_mask_render_count += result.get_rasterized_glyph_count()
-            atlas_cache_hit_count += result.get_atlas_hit_count()
-            atlas_insert_count += result.get_atlas_inserted_count()
-            if result.did_clear_atlas() {
-              atlas_clear_count += 1
-            }
-            keyed_atlas_text_count += result.get_drawn_span_count()
+            atlas_cache_counters.record_atlas_text(
+              result.get_cache_hit_count(),
+              result.get_rasterized_glyph_count(),
+              result.get_atlas_hit_count(),
+              result.get_atlas_inserted_count(),
+              result.did_clear_atlas(),
+              result.get_drawn_span_count(),
+            )
           }
           Err(error) => return Err(error)
         }
@@ -930,12 +967,12 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
     keyed_text_count: text_cache_counters.keyed_text_count,
     text_cache_hit_count: text_cache_counters.text_cache_hit_count,
     text_mask_render_count: text_cache_counters.text_mask_render_count,
-    keyed_atlas_text_count,
-    glyph_cache_hit_count,
-    glyph_mask_render_count,
-    atlas_cache_hit_count,
-    atlas_insert_count,
-    atlas_clear_count,
+    keyed_atlas_text_count: atlas_cache_counters.keyed_atlas_text_count,
+    glyph_cache_hit_count: atlas_cache_counters.glyph_cache_hit_count,
+    glyph_mask_render_count: atlas_cache_counters.glyph_mask_render_count,
+    atlas_cache_hit_count: atlas_cache_counters.atlas_cache_hit_count,
+    atlas_insert_count: atlas_cache_counters.atlas_insert_count,
+    atlas_clear_count: atlas_cache_counters.atlas_clear_count,
   })
 }
 
@@ -971,12 +1008,7 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
   let image_cache_counters = RenderPipelineImageCacheReplayCounters::new()
   let text_cache_counters = RenderPipelineTextCacheReplayCounters::new()
   let font_cache_counters = RenderPipelineFontCacheReplayCounters::new()
-  let mut keyed_atlas_text_count = 0
-  let mut glyph_cache_hit_count = 0
-  let mut glyph_mask_render_count = 0
-  let mut atlas_cache_hit_count = 0
-  let mut atlas_insert_count = 0
-  let mut atlas_clear_count = 0
+  let atlas_cache_counters = RenderPipelineAtlasCacheReplayCounters::new()
   for command in self.commands {
     match command {
       RenderCommand::Clear(color) => {
@@ -1485,18 +1517,18 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
           ) {
           Ok(result) => {
             font_cache_counters.record_font_lookup(result.did_hit_font_cache())
-            glyph_cache_hit_count += result.get_cache_hit_count()
-            glyph_mask_render_count += result.get_rasterized_glyph_count()
-            atlas_cache_hit_count += result.get_atlas_hit_count()
-            atlas_insert_count += result.get_atlas_inserted_count()
-            if result.did_clear_atlas() {
-              atlas_clear_count += 1
-            }
+            atlas_cache_counters.record_atlas_text(
+              result.get_cache_hit_count(),
+              result.get_rasterized_glyph_count(),
+              result.get_atlas_hit_count(),
+              result.get_atlas_inserted_count(),
+              result.did_clear_atlas(),
+              1,
+            )
           }
           Err(error) =>
             return Err(@text.FontLoadError::FontParseFailed(font_key, error))
         }
-        keyed_atlas_text_count += 1
         text_count += 1
       }
       RenderCommand::DrawFontBytesFallbackKeyed(
@@ -1590,14 +1622,14 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
           command_font_cache_hit_count,
           command_font_parse_count,
         )
-        glyph_cache_hit_count += result.get_cache_hit_count()
-        glyph_mask_render_count += result.get_rasterized_glyph_count()
-        atlas_cache_hit_count += result.get_atlas_hit_count()
-        atlas_insert_count += result.get_atlas_inserted_count()
-        if result.did_clear_atlas() {
-          atlas_clear_count += 1
-        }
-        keyed_atlas_text_count += result.get_drawn_span_count()
+        atlas_cache_counters.record_atlas_text(
+          result.get_cache_hit_count(),
+          result.get_rasterized_glyph_count(),
+          result.get_atlas_hit_count(),
+          result.get_atlas_inserted_count(),
+          result.did_clear_atlas(),
+          result.get_drawn_span_count(),
+        )
         text_count += 1
       }
       RenderCommand::DrawTransformedSampledBmpBytesKeyed(
@@ -1837,14 +1869,14 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
           command_font_cache_hit_count,
           command_font_parse_count,
         )
-        glyph_cache_hit_count += result.get_cache_hit_count()
-        glyph_mask_render_count += result.get_rasterized_glyph_count()
-        atlas_cache_hit_count += result.get_atlas_hit_count()
-        atlas_insert_count += result.get_atlas_inserted_count()
-        if result.did_clear_atlas() {
-          atlas_clear_count += 1
-        }
-        keyed_atlas_text_count += result.get_drawn_span_count()
+        atlas_cache_counters.record_atlas_text(
+          result.get_cache_hit_count(),
+          result.get_rasterized_glyph_count(),
+          result.get_atlas_hit_count(),
+          result.get_atlas_inserted_count(),
+          result.did_clear_atlas(),
+          result.get_drawn_span_count(),
+        )
         text_count += 1
       }
       RenderCommand::DrawLoadedFontAtlasKeyed(
@@ -1862,17 +1894,17 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
           ) {
           Ok(result) => {
             font_cache_counters.record_font_lookup(result.did_hit_font_cache())
-            glyph_cache_hit_count += result.get_cache_hit_count()
-            glyph_mask_render_count += result.get_rasterized_glyph_count()
-            atlas_cache_hit_count += result.get_atlas_hit_count()
-            atlas_insert_count += result.get_atlas_inserted_count()
-            if result.did_clear_atlas() {
-              atlas_clear_count += 1
-            }
+            atlas_cache_counters.record_atlas_text(
+              result.get_cache_hit_count(),
+              result.get_rasterized_glyph_count(),
+              result.get_atlas_hit_count(),
+              result.get_atlas_inserted_count(),
+              result.did_clear_atlas(),
+              1,
+            )
           }
           Err(error) => return Err(error)
         }
-        keyed_atlas_text_count += 1
         text_count += 1
       }
     }
@@ -1895,11 +1927,11 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
     keyed_text_count: text_cache_counters.keyed_text_count,
     text_cache_hit_count: text_cache_counters.text_cache_hit_count,
     text_mask_render_count: text_cache_counters.text_mask_render_count,
-    keyed_atlas_text_count,
-    glyph_cache_hit_count,
-    glyph_mask_render_count,
-    atlas_cache_hit_count,
-    atlas_insert_count,
-    atlas_clear_count,
+    keyed_atlas_text_count: atlas_cache_counters.keyed_atlas_text_count,
+    glyph_cache_hit_count: atlas_cache_counters.glyph_cache_hit_count,
+    glyph_mask_render_count: atlas_cache_counters.glyph_mask_render_count,
+    atlas_cache_hit_count: atlas_cache_counters.atlas_cache_hit_count,
+    atlas_insert_count: atlas_cache_counters.atlas_insert_count,
+    atlas_clear_count: atlas_cache_counters.atlas_clear_count,
   })
 }
