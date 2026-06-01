@@ -313,6 +313,7 @@ test "RenderPipeline diff retains keyed point image commands by identity" {
   previous_icon.set_pixel(0, 0, @graphics.Color::red())
   let next_icon = @graphics.Pixmap::new(2, 2)
   next_icon.set_pixel(0, 0, @graphics.Color::blue())
+  let source = @graphics.PixelRect::new(x=0, y=0, width=1, height=1)
   let paint = @graphics.Paint::new()
   let previous = RenderPipeline::new()
     .draw_pixmap_keyed("icon", previous_icon, 0, 0, paint)
@@ -333,6 +334,32 @@ test "RenderPipeline diff retains keyed point image commands by identity" {
       0,
       paint,
     )
+    .draw_bmp_bytes_rect_keyed(
+      "bmp-rect",
+      previous_icon.to_bmp_bytes(),
+      source,
+      4,
+      0,
+      paint,
+    )
+    .draw_png_bytes_rect_keyed(
+      "png-rect",
+      must_renderer_test_png_bytes(previous_icon),
+      source,
+      5,
+      0,
+      paint,
+    )
+    .draw_rgba_bytes_rect_keyed(
+      "rgba-rect",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      source,
+      6,
+      0,
+      paint,
+    )
   let next = RenderPipeline::new()
     .draw_pixmap_keyed("icon", next_icon, 0, 0, paint)
     .draw_bmp_bytes_keyed("bmp", next_icon.to_bmp_bytes(), 1, 0, paint)
@@ -344,9 +371,35 @@ test "RenderPipeline diff retains keyed point image commands by identity" {
       paint,
     )
     .draw_rgba_bytes_keyed("rgba", next_icon.to_rgba_bytes(), 2, 2, 3, 0, paint)
+    .draw_bmp_bytes_rect_keyed(
+      "bmp-rect",
+      next_icon.to_bmp_bytes(),
+      source,
+      4,
+      0,
+      paint,
+    )
+    .draw_png_bytes_rect_keyed(
+      "png-rect",
+      must_renderer_test_png_bytes(next_icon),
+      source,
+      5,
+      0,
+      paint,
+    )
+    .draw_rgba_bytes_rect_keyed(
+      "rgba-rect",
+      next_icon.to_rgba_bytes(),
+      2,
+      2,
+      source,
+      6,
+      0,
+      paint,
+    )
 
   let diff = RenderPipeline::diff(previous, next, 8, 4)
-  assert_eq(diff.get_retained_command_count(), 4)
+  assert_eq(diff.get_retained_command_count(), 7)
   assert_eq(diff.get_changed_command_count(), 0)
   assert_true(!diff.has_changes())
   assert_true(!diff.has_dirty())

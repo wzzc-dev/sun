@@ -63,6 +63,52 @@ fn render_point_image_commands_are_same(
           b_paint,
         ),
       )
+    (
+      RenderCommand::DrawBmpBytesRectKeyed(a_key, _, a_src, ax, ay, a_paint),
+      RenderCommand::DrawBmpBytesRectKeyed(b_key, _, b_src, bx, by, b_paint),
+    ) =>
+      Some(
+        render_keyed_image_source_point_is_same(
+          a_key, b_key, a_src, b_src, ax, ay, bx, by, a_paint, b_paint,
+        ),
+      )
+    (
+      RenderCommand::DrawPngBytesRectKeyed(a_key, _, a_src, ax, ay, a_paint),
+      RenderCommand::DrawPngBytesRectKeyed(b_key, _, b_src, bx, by, b_paint),
+    ) =>
+      Some(
+        render_keyed_image_source_point_is_same(
+          a_key, b_key, a_src, b_src, ax, ay, bx, by, a_paint, b_paint,
+        ),
+      )
+    (
+      RenderCommand::DrawRgbaBytesRectKeyed(
+        a_key,
+        _,
+        a_width,
+        a_height,
+        a_src,
+        ax,
+        ay,
+        a_paint
+      ),
+      RenderCommand::DrawRgbaBytesRectKeyed(
+        b_key,
+        _,
+        b_width,
+        b_height,
+        b_src,
+        bx,
+        by,
+        b_paint
+      ),
+    ) =>
+      Some(
+        render_keyed_image_dimensions_source_point_is_same(
+          a_key, b_key, a_width, a_height, b_width, b_height, a_src, b_src, ax, ay,
+          bx, by, a_paint, b_paint,
+        ),
+      )
     _ => None
   }
 }
