@@ -162,6 +162,101 @@ fn render_sampled_image_commands_are_same(
         ) &&
         a_sampling == b_sampling,
       )
+    (
+      RenderCommand::DrawSampledBmpBytesRectKeyed(
+        a_key,
+        _,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawSampledBmpBytesRectKeyed(
+        b_key,
+        _,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_image_source_rect_is_same(
+          a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    (
+      RenderCommand::DrawSampledPngBytesRectKeyed(
+        a_key,
+        _,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawSampledPngBytesRectKeyed(
+        b_key,
+        _,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_image_source_rect_is_same(
+          a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
+    (
+      RenderCommand::DrawSampledRgbaBytesRectKeyed(
+        a_key,
+        _,
+        a_image_width,
+        a_image_height,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_sampling
+      ),
+      RenderCommand::DrawSampledRgbaBytesRectKeyed(
+        b_key,
+        _,
+        b_image_width,
+        b_image_height,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_sampling
+      ),
+    ) =>
+      Some(
+        render_keyed_image_dimensions_source_rect_is_same(
+          a_key, b_key, a_image_width, a_image_height, b_image_width, b_image_height,
+          a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_sampling == b_sampling,
+      )
     _ => None
   }
 }
