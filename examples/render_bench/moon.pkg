@@ -1,5 +1,6 @@
 import {
   "wzzc-dev/graphics",
+  "wzzc-dev/renderer",
   "wzzc-dev/text",
 }
 

@@ -702,6 +702,64 @@ fn render_transformed_quality_image_commands_are_same(
 ) -> Bool? {
   match (a, b) {
     (
+      RenderCommand::DrawTransformedQualityBmpBytesKeyed(
+        a_key,
+        _,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_quality
+      ),
+      RenderCommand::DrawTransformedQualityBmpBytesKeyed(
+        b_key,
+        _,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_quality
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_rect_is_same(
+          a_key, b_key, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_quality == b_quality,
+      )
+    (
+      RenderCommand::DrawTransformedQualityBmpBytesRectKeyed(
+        a_key,
+        _,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_quality
+      ),
+      RenderCommand::DrawTransformedQualityBmpBytesRectKeyed(
+        b_key,
+        _,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_quality
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_source_rect_is_same(
+          a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_quality == b_quality,
+      )
+    (
       RenderCommand::DrawTransformedQualityPngBytesKeyed(
         a_key,
         _,
@@ -756,6 +814,74 @@ fn render_transformed_quality_image_commands_are_same(
       Some(
         render_keyed_transformed_image_source_rect_is_same(
           a_key, b_key, a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_quality == b_quality,
+      )
+    (
+      RenderCommand::DrawTransformedQualityRgbaBytesKeyed(
+        a_key,
+        _,
+        a_image_width,
+        a_image_height,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_quality
+      ),
+      RenderCommand::DrawTransformedQualityRgbaBytesKeyed(
+        b_key,
+        _,
+        b_image_width,
+        b_image_height,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_quality
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_dimensions_rect_is_same(
+          a_key, b_key, a_image_width, a_image_height, b_image_width, b_image_height,
+          ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
+        ) &&
+        a_quality == b_quality,
+      )
+    (
+      RenderCommand::DrawTransformedQualityRgbaBytesRectKeyed(
+        a_key,
+        _,
+        a_image_width,
+        a_image_height,
+        a_src,
+        ax,
+        ay,
+        aw,
+        ah,
+        a_paint,
+        a_quality
+      ),
+      RenderCommand::DrawTransformedQualityRgbaBytesRectKeyed(
+        b_key,
+        _,
+        b_image_width,
+        b_image_height,
+        b_src,
+        bx,
+        by,
+        bw,
+        bh,
+        b_paint,
+        b_quality
+      ),
+    ) =>
+      Some(
+        render_keyed_transformed_image_dimensions_source_rect_is_same(
+          a_key, b_key, a_image_width, a_image_height, b_image_width, b_image_height,
+          a_src, b_src, ax, ay, aw, ah, bx, by, bw, bh, a_paint, b_paint,
         ) &&
         a_quality == b_quality,
       )

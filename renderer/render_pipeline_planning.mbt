@@ -333,6 +333,37 @@ pub fn RenderPipeline::resource_plan(
             index, resource_key, image_data, src_rect,
           ),
         )
+      RenderCommand::DrawTransformedQualityBmpBytesKeyed(
+        resource_key,
+        image_data,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_bmp_bytes_image_dependency(
+            index, resource_key, image_data,
+          ),
+        )
+      RenderCommand::DrawTransformedQualityBmpBytesRectKeyed(
+        resource_key,
+        image_data,
+        src_rect,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_bmp_bytes_rect_image_dependency(
+            index, resource_key, image_data, src_rect,
+          ),
+        )
       RenderCommand::DrawTransformedSampledPngBytesKeyed(
         resource_key,
         image_data,
@@ -413,6 +444,41 @@ pub fn RenderPipeline::resource_plan(
           ),
         )
       RenderCommand::DrawTransformedSampledRgbaBytesRectKeyed(
+        resource_key,
+        image_data,
+        image_width,
+        image_height,
+        src_rect,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_rgba_bytes_rect_image_dependency(
+            index, resource_key, image_data, image_width, image_height, src_rect,
+          ),
+        )
+      RenderCommand::DrawTransformedQualityRgbaBytesKeyed(
+        resource_key,
+        image_data,
+        image_width,
+        image_height,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _
+      ) =>
+        image_dependencies.push(
+          render_pipeline_make_rgba_bytes_image_dependency(
+            index, resource_key, image_data, image_width, image_height,
+          ),
+        )
+      RenderCommand::DrawTransformedQualityRgbaBytesRectKeyed(
         resource_key,
         image_data,
         image_width,

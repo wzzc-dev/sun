@@ -44,16 +44,102 @@ fn RenderPipelineImageBytes::decode_or_abort(
 }
 
 ///|
+fn render_pipeline_make_declared_image_dependency(
+  command_index : Int,
+  resource_key : String,
+  source_width : Int,
+  source_height : Int,
+) -> RenderPipelineImageDependency {
+  if source_width > 0 && source_height > 0 {
+    render_pipeline_make_image_dependency(
+      command_index,
+      Some(resource_key),
+      source_width,
+      source_height,
+    )
+  } else {
+    render_pipeline_make_image_dependency(
+      command_index,
+      Some(resource_key),
+      0,
+      0,
+    )
+  }
+}
+
+///|
+fn render_pipeline_make_declared_rect_image_dependency(
+  command_index : Int,
+  resource_key : String,
+  source_width : Int,
+  source_height : Int,
+  src_rect : @graphics.PixelRect,
+) -> RenderPipelineImageDependency {
+  let src_bounds = @graphics.PixelRect::new(
+    x=0,
+    y=0,
+    width=source_width,
+    height=source_height,
+  )
+  match src_rect.clip_to(src_bounds) {
+    Some(clipped) =>
+      render_pipeline_make_image_dependency(
+        command_index,
+        Some(resource_key),
+        clipped.width,
+        clipped.height,
+      )
+    None =>
+      render_pipeline_make_image_dependency(
+        command_index,
+        Some(resource_key),
+        0,
+        0,
+      )
+  }
+}
+
+///|
+fn render_pipeline_make_requested_rect_image_dependency(
+  command_index : Int,
+  resource_key : String,
+  src_rect : @graphics.PixelRect,
+) -> RenderPipelineImageDependency {
+  if src_rect.is_empty() {
+    render_pipeline_make_image_dependency(
+      command_index,
+      Some(resource_key),
+      0,
+      0,
+    )
+  } else {
+    render_pipeline_make_image_dependency(
+      command_index,
+      Some(resource_key),
+      src_rect.width,
+      src_rect.height,
+    )
+  }
+}
+
+///|
 fn render_pipeline_make_image_bytes_dependency(
   command_index : Int,
   resource_key : String,
   image : RenderPipelineImageBytes,
 ) -> RenderPipelineImageDependency {
-  render_pipeline_make_decoded_image_dependency(
-    command_index,
-    resource_key,
-    image.decode(),
-  )
+  match image {
+    RenderPipelineImageBytes::Rgba(_, image_width, image_height) =>
+      render_pipeline_make_declared_image_dependency(
+        command_index, resource_key, image_width, image_height,
+      )
+    _ =>
+      render_pipeline_make_decoded_image_dependency(
+        command_index,
+        resource_key,
+        image.decode(),
+      )
+  }
 }
 
 ///|
@@ -63,12 +149,26 @@ fn render_pipeline_make_image_bytes_rect_dependency(
   image : RenderPipelineImageBytes,
   src_rect : @graphics.PixelRect,
 ) -> RenderPipelineImageDependency {
-  render_pipeline_make_decoded_rect_image_dependency(
-    command_index,
-    resource_key,
-    image.decode(),
-    src_rect,
-  )
+  match image {
+    RenderPipelineImageBytes::Rgba(_, image_width, image_height) =>
+      render_pipeline_make_declared_rect_image_dependency(
+        command_index, resource_key, image_width, image_height, src_rect,
+      )
+    _ =>
+      match image.decode() {
+        Ok(pixmap) =>
+          render_pipeline_make_rect_image_dependency(
+            command_index,
+            Some(resource_key),
+            pixmap,
+            src_rect,
+          )
+        Err(_) =>
+          render_pipeline_make_requested_rect_image_dependency(
+            command_index, resource_key, src_rect,
+          )
+      }
+  }
 }
 
 ///|
@@ -329,8 +429,16 @@ fn render_image_bytes_estimated_dirty_rect(
   image : RenderPipelineImageBytes,
   x : Int,
   y : Int,
+  canvas_width : Int,
+  canvas_height : Int,
 ) -> @graphics.PixelRect? {
-  render_decoded_pixmap_estimated_dirty_rect(image.decode(), x, y)
+  match image.decode() {
+    Ok(pixmap) => render_pixmap_estimated_dirty_rect(pixmap, x, y)
+    Err(_) =>
+      render_image_bytes_fallback_dirty_rect(
+        image, x, y, canvas_width, canvas_height,
+      )
+  }
 }
 
 ///|
@@ -340,12 +448,11 @@ fn render_image_bytes_rect_estimated_dirty_rect(
   x : Int,
   y : Int,
 ) -> @graphics.PixelRect? {
-  render_decoded_pixmap_rect_estimated_dirty_rect(
-    image.decode(),
-    src_rect,
-    x,
-    y,
-  )
+  match image.decode() {
+    Ok(pixmap) =>
+      render_pixmap_rect_estimated_dirty_rect(pixmap, src_rect, x, y)
+    Err(_) => render_point_source_target_dirty_rect(src_rect, x, y)
+  }
 }
 
 ///|
@@ -356,13 +463,11 @@ fn render_scaled_image_bytes_estimated_dirty_rect(
   width : Int,
   height : Int,
 ) -> @graphics.PixelRect? {
-  render_decoded_scaled_pixmap_estimated_dirty_rect(
-    image.decode(),
-    x,
-    y,
-    width,
-    height,
-  )
+  match image.decode() {
+    Ok(pixmap) =>
+      render_scaled_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
+    Err(_) => render_pixel_target_dirty_rect(x, y, width, height)
+  }
 }
 
 ///|
@@ -374,14 +479,14 @@ fn render_scaled_image_bytes_rect_estimated_dirty_rect(
   width : Int,
   height : Int,
 ) -> @graphics.PixelRect? {
-  render_decoded_scaled_pixmap_rect_estimated_dirty_rect(
-    image.decode(),
-    src_rect,
-    x,
-    y,
-    width,
-    height,
-  )
+  match image.decode() {
+    Ok(pixmap) =>
+      render_scaled_pixmap_rect_estimated_dirty_rect(
+        pixmap, src_rect, x, y, width, height,
+      )
+    Err(_) =>
+      render_pixel_source_target_dirty_rect(src_rect, x, y, width, height)
+  }
 }
 
 ///|
@@ -392,13 +497,13 @@ fn render_transformed_image_bytes_estimated_dirty_rect(
   width : Double,
   height : Double,
 ) -> @graphics.PixelRect? {
-  render_decoded_transformed_pixmap_estimated_dirty_rect(
-    image.decode(),
-    x,
-    y,
-    width,
-    height,
-  )
+  match image.decode() {
+    Ok(pixmap) =>
+      render_transformed_pixmap_estimated_dirty_rect(
+        pixmap, x, y, width, height,
+      )
+    Err(_) => render_transformed_target_dirty_rect(x, y, width, height)
+  }
 }
 
 ///|
@@ -410,14 +515,14 @@ fn render_transformed_image_bytes_rect_estimated_dirty_rect(
   width : Double,
   height : Double,
 ) -> @graphics.PixelRect? {
-  render_decoded_transformed_pixmap_rect_estimated_dirty_rect(
-    image.decode(),
-    src_rect,
-    x,
-    y,
-    width,
-    height,
-  )
+  match image.decode() {
+    Ok(pixmap) =>
+      render_transformed_pixmap_rect_estimated_dirty_rect(
+        pixmap, src_rect, x, y, width, height,
+      )
+    Err(_) =>
+      render_transformed_source_target_dirty_rect(src_rect, x, y, width, height)
+  }
 }
 
 ///|
@@ -429,14 +534,14 @@ fn render_tiled_image_bytes_rect_estimated_dirty_rect(
   width : Int,
   height : Int,
 ) -> @graphics.PixelRect? {
-  render_decoded_tiled_pixmap_rect_estimated_dirty_rect(
-    image.decode(),
-    src_rect,
-    x,
-    y,
-    width,
-    height,
-  )
+  match image.decode() {
+    Ok(pixmap) =>
+      render_tiled_pixmap_rect_estimated_dirty_rect(
+        pixmap, src_rect, x, y, width, height,
+      )
+    Err(_) =>
+      render_pixel_source_target_dirty_rect(src_rect, x, y, width, height)
+  }
 }
 
 ///|
@@ -447,11 +552,88 @@ fn render_nine_patch_image_bytes_estimated_dirty_rect(
   width : Int,
   height : Int,
 ) -> @graphics.PixelRect? {
-  render_decoded_nine_patch_pixmap_estimated_dirty_rect(
-    image.decode(),
-    x,
-    y,
-    width,
-    height,
+  match image.decode() {
+    Ok(pixmap) =>
+      render_nine_patch_pixmap_estimated_dirty_rect(pixmap, x, y, width, height)
+    Err(_) => render_pixel_target_dirty_rect(x, y, width, height)
+  }
+}
+
+///|
+fn render_image_bytes_fallback_dirty_rect(
+  image : RenderPipelineImageBytes,
+  x : Int,
+  y : Int,
+  canvas_width : Int,
+  canvas_height : Int,
+) -> @graphics.PixelRect? {
+  match image {
+    RenderPipelineImageBytes::Rgba(_, image_width, image_height) =>
+      render_pixel_target_dirty_rect(x, y, image_width, image_height)
+    _ => render_canvas_dirty_rect(canvas_width, canvas_height)
+  }
+}
+
+///|
+fn render_canvas_dirty_rect(
+  canvas_width : Int,
+  canvas_height : Int,
+) -> @graphics.PixelRect? {
+  non_empty_pixel_rect(
+    @graphics.PixelRect::new(x=0, y=0, width=canvas_width, height=canvas_height),
   )
+}
+
+///|
+fn render_pixel_target_dirty_rect(
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> @graphics.PixelRect? {
+  non_empty_pixel_rect(@graphics.PixelRect::new(x~, y~, width~, height~))
+}
+
+///|
+fn render_point_source_target_dirty_rect(
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+) -> @graphics.PixelRect? {
+  guard !src_rect.is_empty() else { return None }
+  render_pixel_target_dirty_rect(x, y, src_rect.width, src_rect.height)
+}
+
+///|
+fn render_pixel_source_target_dirty_rect(
+  src_rect : @graphics.PixelRect,
+  x : Int,
+  y : Int,
+  width : Int,
+  height : Int,
+) -> @graphics.PixelRect? {
+  guard !src_rect.is_empty() else { return None }
+  render_pixel_target_dirty_rect(x, y, width, height)
+}
+
+///|
+fn render_transformed_target_dirty_rect(
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+) -> @graphics.PixelRect? {
+  pixel_rect_from_double_bounds(x, y, x + width, y + height)
+}
+
+///|
+fn render_transformed_source_target_dirty_rect(
+  src_rect : @graphics.PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+) -> @graphics.PixelRect? {
+  guard !src_rect.is_empty() else { return None }
+  render_transformed_target_dirty_rect(x, y, width, height)
 }

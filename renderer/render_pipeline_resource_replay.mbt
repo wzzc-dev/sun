@@ -470,6 +470,40 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
             sampling,
           ),
         )
+      RenderCommand::DrawTransformedQualityBmpBytesKeyed(
+        resource_key,
+        image_data,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        image_count += record_bmp_image_replay_result(
+          image_cache_counters,
+          renderer.draw_transformed_quality_bmp_bytes_cached_with_renderer_resources(
+            image_data, x, y, width, height, resources, resource_key, paint, quality,
+          ),
+        )
+      RenderCommand::DrawTransformedQualityBmpBytesRectKeyed(
+        resource_key,
+        image_data,
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        image_count += record_bmp_image_replay_result(
+          image_cache_counters,
+          renderer.draw_transformed_quality_bmp_bytes_rect_cached_with_renderer_resources(
+            image_data, src_rect, x, y, width, height, resources, resource_key, paint,
+            quality,
+          ),
+        )
       RenderCommand::DrawTransformedSampledPngBytesKeyed(
         resource_key,
         image_data,
@@ -575,6 +609,45 @@ pub fn RenderPipeline::replay_with_renderer_resources_result(
           renderer.draw_transformed_sampled_rgba_bytes_rect_cached_with_renderer_resources(
             image_data, image_width, image_height, src_rect, x, y, width, height,
             resources, resource_key, paint, sampling,
+          ),
+        )
+      RenderCommand::DrawTransformedQualityRgbaBytesKeyed(
+        resource_key,
+        image_data,
+        image_width,
+        image_height,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        image_count += record_rgba_image_replay_result(
+          image_cache_counters,
+          renderer.draw_transformed_quality_rgba_bytes_cached_with_renderer_resources(
+            image_data, image_width, image_height, x, y, width, height, resources,
+            resource_key, paint, quality,
+          ),
+        )
+      RenderCommand::DrawTransformedQualityRgbaBytesRectKeyed(
+        resource_key,
+        image_data,
+        image_width,
+        image_height,
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        image_count += record_rgba_image_replay_result(
+          image_cache_counters,
+          renderer.draw_transformed_quality_rgba_bytes_rect_cached_with_renderer_resources(
+            image_data, image_width, image_height, src_rect, x, y, width, height,
+            resources, resource_key, paint, quality,
           ),
         )
       RenderCommand::DrawSampledBmpBytesRectKeyed(
@@ -1666,6 +1739,40 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
             sampling,
           ),
         )
+      RenderCommand::DrawTransformedQualityBmpBytesKeyed(
+        resource_key,
+        image_data,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        image_count += record_bmp_image_replay_result(
+          image_cache_counters,
+          renderer.draw_transformed_quality_bmp_bytes_cached_with_renderer_resources(
+            image_data, x, y, width, height, resources, resource_key, paint, quality,
+          ),
+        )
+      RenderCommand::DrawTransformedQualityBmpBytesRectKeyed(
+        resource_key,
+        image_data,
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        image_count += record_bmp_image_replay_result(
+          image_cache_counters,
+          renderer.draw_transformed_quality_bmp_bytes_rect_cached_with_renderer_resources(
+            image_data, src_rect, x, y, width, height, resources, resource_key, paint,
+            quality,
+          ),
+        )
       RenderCommand::DrawTransformedSampledPngBytesKeyed(
         resource_key,
         image_data,
@@ -1737,6 +1844,45 @@ pub fn[L : @text.FontLoader] RenderPipeline::replay_with_font_loader_resources_r
           renderer.draw_transformed_sampled_rgba_bytes_rect_cached_with_renderer_resources(
             image_data, image_width, image_height, src_rect, x, y, width, height,
             resources, resource_key, paint, sampling,
+          ),
+        )
+      RenderCommand::DrawTransformedQualityRgbaBytesKeyed(
+        resource_key,
+        image_data,
+        image_width,
+        image_height,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        image_count += record_rgba_image_replay_result(
+          image_cache_counters,
+          renderer.draw_transformed_quality_rgba_bytes_cached_with_renderer_resources(
+            image_data, image_width, image_height, x, y, width, height, resources,
+            resource_key, paint, quality,
+          ),
+        )
+      RenderCommand::DrawTransformedQualityRgbaBytesRectKeyed(
+        resource_key,
+        image_data,
+        image_width,
+        image_height,
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) =>
+        image_count += record_rgba_image_replay_result(
+          image_cache_counters,
+          renderer.draw_transformed_quality_rgba_bytes_rect_cached_with_renderer_resources(
+            image_data, image_width, image_height, src_rect, x, y, width, height,
+            resources, resource_key, paint, quality,
           ),
         )
       RenderCommand::DrawTransformedQualityPngBytesKeyed(

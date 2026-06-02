@@ -131,6 +131,27 @@ pub enum RenderCommand {
     @graphics.Paint,
     @graphics.ImageSampling
   )
+  DrawTransformedQualityBmpBytesKeyed(
+    String,
+    Bytes,
+    Double,
+    Double,
+    Double,
+    Double,
+    @graphics.Paint,
+    @graphics.ImageQuality
+  )
+  DrawTransformedQualityBmpBytesRectKeyed(
+    String,
+    Bytes,
+    @graphics.PixelRect,
+    Double,
+    Double,
+    Double,
+    Double,
+    @graphics.Paint,
+    @graphics.ImageQuality
+  )
   DrawTransformedSampledPngBytesKeyed(
     String,
     Bytes,
@@ -197,6 +218,31 @@ pub enum RenderCommand {
     Double,
     @graphics.Paint,
     @graphics.ImageSampling
+  )
+  DrawTransformedQualityRgbaBytesKeyed(
+    String,
+    Bytes,
+    Int,
+    Int,
+    Double,
+    Double,
+    Double,
+    Double,
+    @graphics.Paint,
+    @graphics.ImageQuality
+  )
+  DrawTransformedQualityRgbaBytesRectKeyed(
+    String,
+    Bytes,
+    Int,
+    Int,
+    @graphics.PixelRect,
+    Double,
+    Double,
+    Double,
+    Double,
+    @graphics.Paint,
+    @graphics.ImageQuality
   )
   DrawSampledBmpBytesRectKeyed(
     String,

@@ -4,6 +4,7 @@ version = "0.1.0"
 
 import {
   "wzzc-dev/graphics@0.1.0",
+  "wzzc-dev/renderer@0.1.0",
   "wzzc-dev/text@0.1.0",
 }
 

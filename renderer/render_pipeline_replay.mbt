@@ -334,6 +334,52 @@ pub fn RenderPipeline::replay(
         )
         image_count += 1
       }
+      RenderCommand::DrawTransformedQualityBmpBytesKeyed(
+        _,
+        image_data,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) => {
+        render_pipeline_draw_transformed_quality_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
+        image_count += 1
+      }
+      RenderCommand::DrawTransformedQualityBmpBytesRectKeyed(
+        _,
+        image_data,
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) => {
+        render_pipeline_draw_transformed_quality_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Bmp(image_data),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
+        image_count += 1
+      }
       RenderCommand::DrawTransformedSampledPngBytesKeyed(
         _,
         image_data,
@@ -473,6 +519,56 @@ pub fn RenderPipeline::replay(
           height,
           paint,
           sampling,
+        )
+        image_count += 1
+      }
+      RenderCommand::DrawTransformedQualityRgbaBytesKeyed(
+        _,
+        image_data,
+        image_width,
+        image_height,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) => {
+        render_pipeline_draw_transformed_quality_image_bytes(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
+        )
+        image_count += 1
+      }
+      RenderCommand::DrawTransformedQualityRgbaBytesRectKeyed(
+        _,
+        image_data,
+        image_width,
+        image_height,
+        src_rect,
+        x,
+        y,
+        width,
+        height,
+        paint,
+        quality
+      ) => {
+        render_pipeline_draw_transformed_quality_image_bytes_rect(
+          canvas,
+          RenderPipelineImageBytes::Rgba(image_data, image_width, image_height),
+          src_rect,
+          x,
+          y,
+          width,
+          height,
+          paint,
+          quality,
         )
         image_count += 1
       }

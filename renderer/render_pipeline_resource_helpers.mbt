@@ -65,31 +65,6 @@ fn render_pipeline_make_decoded_image_dependency(
 }
 
 ///|
-fn render_pipeline_make_decoded_rect_image_dependency(
-  command_index : Int,
-  resource_key : String,
-  decoded : Result[@graphics.Pixmap, @graphics.PixmapDecodeError],
-  src_rect : @graphics.PixelRect,
-) -> RenderPipelineImageDependency {
-  match decoded {
-    Ok(pixmap) =>
-      render_pipeline_make_rect_image_dependency(
-        command_index,
-        Some(resource_key),
-        pixmap,
-        src_rect,
-      )
-    Err(_) =>
-      render_pipeline_make_image_dependency(
-        command_index,
-        Some(resource_key),
-        0,
-        0,
-      )
-  }
-}
-
-///|
 fn render_pipeline_make_bmp_bytes_image_dependency(
   command_index : Int,
   resource_key : String,

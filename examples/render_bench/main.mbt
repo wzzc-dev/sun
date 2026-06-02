@@ -20,12 +20,23 @@ let glyph_iterations = 10
 let blit_iterations = 10
 
 ///|
+let pipeline_image_ops = 12
+
+///|
+let pipeline_cache_hits = 6
+
+///|
+let expected_checksum = 92471
+
+///|
 struct BenchSummary {
   fill_ops : Int
   path_ops : Int
   stroke_ops : Int
   glyph_ops : Int
   blit_ops : Int
+  pipeline_ops : Int
+  pipeline_cache_hits : Int
   present_ops : Int
   checksum : Int
 } derive(Debug)
@@ -186,6 +197,227 @@ fn run_blit_workload(canvas : @graphics.Canvas) -> Int {
 }
 
 ///|
+fn make_pipeline_source_pixmap() -> @graphics.Pixmap {
+  let src = @graphics.Pixmap::new(2, 1)
+  src.set_pixel(0, 0, @graphics.Color::red())
+  src.set_pixel(1, 0, @graphics.Color::green())
+  src
+}
+
+///|
+fn must_bench_png_bytes(pixmap : @graphics.Pixmap) -> Bytes {
+  match pixmap.to_png_bytes() {
+    Ok(bytes) => bytes
+    Err(_) => abort("render benchmark PNG fixture encode failed")
+  }
+}
+
+///|
+fn run_pipeline_workload(canvas : @graphics.Canvas) -> Int {
+  let src = make_pipeline_source_pixmap()
+  let renderer = @renderer.Renderer::new(canvas)
+  let resources = @renderer.RendererResources::with_capacities(16, 16, 1, 1, 6)
+  let src_right = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let first_pipeline = @renderer.RenderPipeline::new()
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bench-transform-bmp",
+      src.to_bmp_bytes(),
+      68.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bench-transform-bmp-rect",
+      src.to_bmp_bytes(),
+      src_right,
+      72.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_keyed(
+      "bench-transform-png",
+      must_bench_png_bytes(src),
+      76.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_rect_keyed(
+      "bench-transform-png-rect",
+      must_bench_png_bytes(src),
+      src_right,
+      80.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "bench-transform-rgba",
+      src.to_rgba_bytes(),
+      2,
+      1,
+      84.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "bench-transform-rgba-rect",
+      src.to_rgba_bytes(),
+      2,
+      1,
+      src_right,
+      88.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+  let resource_plan = first_pipeline.resource_plan()
+  guard resource_plan.get_image_count() == 6 else {
+    abort("render benchmark pipeline resource plan should see six images")
+  }
+  guard resource_plan.get_keyed_image_count() == 6 else {
+    abort("render benchmark pipeline resource plan should see keyed images")
+  }
+  guard resource_plan.get_image_source_pixel_count() == 9 else {
+    abort("render benchmark pipeline resource plan pixel budget changed")
+  }
+  let dirty_plan = first_pipeline.dirty_present_plan(
+    bench_width, bench_height, 6,
+  )
+  guard dirty_plan.get_rect_count() == 6 else {
+    abort("render benchmark pipeline dirty plan should keep six rects")
+  }
+  guard dirty_plan.get_present_pixel_count() == 12 else {
+    abort("render benchmark pipeline dirty plan pixel budget changed")
+  }
+  guard dirty_plan.get_present_bounds() ==
+    Some(@graphics.PixelRect::new(x=68, y=50, width=22, height=1)) else {
+    abort("render benchmark pipeline dirty bounds changed")
+  }
+  let first = renderer.draw_pipeline_with_renderer_resources(
+    first_pipeline, resources,
+  )
+  guard first.get_image_count() == 6 else {
+    abort("render benchmark pipeline should draw six images")
+  }
+  guard first.get_image_cache_insert_count() == pipeline_cache_hits else {
+    abort("render benchmark pipeline should insert image resources")
+  }
+
+  let second_pipeline = @renderer.RenderPipeline::new()
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bench-transform-bmp",
+      b"cached-bmp",
+      68.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bench-transform-bmp-rect",
+      b"cached-bmp-rect",
+      src_right,
+      72.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_keyed(
+      "bench-transform-png",
+      b"cached-png",
+      76.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_rect_keyed(
+      "bench-transform-png-rect",
+      b"cached-png-rect",
+      src_right,
+      80.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "bench-transform-rgba",
+      b"cached-rgba",
+      2,
+      1,
+      84.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "bench-transform-rgba-rect",
+      b"cached-rgba-rect",
+      2,
+      1,
+      src_right,
+      88.0,
+      50.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+  let second = renderer.draw_pipeline_with_renderer_resources(
+    second_pipeline, resources,
+  )
+  guard second.get_image_count() == 6 else {
+    abort("render benchmark cached pipeline should draw six images")
+  }
+  guard second.get_image_cache_hit_count() == pipeline_cache_hits else {
+    abort("render benchmark pipeline should reuse image resources")
+  }
+  guard resources.contains_image("bench-transform-bmp") else {
+    abort("render benchmark missing cached BMP resource")
+  }
+  guard resources.contains_image("bench-transform-bmp-rect") else {
+    abort("render benchmark missing cached BMP rect resource")
+  }
+  guard resources.contains_image("bench-transform-png") else {
+    abort("render benchmark missing cached PNG resource")
+  }
+  guard resources.contains_image("bench-transform-png-rect") else {
+    abort("render benchmark missing cached PNG rect resource")
+  }
+  guard resources.contains_image("bench-transform-rgba") else {
+    abort("render benchmark missing cached RGBA resource")
+  }
+  guard resources.contains_image("bench-transform-rgba-rect") else {
+    abort("render benchmark missing cached RGBA rect resource")
+  }
+  first.get_image_count() + second.get_image_count()
+}
+
+///|
 fn run_bench() -> BenchSummary {
   let canvas = @graphics.Canvas::new(bench_width, bench_height)
   canvas.clear(@graphics.Color::new(r=238, g=241, b=246))
@@ -194,6 +426,7 @@ fn run_bench() -> BenchSummary {
   let stroke_ops = run_stroke_workload(canvas)
   let glyph_ops = run_glyph_workload(canvas)
   let blit_ops = run_blit_workload(canvas)
+  let pipeline = run_pipeline_workload(canvas)
 
   let surface = @graphics.MemorySurface::new(bench_width, bench_height)
   match canvas.get_pixmap().present_to(surface) {
@@ -218,6 +451,24 @@ fn run_bench() -> BenchSummary {
   guard surface.get_pixel(10, 40) != @graphics.Color::transparent() else {
     abort("render benchmark did not draw glyph workload")
   }
+  guard surface.get_pixel(68, 50) == @graphics.Color::red() else {
+    abort("render benchmark did not draw pipeline BMP workload")
+  }
+  guard surface.get_pixel(72, 50) == @graphics.Color::green() else {
+    abort("render benchmark did not draw pipeline BMP rect workload")
+  }
+  guard surface.get_pixel(76, 50) == @graphics.Color::red() else {
+    abort("render benchmark did not draw pipeline PNG workload")
+  }
+  guard surface.get_pixel(80, 50) == @graphics.Color::green() else {
+    abort("render benchmark did not draw pipeline PNG rect workload")
+  }
+  guard surface.get_pixel(84, 50) == @graphics.Color::red() else {
+    abort("render benchmark did not draw pipeline RGBA workload")
+  }
+  guard surface.get_pixel(88, 50) == @graphics.Color::green() else {
+    abort("render benchmark did not draw pipeline RGBA rect workload")
+  }
 
   {
     fill_ops,
@@ -225,6 +476,8 @@ fn run_bench() -> BenchSummary {
     stroke_ops,
     glyph_ops,
     blit_ops,
+    pipeline_ops: pipeline,
+    pipeline_cache_hits,
     present_ops: surface.get_present_count(),
     checksum: surface.checksum(),
   }
@@ -248,11 +501,17 @@ fn main {
   guard summary.blit_ops == blit_iterations else {
     abort("blit benchmark did not run")
   }
+  guard summary.pipeline_ops == pipeline_image_ops else {
+    abort("pipeline benchmark did not run")
+  }
+  guard summary.pipeline_cache_hits == pipeline_cache_hits else {
+    abort("pipeline benchmark did not reuse renderer resources")
+  }
   guard summary.present_ops == 1 else { abort("present benchmark did not run") }
-  guard summary.checksum > 0 else {
-    abort("render benchmark checksum is empty")
+  guard summary.checksum == expected_checksum else {
+    abort("render benchmark checksum changed: \{summary.checksum}")
   }
   println(
-    "render bench ok fill=\{summary.fill_ops} path=\{summary.path_ops} stroke=\{summary.stroke_ops} glyph=\{summary.glyph_ops} blit=\{summary.blit_ops} present=\{summary.present_ops} checksum=\{summary.checksum}",
+    "render bench ok fill=\{summary.fill_ops} path=\{summary.path_ops} stroke=\{summary.stroke_ops} glyph=\{summary.glyph_ops} blit=\{summary.blit_ops} pipeline=\{summary.pipeline_ops} cache_hit=\{summary.pipeline_cache_hits} present=\{summary.present_ops} checksum=\{summary.checksum}",
   )
 }

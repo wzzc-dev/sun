@@ -157,6 +157,487 @@ test "RenderPipeline replays byte image commands and analyzes dirty bounds" {
 }
 
 ///|
+test "RenderPipeline conservatively estimates dirty bounds for placeholder image bytes" {
+  let paint = @graphics.Paint::new()
+  let src = @graphics.PixelRect::new(x=0, y=0, width=1, height=1)
+  let empty_src = @graphics.PixelRect::new(x=0, y=0, width=0, height=1)
+  let insets = @graphics.NinePatchInsets::new(left=1, top=0, right=1, bottom=0)
+  let pipeline = RenderPipeline::new()
+    .draw_rgba_bytes_keyed("rgba", Bytes::from_array([0]), 2, 1, 0, 0, paint)
+    .draw_png_bytes_rect_keyed(
+      "png-sprite",
+      Bytes::from_array([137, 80]),
+      src,
+      3,
+      0,
+      paint,
+    )
+    .draw_sampled_bmp_bytes_keyed(
+      "bmp-sampled",
+      Bytes::from_array([66, 77]),
+      0,
+      1,
+      2,
+      1,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_quality_png_bytes_rect_keyed(
+      "png-quality-sprite",
+      Bytes::from_array([137, 80]),
+      src,
+      2,
+      1,
+      2,
+      1,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-transform-quality",
+      b"not a bmp",
+      4.0,
+      1.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_sampled_rgba_bytes_rect_keyed(
+      "rgba-transform-sprite",
+      b"not rgba",
+      2,
+      1,
+      src,
+      6.0,
+      1.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_tiled_bmp_bytes_rect_keyed(
+      "bmp-tile",
+      Bytes::from_array([66, 77]),
+      src,
+      0,
+      2,
+      3,
+      1,
+      paint,
+    )
+    .draw_nine_patch_png_bytes_keyed(
+      "png-panel",
+      Bytes::from_array([137, 80]),
+      3,
+      2,
+      2,
+      1,
+      insets,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_sampled_rgba_bytes_rect_keyed(
+      "empty-source",
+      Bytes::from_array([]),
+      2,
+      1,
+      empty_src,
+      5,
+      2,
+      2,
+      1,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+
+  let analysis = pipeline.analyze(8, 3)
+  assert_eq(analysis.get_command_count(), 9)
+  assert_eq(analysis.get_image_count(), 9)
+  assert_true(analysis.has_dirty())
+  assert_true(
+    analysis.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=8, height=3)),
+  )
+  let present_plan = pipeline.dirty_present_plan(8, 3, 1)
+  assert_true(!present_plan.uses_bounds_fallback())
+  assert_eq(present_plan.get_rect_count(), 1)
+  assert_eq(present_plan.get_present_pixel_count(), 24)
+  let batches = pipeline.batch_plan(8, 3).get_batches()
+  assert_eq(batches.length(), 1)
+  assert_true(batches[0].get_kind() == RenderPipelineBatchKind::Image)
+  assert_true(
+    batches[0].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=8, height=3)),
+  )
+
+  let empty_source = RenderPipeline::new()
+    .draw_sampled_png_bytes_rect_keyed(
+      "empty",
+      Bytes::from_array([137, 80]),
+      empty_src,
+      0,
+      0,
+      2,
+      1,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .analyze(4, 1)
+  assert_true(!empty_source.has_dirty())
+
+  let unknown_full_images = RenderPipeline::new()
+    .draw_bmp_bytes_keyed("bmp-full", Bytes::from_array([66, 77]), 2, 1, paint)
+    .draw_png_bytes_keyed("png-full", Bytes::from_array([137, 80]), 1, 2, paint)
+  let unknown_analysis = unknown_full_images.analyze(5, 4)
+  assert_true(unknown_analysis.has_dirty())
+  assert_eq(unknown_analysis.get_dirty_rect_count(), 1)
+  assert_true(
+    unknown_analysis.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=5, height=4)),
+  )
+  let unknown_present = unknown_full_images.dirty_present_plan(5, 4, 4)
+  assert_eq(unknown_present.get_rect_count(), 1)
+  assert_eq(unknown_present.get_present_pixel_count(), 20)
+}
+
+///|
+test "RenderPipeline transformed quality byte commands skip empty dirty targets" {
+  let paint = @graphics.Paint::new()
+  let empty_src = @graphics.PixelRect::new(x=0, y=0, width=0, height=1)
+  let pipeline = RenderPipeline::new()
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-zero-width",
+      Bytes::from_array([66, 77]),
+      0.0,
+      0.0,
+      0.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_keyed(
+      "png-zero-height",
+      Bytes::from_array([137, 80]),
+      1.0,
+      0.0,
+      2.0,
+      0.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-empty-source",
+      Bytes::from_array([66, 77]),
+      empty_src,
+      0.0,
+      1.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_rect_keyed(
+      "png-empty-source",
+      Bytes::from_array([137, 80]),
+      empty_src,
+      1.0,
+      1.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba-zero-width",
+      Bytes::from_array([]),
+      2,
+      1,
+      3.0,
+      0.0,
+      0.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-empty-source",
+      Bytes::from_array([]),
+      2,
+      1,
+      empty_src,
+      2.0,
+      1.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+
+  let analysis = pipeline.analyze(4, 3)
+  assert_eq(analysis.get_command_count(), 6)
+  assert_eq(analysis.get_image_count(), 6)
+  assert_true(!analysis.has_dirty())
+  assert_eq(analysis.get_dirty_rect_count(), 0)
+  assert_true(analysis.get_dirty_bounds() == None)
+  let present = analysis.get_present_plan(4, 3, 4)
+  assert_eq(present.get_rect_count(), 0)
+  assert_eq(present.get_present_pixel_count(), 0)
+
+  let batch_plan = pipeline.batch_plan(4, 3)
+  assert_eq(batch_plan.get_command_count(), 6)
+  assert_eq(batch_plan.get_batch_count(), 1)
+  assert_true(!batch_plan.has_dirty())
+  let batches = batch_plan.get_batches()
+  assert_true(batches[0].get_kind() == RenderPipelineBatchKind::Image)
+  assert_eq(batches[0].get_command_count(), 6)
+  assert_eq(batches[0].get_dirty_rect_count(), 0)
+  assert_true(batches[0].get_dirty_bounds() == None)
+
+  let resource_plan = pipeline.resource_plan()
+  assert_eq(resource_plan.get_command_count(), 6)
+  assert_eq(resource_plan.get_image_count(), 6)
+  assert_eq(resource_plan.get_keyed_image_count(), 6)
+  assert_eq(resource_plan.get_image_source_pixel_count(), 2)
+  let images = resource_plan.get_image_dependencies()
+  assert_true(images[4].get_resource_key() == Some("rgba-zero-width"))
+  assert_eq(images[4].get_source_width(), 2)
+  assert_eq(images[4].get_source_height(), 1)
+}
+
+///|
+test "RenderPipeline transformed quality byte commands use fractional dirty bounds" {
+  let source = make_renderer_test_tile_source()
+  let src_right = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let paint = @graphics.Paint::new()
+  let pipeline = RenderPipeline::new()
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-fractional",
+      source.to_bmp_bytes(),
+      1.25,
+      0.5,
+      1.25,
+      1.25,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_rect_keyed(
+      "png-rect-fractional",
+      must_renderer_test_png_bytes(source),
+      src_right,
+      5.25,
+      2.25,
+      1.5,
+      1.5,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-rect-fractional",
+      source.to_rgba_bytes(),
+      2,
+      1,
+      src_right,
+      8.1,
+      0.1,
+      0.6,
+      0.6,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+
+  let analysis = pipeline.analyze(10, 5)
+  assert_eq(analysis.get_command_count(), 3)
+  assert_eq(analysis.get_image_count(), 3)
+  assert_eq(analysis.get_dirty_rect_count(), 3)
+  assert_true(
+    analysis.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=1, y=0, width=8, height=4)),
+  )
+  let dirty_rects = analysis.get_dirty_region().get_rects()
+  assert_true(
+    dirty_rects[0] == @graphics.PixelRect::new(x=1, y=0, width=2, height=2),
+  )
+  assert_true(
+    dirty_rects[1] == @graphics.PixelRect::new(x=5, y=2, width=2, height=2),
+  )
+  assert_true(
+    dirty_rects[2] == @graphics.PixelRect::new(x=8, y=0, width=1, height=1),
+  )
+  let rect_present = analysis.get_present_plan(10, 5, 3)
+  assert_true(!rect_present.uses_bounds_fallback())
+  assert_eq(rect_present.get_rect_count(), 3)
+  let present_rects = rect_present.get_rects()
+  assert_true(present_rects[0] == dirty_rects[0])
+  assert_true(present_rects[1] == dirty_rects[1])
+  assert_true(present_rects[2] == dirty_rects[2])
+  assert_eq(rect_present.get_present_pixel_count(), 9)
+  let bounds_present = analysis.get_present_plan(10, 5, 2)
+  assert_true(bounds_present.uses_bounds_fallback())
+  assert_eq(bounds_present.get_rect_count(), 1)
+  assert_true(
+    bounds_present.get_present_bounds() ==
+    Some(@graphics.PixelRect::new(x=1, y=0, width=8, height=4)),
+  )
+  assert_eq(bounds_present.get_present_pixel_count(), 32)
+
+  let batches = pipeline.batch_plan(10, 5).get_batches()
+  assert_eq(batches.length(), 1)
+  assert_true(batches[0].get_kind() == RenderPipelineBatchKind::Image)
+  assert_eq(batches[0].get_dirty_rect_count(), 3)
+  assert_true(
+    batches[0].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=1, y=0, width=8, height=4)),
+  )
+}
+
+///|
+test "RenderPipeline replays transformed quality BMP and RGBA byte commands" {
+  let source = @graphics.Pixmap::new(2, 1)
+  source.set_pixel(0, 0, @graphics.Color::red())
+  source.set_pixel(1, 0, @graphics.Color::green())
+  let src_right = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-transform-quality",
+      source.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-transform-quality",
+      source.to_rgba_bytes(),
+      2,
+      1,
+      src_right,
+      3.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-transform-quality-sprite",
+      source.to_bmp_bytes(),
+      src_right,
+      6.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba-transform-quality-full",
+      source.to_rgba_bytes(),
+      2,
+      1,
+      9.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+
+  let batches = pipeline.batch_plan(11, 1).get_batches()
+  assert_eq(batches.length(), 2)
+  assert_true(batches[1].get_kind() == RenderPipelineBatchKind::Image)
+  assert_eq(batches[1].get_command_count(), 4)
+  assert_eq(batches[1].get_dirty_rect_count(), 4)
+  assert_true(
+    batches[1].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=11, height=1)),
+  )
+  let image_present_plan = batches[1].get_present_plan(11, 1, 4)
+  assert_eq(image_present_plan.get_rect_count(), 4)
+  assert_eq(image_present_plan.get_present_pixel_count(), 8)
+
+  let renderer = Renderer::new(@graphics.Canvas::new(11, 1))
+  let result = renderer.draw_pipeline(pipeline)
+  assert_eq(result.get_command_count(), 5)
+  assert_eq(result.get_clear_count(), 1)
+  assert_eq(result.get_image_count(), 4)
+  assert_eq(result.get_text_count(), 0)
+  let pixmap = renderer.get_canvas().get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(pixmap.get_pixel(1, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(2, 0), @graphics.Color::white())
+  assert_eq(pixmap.get_pixel(3, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(4, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(5, 0), @graphics.Color::white())
+  assert_eq(pixmap.get_pixel(6, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(7, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(8, 0), @graphics.Color::white())
+  assert_eq(pixmap.get_pixel(9, 0), @graphics.Color::red())
+  assert_eq(pixmap.get_pixel(10, 0), @graphics.Color::green())
+}
+
+///|
+test "RenderPipeline replays transformed quality PNG byte commands" {
+  let source = @graphics.Pixmap::new(2, 1)
+  source.set_pixel(0, 0, @graphics.Color::red())
+  source.set_pixel(1, 0, @graphics.Color::green())
+  let src_right = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_transformed_quality_png_bytes_keyed(
+      "png-transform-quality",
+      must_renderer_test_png_bytes(source),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_rect_keyed(
+      "png-transform-quality-sprite",
+      must_renderer_test_png_bytes(source),
+      src_right,
+      3.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+
+  let batches = pipeline.batch_plan(6, 1).get_batches()
+  assert_eq(batches.length(), 2)
+  assert_true(batches[1].get_kind() == RenderPipelineBatchKind::Image)
+  assert_eq(batches[1].get_command_count(), 2)
+  assert_eq(batches[1].get_dirty_rect_count(), 2)
+  assert_true(
+    batches[1].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=5, height=1)),
+  )
+  let image_present_plan = batches[1].get_present_plan(6, 1, 4)
+  assert_eq(image_present_plan.get_rect_count(), 2)
+  assert_eq(image_present_plan.get_present_pixel_count(), 4)
+
+  let renderer = Renderer::new(@graphics.Canvas::new(6, 1))
+  let result = renderer.draw_pipeline(pipeline)
+  assert_eq(result.get_command_count(), 3)
+  assert_eq(result.get_clear_count(), 1)
+  assert_eq(result.get_image_count(), 2)
+  assert_eq(result.get_text_count(), 0)
+  let pixmap = renderer.get_canvas().get_pixmap()
+  assert_eq(pixmap.get_pixel(0, 0), @graphics.Color::red())
+  assert_eq(pixmap.get_pixel(1, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(2, 0), @graphics.Color::white())
+  assert_eq(pixmap.get_pixel(3, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(4, 0), @graphics.Color::green())
+  assert_eq(pixmap.get_pixel(5, 0), @graphics.Color::white())
+}
+
+///|
 test "RenderPipeline analyzes dirty bounds and present plan" {
   let icon = @graphics.Pixmap::new(2, 2)
   let pipeline = RenderPipeline::new()
@@ -403,6 +884,29 @@ test "RenderPipeline diff retains keyed point image commands by identity" {
   assert_eq(diff.get_changed_command_count(), 0)
   assert_true(!diff.has_changes())
   assert_true(!diff.has_dirty())
+}
+
+///|
+test "RenderPipeline diff uses canvas dirty fallback for placeholder full byte images" {
+  let paint = @graphics.Paint::new()
+  let previous = RenderPipeline::new()
+    .draw_bmp_bytes_keyed("bmp-full", Bytes::from_array([66, 77]), 1, 1, paint)
+    .draw_png_bytes_keyed("png-full", Bytes::from_array([137, 80]), 2, 1, paint)
+  let next = RenderPipeline::new()
+    .draw_bmp_bytes_keyed("bmp-full", Bytes::from_array([66, 77]), 2, 1, paint)
+    .draw_png_bytes_keyed("png-full", Bytes::from_array([137, 80]), 3, 1, paint)
+
+  let diff = RenderPipeline::diff(previous, next, 5, 4)
+  assert_eq(diff.get_retained_command_count(), 0)
+  assert_eq(diff.get_changed_command_count(), 2)
+  assert_true(diff.has_dirty())
+  assert_true(
+    diff.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=5, height=4)),
+  )
+  let present_plan = diff.get_present_plan(5, 4, 4)
+  assert_eq(present_plan.get_rect_count(), 1)
+  assert_eq(present_plan.get_present_pixel_count(), 20)
 }
 
 ///|
@@ -956,8 +1460,30 @@ test "RenderPipeline diff retains keyed transformed quality image commands by id
   let next_icon = @graphics.Pixmap::new(2, 2)
   next_icon.set_pixel(0, 0, @graphics.Color::blue())
   let source = @graphics.PixelRect::new(x=0, y=0, width=1, height=1)
+  let changed_source = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
   let paint = @graphics.Paint::new()
   let previous = RenderPipeline::new()
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp",
+      previous_icon.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.5,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-rect",
+      previous_icon.to_bmp_bytes(),
+      source,
+      0.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Balanced,
+    )
     .draw_transformed_quality_png_bytes_keyed(
       "png",
       must_renderer_test_png_bytes(previous_icon),
@@ -978,8 +1504,54 @@ test "RenderPipeline diff retains keyed transformed quality image commands by id
       2.0,
       paint,
       @graphics.ImageQuality::High,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      5.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-rect",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      source,
+      4.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Balanced,
     )
   let next = RenderPipeline::new()
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp",
+      next_icon.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.5,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-rect",
+      next_icon.to_bmp_bytes(),
+      source,
+      0.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Balanced,
+    )
     .draw_transformed_quality_png_bytes_keyed(
       "png",
       must_renderer_test_png_bytes(next_icon),
@@ -1001,9 +1573,34 @@ test "RenderPipeline diff retains keyed transformed quality image commands by id
       paint,
       @graphics.ImageQuality::High,
     )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba",
+      next_icon.to_rgba_bytes(),
+      2,
+      2,
+      5.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-rect",
+      next_icon.to_rgba_bytes(),
+      2,
+      2,
+      source,
+      4.0,
+      2.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Balanced,
+    )
 
-  let retained = RenderPipeline::diff(previous, next, 6, 3)
-  assert_eq(retained.get_retained_command_count(), 2)
+  let retained = RenderPipeline::diff(previous, next, 8, 5)
+  assert_eq(retained.get_retained_command_count(), 6)
   assert_eq(retained.get_changed_command_count(), 0)
   assert_true(!retained.has_changes())
   assert_true(!retained.has_dirty())
@@ -1037,6 +1634,274 @@ test "RenderPipeline diff retains keyed transformed quality image commands by id
   assert_eq(quality_changed.get_retained_command_count(), 0)
   assert_eq(quality_changed.get_changed_command_count(), 1)
   assert_true(quality_changed.has_dirty())
+  assert_true(
+    quality_changed.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=2, y=0, width=3, height=2)),
+  )
+  let quality_changed_present = quality_changed.get_present_plan(6, 3, 4)
+  assert_true(!quality_changed_present.uses_bounds_fallback())
+  assert_eq(quality_changed_present.get_rect_count(), 1)
+  assert_eq(quality_changed_present.get_present_pixel_count(), 6)
+
+  let png_full_quality_changed = RenderPipeline::diff(
+    RenderPipeline::new().draw_transformed_quality_png_bytes_keyed(
+      "png",
+      must_renderer_test_png_bytes(previous_icon),
+      1.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Balanced,
+    ),
+    RenderPipeline::new().draw_transformed_quality_png_bytes_keyed(
+      "png",
+      must_renderer_test_png_bytes(next_icon),
+      1.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::High,
+    ),
+    6,
+    3,
+  )
+  assert_eq(png_full_quality_changed.get_retained_command_count(), 0)
+  assert_eq(png_full_quality_changed.get_changed_command_count(), 1)
+  assert_true(
+    png_full_quality_changed.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=1, y=0, width=2, height=2)),
+  )
+  let png_full_quality_present = png_full_quality_changed.get_present_plan(
+    6, 3, 4,
+  )
+  assert_true(!png_full_quality_present.uses_bounds_fallback())
+  assert_eq(png_full_quality_present.get_rect_count(), 1)
+  assert_eq(png_full_quality_present.get_present_pixel_count(), 4)
+
+  let bmp_quality_changed = RenderPipeline::diff(
+    RenderPipeline::new().draw_transformed_quality_bmp_bytes_keyed(
+      "bmp",
+      previous_icon.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.5,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    ),
+    RenderPipeline::new().draw_transformed_quality_bmp_bytes_keyed(
+      "bmp",
+      next_icon.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.5,
+      2.0,
+      paint,
+      @graphics.ImageQuality::High,
+    ),
+    6,
+    3,
+  )
+  assert_eq(bmp_quality_changed.get_retained_command_count(), 0)
+  assert_eq(bmp_quality_changed.get_changed_command_count(), 1)
+  assert_true(bmp_quality_changed.has_dirty())
+  assert_true(
+    bmp_quality_changed.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=3, height=2)),
+  )
+  let bmp_quality_present = bmp_quality_changed.get_present_plan(6, 3, 4)
+  assert_true(!bmp_quality_present.uses_bounds_fallback())
+  assert_eq(bmp_quality_present.get_rect_count(), 1)
+  assert_eq(bmp_quality_present.get_present_pixel_count(), 6)
+
+  let bmp_rect_source_changed = RenderPipeline::diff(
+    RenderPipeline::new().draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-rect",
+      previous_icon.to_bmp_bytes(),
+      source,
+      0.0,
+      1.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Balanced,
+    ),
+    RenderPipeline::new().draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-rect",
+      next_icon.to_bmp_bytes(),
+      changed_source,
+      0.0,
+      1.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Balanced,
+    ),
+    6,
+    4,
+  )
+  assert_eq(bmp_rect_source_changed.get_retained_command_count(), 0)
+  assert_eq(bmp_rect_source_changed.get_changed_command_count(), 1)
+  assert_true(
+    bmp_rect_source_changed.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=1, width=2, height=2)),
+  )
+  let bmp_rect_source_present = bmp_rect_source_changed.get_present_plan(
+    6, 4, 4,
+  )
+  assert_true(!bmp_rect_source_present.uses_bounds_fallback())
+  assert_eq(bmp_rect_source_present.get_rect_count(), 1)
+  assert_eq(bmp_rect_source_present.get_present_pixel_count(), 4)
+
+  let rgba_dimensions_changed = RenderPipeline::diff(
+    RenderPipeline::new().draw_transformed_quality_rgba_bytes_keyed(
+      "rgba",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      2.0,
+      1.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    ),
+    RenderPipeline::new().draw_transformed_quality_rgba_bytes_keyed(
+      "rgba",
+      next_icon.to_rgba_bytes(),
+      3,
+      2,
+      2.0,
+      1.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    ),
+    6,
+    4,
+  )
+  assert_eq(rgba_dimensions_changed.get_retained_command_count(), 0)
+  assert_eq(rgba_dimensions_changed.get_changed_command_count(), 1)
+  assert_true(
+    rgba_dimensions_changed.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=2, y=1, width=2, height=2)),
+  )
+  let rgba_dimensions_present = rgba_dimensions_changed.get_present_plan(
+    6, 4, 4,
+  )
+  assert_true(!rgba_dimensions_present.uses_bounds_fallback())
+  assert_eq(rgba_dimensions_present.get_rect_count(), 1)
+  assert_eq(rgba_dimensions_present.get_present_pixel_count(), 4)
+
+  let rgba_quality_changed = RenderPipeline::diff(
+    RenderPipeline::new().draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-rect",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      source,
+      2.5,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Balanced,
+    ),
+    RenderPipeline::new().draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-rect",
+      next_icon.to_rgba_bytes(),
+      2,
+      2,
+      source,
+      2.5,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::High,
+    ),
+    6,
+    3,
+  )
+  assert_eq(rgba_quality_changed.get_retained_command_count(), 0)
+  assert_eq(rgba_quality_changed.get_changed_command_count(), 1)
+  assert_true(rgba_quality_changed.has_dirty())
+  assert_true(
+    rgba_quality_changed.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=2, y=0, width=3, height=2)),
+  )
+  let rgba_quality_present = rgba_quality_changed.get_present_plan(6, 3, 4)
+  assert_true(!rgba_quality_present.uses_bounds_fallback())
+  assert_eq(rgba_quality_present.get_rect_count(), 1)
+  assert_eq(rgba_quality_present.get_present_pixel_count(), 6)
+
+  let same_key_format_changed = RenderPipeline::diff(
+    RenderPipeline::new().draw_transformed_quality_bmp_bytes_keyed(
+      "shared-image",
+      previous_icon.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    ),
+    RenderPipeline::new().draw_transformed_quality_png_bytes_keyed(
+      "shared-image",
+      must_renderer_test_png_bytes(next_icon),
+      0.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    ),
+    5,
+    3,
+  )
+  assert_eq(same_key_format_changed.get_retained_command_count(), 0)
+  assert_eq(same_key_format_changed.get_changed_command_count(), 1)
+  assert_true(same_key_format_changed.has_dirty())
+  assert_true(
+    same_key_format_changed.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=2, height=2)),
+  )
+
+  let same_key_source_mode_changed = RenderPipeline::diff(
+    RenderPipeline::new().draw_transformed_quality_png_bytes_keyed(
+      "shared-png",
+      must_renderer_test_png_bytes(previous_icon),
+      2.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    ),
+    RenderPipeline::new().draw_transformed_quality_png_bytes_rect_keyed(
+      "shared-png",
+      must_renderer_test_png_bytes(next_icon),
+      source,
+      2.0,
+      0.0,
+      2.0,
+      2.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    ),
+    5,
+    3,
+  )
+  assert_eq(same_key_source_mode_changed.get_retained_command_count(), 0)
+  assert_eq(same_key_source_mode_changed.get_changed_command_count(), 1)
+  assert_true(same_key_source_mode_changed.has_dirty())
+  assert_true(
+    same_key_source_mode_changed.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=2, y=0, width=2, height=2)),
+  )
 }
 
 ///|
@@ -1365,6 +2230,207 @@ test "Renderer resource plan reports empty and clipped-away dependencies" {
 }
 
 ///|
+test "RenderPipeline resource plan uses declared image sizes for placeholder bytes" {
+  let paint = @graphics.Paint::new()
+  let clipped_src = @graphics.PixelRect::new(x=2, y=1, width=5, height=4)
+  let requested_src = @graphics.PixelRect::new(x=1, y=0, width=2, height=1)
+  let tall_requested_src = @graphics.PixelRect::new(x=0, y=0, width=1, height=2)
+  let transformed_src = @graphics.PixelRect::new(x=1, y=0, width=3, height=1)
+  let transformed_png_src = @graphics.PixelRect::new(
+    x=0,
+    y=0,
+    width=2,
+    height=1,
+  )
+  let transformed_rgba_src = @graphics.PixelRect::new(
+    x=2,
+    y=1,
+    width=3,
+    height=3,
+  )
+  let tile_src = @graphics.PixelRect::new(x=2, y=2, width=3, height=2)
+  let tall_tile_src = @graphics.PixelRect::new(x=0, y=1, width=1, height=3)
+  let plan = RenderPipeline::new()
+    .draw_rgba_bytes_keyed(
+      "rgba-full",
+      Bytes::from_array([0]),
+      3,
+      2,
+      0,
+      0,
+      paint,
+    )
+    .draw_rgba_bytes_rect_keyed(
+      "rgba-rect",
+      Bytes::from_array([]),
+      4,
+      3,
+      clipped_src,
+      0,
+      0,
+      paint,
+    )
+    .draw_sampled_bmp_bytes_rect_keyed(
+      "bmp-rect",
+      Bytes::from_array([66, 77]),
+      requested_src,
+      0,
+      0,
+      2,
+      1,
+      paint,
+      @graphics.ImageSampling::Nearest,
+    )
+    .draw_quality_png_bytes_rect_keyed(
+      "png-rect",
+      Bytes::from_array([137, 80]),
+      tall_requested_src,
+      0,
+      0,
+      1,
+      2,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_tiled_bmp_bytes_rect_keyed(
+      "bmp-tile",
+      Bytes::from_array([66, 77]),
+      tile_src,
+      0,
+      0,
+      3,
+      2,
+      paint,
+    )
+    .draw_tiled_png_bytes_rect_keyed(
+      "png-tile",
+      Bytes::from_array([137, 80]),
+      tall_tile_src,
+      0,
+      0,
+      1,
+      3,
+      paint,
+    )
+    .draw_bmp_bytes_keyed("bmp-full", Bytes::from_array([66, 77]), 0, 0, paint)
+    .draw_png_bytes_keyed("png-full", Bytes::from_array([137, 80]), 0, 0, paint)
+    .draw_transformed_quality_png_bytes_keyed(
+      "png-transform-full",
+      Bytes::from_array([137, 80]),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_rect_keyed(
+      "png-transform-rect",
+      Bytes::from_array([137, 80]),
+      transformed_png_src,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-transform-full",
+      Bytes::from_array([66, 77]),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-transform-rect",
+      Bytes::from_array([66, 77]),
+      transformed_src,
+      0.0,
+      0.0,
+      3.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba-transform-full",
+      Bytes::from_array([]),
+      4,
+      3,
+      0.0,
+      0.0,
+      4.0,
+      3.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-transform-rect",
+      Bytes::from_array([]),
+      4,
+      3,
+      transformed_rgba_src,
+      0.0,
+      0.0,
+      3.0,
+      3.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .resource_plan()
+
+  assert_eq(plan.get_command_count(), 14)
+  assert_eq(plan.get_image_count(), 14)
+  assert_eq(plan.get_keyed_image_count(), 14)
+  assert_eq(plan.get_image_source_pixel_count(), 44)
+  let images = plan.get_image_dependencies()
+  assert_eq(images.length(), 14)
+  for index in 0..<images.length() {
+    assert_eq(images[index].get_command_index(), index)
+  }
+  assert_true(images[0].get_resource_key() == Some("rgba-full"))
+  assert_eq(images[0].get_source_width(), 3)
+  assert_eq(images[0].get_source_height(), 2)
+  assert_true(images[1].get_resource_key() == Some("rgba-rect"))
+  assert_eq(images[1].get_source_width(), 2)
+  assert_eq(images[1].get_source_height(), 2)
+  assert_true(images[2].get_resource_key() == Some("bmp-rect"))
+  assert_eq(images[2].get_source_pixel_count(), 2)
+  assert_true(images[3].get_resource_key() == Some("png-rect"))
+  assert_eq(images[3].get_source_pixel_count(), 2)
+  assert_true(images[4].get_resource_key() == Some("bmp-tile"))
+  assert_eq(images[4].get_source_width(), 3)
+  assert_eq(images[4].get_source_height(), 2)
+  assert_true(images[5].get_resource_key() == Some("png-tile"))
+  assert_eq(images[5].get_source_width(), 1)
+  assert_eq(images[5].get_source_height(), 3)
+  assert_true(images[6].get_resource_key() == Some("bmp-full"))
+  assert_eq(images[6].get_source_pixel_count(), 0)
+  assert_true(images[7].get_resource_key() == Some("png-full"))
+  assert_eq(images[7].get_source_pixel_count(), 0)
+  assert_true(images[8].get_resource_key() == Some("png-transform-full"))
+  assert_eq(images[8].get_source_pixel_count(), 0)
+  assert_true(images[9].get_resource_key() == Some("png-transform-rect"))
+  assert_eq(images[9].get_source_width(), 2)
+  assert_eq(images[9].get_source_height(), 1)
+  assert_true(images[10].get_resource_key() == Some("bmp-transform-full"))
+  assert_eq(images[10].get_source_pixel_count(), 0)
+  assert_true(images[11].get_resource_key() == Some("bmp-transform-rect"))
+  assert_eq(images[11].get_source_width(), 3)
+  assert_eq(images[11].get_source_height(), 1)
+  assert_true(images[12].get_resource_key() == Some("rgba-transform-full"))
+  assert_eq(images[12].get_source_width(), 4)
+  assert_eq(images[12].get_source_height(), 3)
+  assert_true(images[13].get_resource_key() == Some("rgba-transform-rect"))
+  assert_eq(images[13].get_source_width(), 2)
+  assert_eq(images[13].get_source_height(), 2)
+}
+
+///|
 test "RenderPipeline keyed resources expose identity and replay normally" {
   let icon = @graphics.Pixmap::new(3, 2)
   icon.set_pixel(0, 0, @graphics.Color::red())
@@ -1665,6 +2731,7 @@ test "RenderPipeline BMP bytes transformed sampled replay uses RendererResources
   assert_eq(first.get_clear_count(), 1)
   assert_eq(first.get_image_count(), 2)
   assert_eq(first.get_keyed_image_count(), 2)
+  assert_eq(first.get_keyed_resource_count(), 2)
   assert_eq(first.get_image_cache_insert_count(), 2)
   assert_eq(first.get_image_cache_hit_count(), 0)
   assert_eq(first.get_resource_cache_miss_count(), 2)
@@ -1722,6 +2789,7 @@ test "RenderPipeline BMP bytes transformed sampled replay uses RendererResources
   assert_eq(second.get_command_count(), 3)
   assert_eq(second.get_image_count(), 2)
   assert_eq(second.get_keyed_image_count(), 2)
+  assert_eq(second.get_keyed_resource_count(), 2)
   assert_eq(second.get_image_cache_insert_count(), 0)
   assert_eq(second.get_image_cache_hit_count(), 2)
   assert_eq(second.get_resource_cache_miss_count(), 0)
@@ -2008,11 +3076,13 @@ test "RenderPipeline PNG bytes transformed quality replay uses RendererResources
   assert_eq(plan.get_image_source_pixel_count(), 3)
   let images = plan.get_image_dependencies()
   assert_true(images[0].get_resource_key() == Some("png-transform-quality"))
+  assert_eq(images[0].get_command_index(), 1)
   assert_eq(images[0].get_source_width(), 2)
   assert_eq(images[0].get_source_height(), 1)
   assert_true(
     images[1].get_resource_key() == Some("png-transform-quality-sprite"),
   )
+  assert_eq(images[1].get_command_index(), 2)
   assert_eq(images[1].get_source_width(), 1)
   assert_eq(images[1].get_source_height(), 1)
   let batches = first_pipeline.batch_plan(7, 1).get_batches()
@@ -2037,6 +3107,10 @@ test "RenderPipeline PNG bytes transformed quality replay uses RendererResources
   assert_true(resources.contains_image("png-transform-quality"))
   assert_true(resources.contains_image("png-transform-quality-sprite"))
   assert_eq(resources.get_image_cache().len(), 2)
+  let first_snapshot = resources.snapshot()
+  assert_eq(first_snapshot.get_image_count(), 2)
+  assert_eq(first_snapshot.get_image_capacity(), 4)
+  assert_true(first_snapshot.is_image_capacity_bounded())
   assert_eq(
     renderer.get_canvas().get_pixmap().get_pixel(0, 0),
     @graphics.Color::white(),
@@ -2092,6 +3166,10 @@ test "RenderPipeline PNG bytes transformed quality replay uses RendererResources
   assert_eq(second.get_resource_cache_miss_count(), 0)
   assert_eq(second.get_resource_cache_hit_count(), 2)
   assert_eq(resources.get_image_cache().len(), 2)
+  let second_snapshot = resources.snapshot()
+  assert_eq(second_snapshot.get_image_count(), 2)
+  assert_eq(second_snapshot.get_image_capacity(), 4)
+  assert_true(second_snapshot.is_image_capacity_bounded())
   assert_eq(
     renderer.get_canvas().get_pixmap().get_pixel(1, 0),
     @graphics.Color::white(),
@@ -2164,6 +3242,273 @@ test "RenderPipeline PNG bytes transformed quality replay uses RendererResources
   assert_eq(retained.get_retained_command_count(), 2)
   assert_eq(retained.get_changed_command_count(), 0)
   assert_true(!retained.has_dirty())
+}
+
+///|
+test "RenderPipeline BMP and RGBA transformed quality replay uses RendererResources image cache" {
+  let sprite = make_renderer_test_tile_source()
+  let src_right = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let resources = RendererResources::with_capacities(16, 16, 2, 8, 8)
+  let renderer = Renderer::new(@graphics.Canvas::new(10, 1))
+  let first_pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-transform-quality",
+      sprite.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-transform-quality-sprite",
+      sprite.to_bmp_bytes(),
+      src_right,
+      3.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba-transform-quality",
+      sprite.to_rgba_bytes(),
+      2,
+      1,
+      5.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-transform-quality-sprite",
+      sprite.to_rgba_bytes(),
+      2,
+      1,
+      src_right,
+      8.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+  let plan = first_pipeline.resource_plan()
+  assert_eq(plan.get_command_count(), 5)
+  assert_eq(plan.get_image_count(), 4)
+  assert_eq(plan.get_keyed_image_count(), 4)
+  assert_eq(plan.get_resource_count(), 4)
+  assert_eq(plan.get_keyed_resource_count(), 4)
+  assert_eq(plan.get_image_source_pixel_count(), 6)
+  let images = plan.get_image_dependencies()
+  assert_true(images[0].get_resource_key() == Some("bmp-transform-quality"))
+  assert_eq(images[0].get_command_index(), 1)
+  assert_eq(images[0].get_source_pixel_count(), 2)
+  assert_true(
+    images[1].get_resource_key() == Some("bmp-transform-quality-sprite"),
+  )
+  assert_eq(images[1].get_command_index(), 2)
+  assert_eq(images[1].get_source_pixel_count(), 1)
+  assert_true(images[2].get_resource_key() == Some("rgba-transform-quality"))
+  assert_eq(images[2].get_command_index(), 3)
+  assert_eq(images[2].get_source_pixel_count(), 2)
+  assert_true(
+    images[3].get_resource_key() == Some("rgba-transform-quality-sprite"),
+  )
+  assert_eq(images[3].get_command_index(), 4)
+  assert_eq(images[3].get_source_pixel_count(), 1)
+  let batches = first_pipeline.batch_plan(10, 1).get_batches()
+  assert_eq(batches.length(), 2)
+  assert_true(batches[1].get_kind() == RenderPipelineBatchKind::Image)
+  assert_eq(batches[1].get_dirty_rect_count(), 3)
+  assert_true(
+    batches[1].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=10, height=1)),
+  )
+  let image_rect_present = batches[1].get_present_plan(10, 1, 4)
+  assert_true(!image_rect_present.uses_bounds_fallback())
+  assert_eq(image_rect_present.get_rect_count(), 3)
+  assert_eq(image_rect_present.get_present_pixel_count(), 8)
+  let image_bounds_present = batches[1].get_present_plan(10, 1, 2)
+  assert_true(image_bounds_present.uses_bounds_fallback())
+  assert_eq(image_bounds_present.get_rect_count(), 1)
+  assert_true(
+    image_bounds_present.get_present_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=10, height=1)),
+  )
+  assert_eq(image_bounds_present.get_present_pixel_count(), 10)
+
+  let first = renderer.draw_pipeline_with_renderer_resources(
+    first_pipeline, resources,
+  )
+  assert_eq(first.get_command_count(), 5)
+  assert_eq(first.get_clear_count(), 1)
+  assert_eq(first.get_image_count(), 4)
+  assert_eq(first.get_keyed_image_count(), 4)
+  assert_eq(first.get_keyed_resource_count(), 4)
+  assert_eq(first.get_image_cache_insert_count(), 4)
+  assert_eq(first.get_image_cache_hit_count(), 0)
+  assert_eq(first.get_resource_cache_miss_count(), 4)
+  assert_eq(first.get_resource_cache_hit_count(), 0)
+  assert_true(resources.contains_image("bmp-transform-quality"))
+  assert_true(resources.contains_image("bmp-transform-quality-sprite"))
+  assert_true(resources.contains_image("rgba-transform-quality"))
+  assert_true(resources.contains_image("rgba-transform-quality-sprite"))
+  assert_eq(resources.get_image_cache().len(), 4)
+  let first_snapshot = resources.snapshot()
+  assert_eq(first_snapshot.get_image_count(), 4)
+  assert_eq(first_snapshot.get_image_capacity(), 8)
+  assert_true(first_snapshot.is_image_capacity_bounded())
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(1, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(2, 0),
+    @graphics.Color::white(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(3, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(4, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(5, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(6, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(7, 0),
+    @graphics.Color::white(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(8, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(9, 0),
+    @graphics.Color::green(),
+  )
+
+  let second_pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-transform-quality",
+      b"not a bmp",
+      1.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-transform-quality-sprite",
+      b"not a bmp",
+      src_right,
+      4.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba-transform-quality",
+      b"not rgba",
+      2,
+      1,
+      6.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-transform-quality-sprite",
+      b"not rgba",
+      2,
+      1,
+      src_right,
+      8.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+  let second = renderer.draw_pipeline_with_renderer_resources(
+    second_pipeline, resources,
+  )
+  assert_eq(second.get_command_count(), 5)
+  assert_eq(second.get_image_count(), 4)
+  assert_eq(second.get_keyed_image_count(), 4)
+  assert_eq(second.get_keyed_resource_count(), 4)
+  assert_eq(second.get_image_cache_insert_count(), 0)
+  assert_eq(second.get_image_cache_hit_count(), 4)
+  assert_eq(second.get_resource_cache_miss_count(), 0)
+  assert_eq(second.get_resource_cache_hit_count(), 4)
+  assert_eq(resources.get_image_cache().len(), 4)
+  let second_snapshot = resources.snapshot()
+  assert_eq(second_snapshot.get_image_count(), 4)
+  assert_eq(second_snapshot.get_image_capacity(), 8)
+  assert_true(second_snapshot.is_image_capacity_bounded())
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::white(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(1, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(2, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(3, 0),
+    @graphics.Color::white(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(4, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(5, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(6, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(7, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(8, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(9, 0),
+    @graphics.Color::green(),
+  )
 }
 
 ///|
@@ -4436,6 +5781,367 @@ test "RenderPipeline font bytes fallback atlas replay uses RendererResources and
 }
 
 ///|
+test "RenderPipeline font-loader replay reuses transformed quality image resources" {
+  let sprite = make_renderer_test_tile_source()
+  let src_right = @graphics.PixelRect::new(x=1, y=0, width=1, height=1)
+  let renderer = Renderer::new(@graphics.Canvas::new(18, 12))
+  let resources = RendererResources::with_font_capacity(16, 16, 2, 2, 2, 6)
+  let loader = @text.MemoryFontLoader::new()
+  ignore(loader.insert("ui-font", @text.FontData::new(make_minimal_ttf())))
+  let config = @text.LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let paint = @graphics.Paint::new().set_color(@graphics.Color::black())
+  let first_pipeline = RenderPipeline::new()
+    .clear_canvas(@graphics.Color::white())
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-transform-quality",
+      sprite.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-transform-quality-sprite",
+      sprite.to_bmp_bytes(),
+      src_right,
+      3.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_keyed(
+      "png-transform-quality",
+      must_renderer_test_png_bytes(sprite),
+      6.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_rect_keyed(
+      "png-transform-quality-sprite",
+      must_renderer_test_png_bytes(sprite),
+      src_right,
+      9.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba-transform-quality",
+      sprite.to_rgba_bytes(),
+      2,
+      1,
+      12.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-transform-quality-sprite",
+      sprite.to_rgba_bytes(),
+      2,
+      1,
+      src_right,
+      15.0,
+      0.0,
+      2.0,
+      1.0,
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_loaded_font_keyed("ui-font", "label", "A", 1.0, 1.0, config, paint)
+  let plan = first_pipeline.resource_plan()
+  assert_eq(plan.get_command_count(), 8)
+  assert_eq(plan.get_image_count(), 6)
+  assert_eq(plan.get_font_count(), 1)
+  assert_eq(plan.get_text_count(), 1)
+  assert_eq(plan.get_resource_count(), 8)
+  assert_eq(plan.get_keyed_resource_count(), 8)
+  assert_eq(plan.get_image_source_pixel_count(), 9)
+  assert_eq(plan.get_font_byte_count(), 0)
+  assert_eq(plan.get_text_byte_count(), 1)
+  let images = plan.get_image_dependencies()
+  assert_true(images[0].get_resource_key() == Some("bmp-transform-quality"))
+  assert_eq(images[0].get_command_index(), 1)
+  assert_eq(images[0].get_source_pixel_count(), 2)
+  assert_true(
+    images[1].get_resource_key() == Some("bmp-transform-quality-sprite"),
+  )
+  assert_eq(images[1].get_command_index(), 2)
+  assert_eq(images[1].get_source_pixel_count(), 1)
+  assert_true(images[2].get_resource_key() == Some("png-transform-quality"))
+  assert_eq(images[2].get_command_index(), 3)
+  assert_eq(images[2].get_source_pixel_count(), 2)
+  assert_true(
+    images[3].get_resource_key() == Some("png-transform-quality-sprite"),
+  )
+  assert_eq(images[3].get_command_index(), 4)
+  assert_eq(images[3].get_source_pixel_count(), 1)
+  assert_true(images[4].get_resource_key() == Some("rgba-transform-quality"))
+  assert_eq(images[4].get_command_index(), 5)
+  assert_eq(images[4].get_source_pixel_count(), 2)
+  assert_true(
+    images[5].get_resource_key() == Some("rgba-transform-quality-sprite"),
+  )
+  assert_eq(images[5].get_command_index(), 6)
+  assert_eq(images[5].get_source_pixel_count(), 1)
+  let fonts = plan.get_font_dependencies()
+  assert_eq(fonts[0].get_font_key(), "ui-font")
+  assert_eq(fonts[0].get_command_index(), 7)
+  assert_eq(fonts[0].get_font_byte_count(), 0)
+  let texts = plan.get_text_dependencies()
+  assert_true(texts[0].get_resource_key() == Some("label"))
+  assert_eq(texts[0].get_command_index(), 7)
+  assert_eq(texts[0].get_text_byte_count(), 1)
+  let batch_plan = first_pipeline.batch_plan(18, 12)
+  assert_eq(batch_plan.get_command_count(), 8)
+  assert_eq(batch_plan.get_batch_count(), 3)
+  assert_true(
+    batch_plan.get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=18, height=12)),
+  )
+  let batches = batch_plan.get_batches()
+  assert_true(batches[0].get_kind() == RenderPipelineBatchKind::Clear)
+  assert_eq(batches[0].get_start_index(), 0)
+  assert_eq(batches[0].get_command_count(), 1)
+  assert_true(
+    batches[0].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=18, height=12)),
+  )
+  assert_true(batches[1].get_kind() == RenderPipelineBatchKind::Image)
+  assert_eq(batches[1].get_start_index(), 1)
+  assert_eq(batches[1].get_command_count(), 6)
+  assert_eq(batches[1].get_dirty_rect_count(), 6)
+  assert_true(
+    batches[1].get_dirty_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=17, height=1)),
+  )
+  let image_rect_present = batches[1].get_present_plan(18, 12, 6)
+  assert_true(!image_rect_present.uses_bounds_fallback())
+  assert_eq(image_rect_present.get_rect_count(), 6)
+  assert_eq(image_rect_present.get_present_pixel_count(), 12)
+  let image_bounds_present = batches[1].get_present_plan(18, 12, 4)
+  assert_true(image_bounds_present.uses_bounds_fallback())
+  assert_eq(image_bounds_present.get_rect_count(), 1)
+  assert_true(
+    image_bounds_present.get_present_bounds() ==
+    Some(@graphics.PixelRect::new(x=0, y=0, width=17, height=1)),
+  )
+  assert_eq(image_bounds_present.get_present_pixel_count(), 17)
+  assert_true(batches[2].get_kind() == RenderPipelineBatchKind::Text)
+  assert_eq(batches[2].get_start_index(), 7)
+  assert_eq(batches[2].get_command_count(), 1)
+  assert_true(batches[2].has_dirty())
+
+  let first = match
+    renderer.draw_pipeline_with_font_loader_resources_result(
+      first_pipeline, resources, loader,
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected transformed-quality image and loaded font replay")
+  }
+  assert_eq(first.get_command_count(), 8)
+  assert_eq(first.get_clear_count(), 1)
+  assert_eq(first.get_image_count(), 6)
+  assert_eq(first.get_text_count(), 1)
+  assert_eq(first.get_keyed_image_count(), 6)
+  assert_eq(first.get_keyed_resource_count(), 8)
+  assert_eq(first.get_image_cache_insert_count(), 6)
+  assert_eq(first.get_image_cache_hit_count(), 0)
+  assert_eq(first.get_keyed_font_count(), 1)
+  assert_eq(first.get_keyed_text_count(), 1)
+  assert_eq(first.get_font_parse_count(), 1)
+  assert_eq(first.get_text_mask_render_count(), 1)
+  assert_eq(first.get_resource_cache_miss_count(), 8)
+  assert_eq(first.get_resource_cache_hit_count(), 0)
+  assert_true(resources.contains_image("bmp-transform-quality"))
+  assert_true(resources.contains_image("bmp-transform-quality-sprite"))
+  assert_true(resources.contains_image("png-transform-quality"))
+  assert_true(resources.contains_image("png-transform-quality-sprite"))
+  assert_true(resources.contains_image("rgba-transform-quality"))
+  assert_true(resources.contains_image("rgba-transform-quality-sprite"))
+  assert_true(resources.contains_font_face("ui-font"))
+  assert_true(resources.contains_text_mask("label"))
+  let filled_snapshot = resources.snapshot()
+  assert_eq(filled_snapshot.get_image_count(), 6)
+  assert_eq(filled_snapshot.get_image_capacity(), 6)
+  assert_true(filled_snapshot.is_image_capacity_bounded())
+  assert_eq(filled_snapshot.get_font_face_count(), 1)
+  assert_eq(filled_snapshot.get_font_face_capacity(), 2)
+  assert_true(filled_snapshot.is_font_face_capacity_bounded())
+  let filled_text_snapshot = filled_snapshot.get_text_snapshot()
+  assert_eq(filled_text_snapshot.get_text_mask_count(), 1)
+  assert_eq(filled_text_snapshot.get_text_mask_capacity(), 2)
+  assert_true(filled_text_snapshot.is_text_mask_capacity_bounded())
+  assert_eq(filled_text_snapshot.get_glyph_mask_count(), 0)
+  assert_eq(filled_text_snapshot.get_glyph_mask_capacity(), 2)
+  assert_true(filled_text_snapshot.is_glyph_mask_capacity_bounded())
+  assert_eq(filled_text_snapshot.get_atlas_entry_count(), 0)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(3, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(6, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(9, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(12, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(15, 0),
+    @graphics.Color::green(),
+  )
+
+  loader.clear()
+  let second = match
+    renderer.draw_pipeline_with_font_loader_resources_result(
+      RenderPipeline::new()
+      .clear_canvas(@graphics.Color::white())
+      .draw_transformed_quality_bmp_bytes_keyed(
+        "bmp-transform-quality",
+        b"not a bmp",
+        1.0,
+        0.0,
+        2.0,
+        1.0,
+        @graphics.Paint::new(),
+        @graphics.ImageQuality::Fast,
+      )
+      .draw_transformed_quality_bmp_bytes_rect_keyed(
+        "bmp-transform-quality-sprite",
+        b"not a bmp",
+        src_right,
+        4.0,
+        0.0,
+        2.0,
+        1.0,
+        @graphics.Paint::new(),
+        @graphics.ImageQuality::Fast,
+      )
+      .draw_transformed_quality_png_bytes_keyed(
+        "png-transform-quality",
+        Bytes::from_array([137, 80]),
+        7.0,
+        0.0,
+        2.0,
+        1.0,
+        @graphics.Paint::new(),
+        @graphics.ImageQuality::Fast,
+      )
+      .draw_transformed_quality_png_bytes_rect_keyed(
+        "png-transform-quality-sprite",
+        Bytes::from_array([137, 80]),
+        src_right,
+        10.0,
+        0.0,
+        2.0,
+        1.0,
+        @graphics.Paint::new(),
+        @graphics.ImageQuality::Fast,
+      )
+      .draw_transformed_quality_rgba_bytes_keyed(
+        "rgba-transform-quality",
+        b"not rgba",
+        2,
+        1,
+        13.0,
+        0.0,
+        2.0,
+        1.0,
+        @graphics.Paint::new(),
+        @graphics.ImageQuality::Fast,
+      )
+      .draw_transformed_quality_rgba_bytes_rect_keyed(
+        "rgba-transform-quality-sprite",
+        b"not rgba",
+        2,
+        1,
+        src_right,
+        16.0,
+        0.0,
+        2.0,
+        1.0,
+        @graphics.Paint::new(),
+        @graphics.ImageQuality::Fast,
+      )
+      .draw_loaded_font_keyed("ui-font", "label", "A", 1.0, 1.0, config, paint),
+      resources,
+      loader,
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected transformed-quality image and font cache hits")
+  }
+  assert_eq(second.get_command_count(), 8)
+  assert_eq(second.get_image_count(), 6)
+  assert_eq(second.get_text_count(), 1)
+  assert_eq(second.get_keyed_image_count(), 6)
+  assert_eq(second.get_keyed_resource_count(), 8)
+  assert_eq(second.get_image_cache_insert_count(), 0)
+  assert_eq(second.get_image_cache_hit_count(), 6)
+  assert_eq(second.get_font_parse_count(), 0)
+  assert_eq(second.get_font_cache_hit_count(), 1)
+  assert_eq(second.get_text_mask_render_count(), 0)
+  assert_eq(second.get_text_cache_hit_count(), 1)
+  assert_eq(second.get_resource_cache_miss_count(), 0)
+  assert_eq(second.get_resource_cache_hit_count(), 8)
+  assert_eq(resources.get_image_cache().len(), 6)
+  assert_eq(resources.get_font_face_cache().len(), 1)
+  assert_eq(resources.get_text_mask_cache().len(), 1)
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(0, 0),
+    @graphics.Color::white(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(1, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(4, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(7, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(10, 0),
+    @graphics.Color::green(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(13, 0),
+    @graphics.Color::red(),
+  )
+  assert_eq(
+    renderer.get_canvas().get_pixmap().get_pixel(16, 0),
+    @graphics.Color::green(),
+  )
+}
+
+///|
 test "RenderPipeline loaded font replay uses FontLoader and RendererResources" {
   let renderer = Renderer::new(@graphics.Canvas::new(12, 12))
   let resources = RendererResources::with_font_capacity(16, 16, 1, 1, 2, 1)
@@ -5098,6 +6804,73 @@ test "RenderPipeline diff retains keyed resource commands" {
       paint,
       @graphics.ImageSampling::Nearest,
     )
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-transform-quality",
+      previous_icon.to_bmp_bytes(),
+      0.0,
+      3.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-transform-quality-sprite",
+      previous_icon.to_bmp_bytes(),
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      2.0,
+      3.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_keyed(
+      "png-transform-quality",
+      must_renderer_test_png_bytes(previous_icon),
+      4.0,
+      3.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_rect_keyed(
+      "png-transform-quality-sprite",
+      must_renderer_test_png_bytes(previous_icon),
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      6.0,
+      3.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba-transform-quality",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      0.0,
+      4.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-transform-quality-sprite",
+      previous_icon.to_rgba_bytes(),
+      2,
+      2,
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      2.0,
+      4.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
     .draw_sampled_bmp_bytes_rect_keyed(
       "bmp-sampled-sprite",
       previous_icon.to_bmp_bytes(),
@@ -5478,6 +7251,73 @@ test "RenderPipeline diff retains keyed resource commands" {
       paint,
       @graphics.ImageSampling::Nearest,
     )
+    .draw_transformed_quality_bmp_bytes_keyed(
+      "bmp-transform-quality",
+      next_icon.to_bmp_bytes(),
+      0.0,
+      3.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_bmp_bytes_rect_keyed(
+      "bmp-transform-quality-sprite",
+      next_icon.to_bmp_bytes(),
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      2.0,
+      3.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_keyed(
+      "png-transform-quality",
+      must_renderer_test_png_bytes(next_icon),
+      4.0,
+      3.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_png_bytes_rect_keyed(
+      "png-transform-quality-sprite",
+      must_renderer_test_png_bytes(next_icon),
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      6.0,
+      3.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_keyed(
+      "rgba-transform-quality",
+      Bytes::from_array([0]),
+      2,
+      2,
+      0.0,
+      4.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
+    .draw_transformed_quality_rgba_bytes_rect_keyed(
+      "rgba-transform-quality-sprite",
+      Bytes::from_array([0]),
+      2,
+      2,
+      @graphics.PixelRect::new(x=0, y=0, width=1, height=1),
+      2.0,
+      4.0,
+      2.0,
+      1.0,
+      paint,
+      @graphics.ImageQuality::Fast,
+    )
     .draw_sampled_bmp_bytes_rect_keyed(
       "bmp-sampled-sprite",
       next_icon.to_bmp_bytes(),
@@ -5658,7 +7498,7 @@ test "RenderPipeline diff retains keyed resource commands" {
     )
 
   let retained = RenderPipeline::diff(previous, next, 8, 8)
-  assert_eq(retained.get_retained_command_count(), 40)
+  assert_eq(retained.get_retained_command_count(), 46)
   assert_eq(retained.get_changed_command_count(), 0)
   assert_true(!retained.has_changes())
   assert_true(!retained.has_dirty())
@@ -7547,6 +9387,69 @@ test "Renderer cached PNG transformed image path uses RendererResources" {
   assert_true(!resources.contains_image("broken-transform-png"))
   assert_eq(resources.get_image_cache().len(), 1)
   assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+
+  match
+    renderer.draw_transformed_quality_png_bytes_cached_with_renderer_resources(
+      Bytes::from_array([137, 80]),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "broken-transform-quality-png",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 8, 2)) => ()
+    _ => abort("expected cached transformed quality PNG decode error")
+  }
+  assert_true(!resources.contains_image("broken-transform-quality-png"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+
+  match
+    renderer.draw_transformed_quality_png_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([137, 80]),
+      full_rect,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "broken-transform-quality-png-rect",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 8, 2)) => ()
+    _ => abort("expected cached transformed quality PNG rect decode error")
+  }
+  assert_true(!resources.contains_image("broken-transform-quality-png-rect"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+
+  match
+    renderer.draw_transformed_quality_png_bytes_cached_with_renderer_resources(
+      must_renderer_test_png_bytes(tile),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "tile-transform-quality-png",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(quality) => {
+      assert_true(quality.did_decode_pixmap())
+      assert_true(!quality.did_hit_cache())
+    }
+    Err(_) => abort("expected cached transformed quality PNG insert")
+  }
+  assert_true(resources.contains_image("tile-transform-quality-png"))
+  assert_true(!resources.contains_image("tile-transform-png"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
 }
 
 ///|
@@ -7992,6 +9895,28 @@ test "Renderer cached BMP transformed image path uses RendererResources" {
 
   canvas.clear(@graphics.Color::white())
   match
+    renderer.draw_transformed_quality_bmp_bytes_cached_with_renderer_resources(
+      Bytes::from_array([0, 0]),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "tile-transform-bmp",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(full) => {
+      assert_true(!full.did_decode_pixmap())
+      assert_true(full.did_hit_cache())
+    }
+    Err(_) => abort("expected cached transformed quality BMP hit")
+  }
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
     renderer.draw_transformed_quality_bmp_bytes_rect_cached_with_renderer_resources(
       Bytes::from_array([0, 0]),
       src_rect,
@@ -8032,6 +9957,69 @@ test "Renderer cached BMP transformed image path uses RendererResources" {
   assert_true(!resources.contains_image("broken-transform-bmp"))
   assert_eq(resources.get_image_cache().len(), 1)
   assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+
+  match
+    renderer.draw_transformed_quality_bmp_bytes_cached_with_renderer_resources(
+      Bytes::from_array([66, 77]),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "broken-transform-quality-bmp",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
+    _ => abort("expected cached transformed quality BMP decode error")
+  }
+  assert_true(!resources.contains_image("broken-transform-quality-bmp"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+
+  match
+    renderer.draw_transformed_quality_bmp_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([66, 77]),
+      src_rect,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "broken-transform-quality-bmp-rect",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Err(@graphics.PixmapDecodeError::UnexpectedEndOfData(0, 54, 2)) => ()
+    _ => abort("expected cached transformed quality BMP rect decode error")
+  }
+  assert_true(!resources.contains_image("broken-transform-quality-bmp-rect"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+
+  match
+    renderer.draw_transformed_quality_bmp_bytes_cached_with_renderer_resources(
+      tile.to_bmp_bytes(),
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "tile-transform-quality-bmp",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(quality) => {
+      assert_true(quality.did_decode_pixmap())
+      assert_true(!quality.did_hit_cache())
+    }
+    Err(_) => abort("expected cached transformed quality BMP insert")
+  }
+  assert_true(resources.contains_image("tile-transform-quality-bmp"))
+  assert_true(!resources.contains_image("tile-transform-bmp"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
 }
 
 ///|
@@ -8066,6 +10054,30 @@ test "Renderer cached RGBA transformed image path uses RendererResources" {
   }
   assert_eq(resources.get_image_cache().len(), 1)
   assert_eq(canvas.get_pixmap().get_pixel(0, 0), @graphics.Color::white())
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
+
+  canvas.clear(@graphics.Color::white())
+  match
+    renderer.draw_transformed_quality_rgba_bytes_cached_with_renderer_resources(
+      Bytes::from_array([]),
+      2,
+      1,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "tile-transform-rgba",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(full) => {
+      assert_true(!full.did_decode_pixmap())
+      assert_true(full.did_hit_cache())
+    }
+    Err(_) => abort("expected cached transformed quality RGBA hit")
+  }
   assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
   assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
 
@@ -8115,6 +10127,75 @@ test "Renderer cached RGBA transformed image path uses RendererResources" {
   assert_true(!resources.contains_image("broken-transform-rgba"))
   assert_eq(resources.get_image_cache().len(), 1)
   assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+
+  match
+    renderer.draw_transformed_quality_rgba_bytes_cached_with_renderer_resources(
+      Bytes::from_array([1, 2, 3, 4]),
+      2,
+      1,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "broken-transform-quality-rgba",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Err(@graphics.PixmapDecodeError::RgbaByteLengthMismatch(8, 4)) => ()
+    _ => abort("expected cached transformed quality RGBA decode error")
+  }
+  assert_true(!resources.contains_image("broken-transform-quality-rgba"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+
+  match
+    renderer.draw_transformed_quality_rgba_bytes_rect_cached_with_renderer_resources(
+      Bytes::from_array([1, 2, 3, 4]),
+      2,
+      1,
+      src_rect,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "broken-transform-quality-rgba-rect",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Err(@graphics.PixmapDecodeError::RgbaByteLengthMismatch(8, 4)) => ()
+    _ => abort("expected cached transformed quality RGBA rect decode error")
+  }
+  assert_true(!resources.contains_image("broken-transform-quality-rgba-rect"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::white())
+
+  match
+    renderer.draw_transformed_quality_rgba_bytes_cached_with_renderer_resources(
+      tile.to_rgba_bytes(),
+      2,
+      1,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      resources,
+      "tile-transform-quality-rgba",
+      @graphics.Paint::new(),
+      @graphics.ImageQuality::Fast,
+    ) {
+    Ok(quality) => {
+      assert_true(quality.did_decode_pixmap())
+      assert_true(!quality.did_hit_cache())
+    }
+    Err(_) => abort("expected cached transformed quality RGBA insert")
+  }
+  assert_true(resources.contains_image("tile-transform-quality-rgba"))
+  assert_true(!resources.contains_image("tile-transform-rgba"))
+  assert_eq(resources.get_image_cache().len(), 1)
+  assert_eq(canvas.get_pixmap().get_pixel(1, 0), @graphics.Color::red())
+  assert_eq(canvas.get_pixmap().get_pixel(2, 0), @graphics.Color::green())
 }
 
 ///|
@@ -9288,6 +11369,175 @@ test "Renderer::draw_text covers printable ASCII from parsed TTF bytes" {
 }
 
 ///|
+test "Renderer checked generated font fixture applies kern table to layout and pixels" {
+  let face = unwrap_font_face(@text.FontFace::from_bytes(make_kerning_ttf()))
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let layout = @text.TextLayout::layout(face, "AV", config)
+  assert_eq(layout.run_count(), 1)
+  assert_eq(layout.get_width(), 16.0)
+  let glyphs = layout.get_runs()[0].get_glyphs()
+  assert_eq(glyphs.length(), 2)
+  assert_eq(glyphs[0].glyph_id, 1)
+  assert_eq(glyphs[1].glyph_id, 2)
+  assert_eq(glyphs[0].x, 0.0)
+  assert_eq(glyphs[1].x, 6.0)
+
+  let canvas = @graphics.Canvas::new(24, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  renderer.draw_text_face(
+    face,
+    "AV",
+    1.0,
+    1.0,
+    config,
+    @graphics.Paint::new().set_color(@graphics.Color::black()),
+  )
+  let pixmap = renderer.get_canvas().get_pixmap()
+  assert_eq(pixmap.get_pixel(1, 1), @graphics.Color::black())
+  assert_eq(pixmap.get_pixel(16, 1), @graphics.Color::black())
+  assert_eq(pixmap.get_pixel(17, 1), @graphics.Color::white())
+}
+
+///|
+test "Renderer generated format 12 fixture draws supplementary glyph through cached atlas resources" {
+  let text = string_from_codepoints([0x1F600])
+  let font_bytes = make_ttf_for_codes([0x1F600])
+  let face = unwrap_font_face(@text.FontFace::from_bytes(font_bytes))
+  assert_eq(face.char_to_glyph(0x1F600), 1)
+  assert_true(face.has_glyph_for_char(0x1F600))
+
+  let config = @text.LayoutConfig::new(
+    max_width=20.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let layout = @text.TextLayout::layout(face, text, config)
+  assert_eq(layout.run_count(), 1)
+  assert_eq(layout.get_runs()[0].glyph_count(), 1)
+  assert_eq(layout.get_runs()[0].get_glyphs()[0].glyph_id, 1)
+
+  let canvas = @graphics.Canvas::new(16, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_font_capacity(16, 16, 1, 2, 2, 1)
+  let first = match
+    renderer.draw_font_bytes_atlas_with_renderer_resources(
+      font_bytes,
+      text,
+      1.0,
+      1.0,
+      config,
+      resources,
+      "emoji-face",
+      "emoji-label",
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected supplementary atlas draw")
+  }
+  assert_true(first.did_parse_font())
+  assert_eq(first.get_glyph_count(), 1)
+  assert_eq(first.get_rasterized_glyph_count(), 1)
+  assert_eq(first.get_atlas_inserted_count(), 1)
+  assert_true(pixmap_has_ink(renderer.get_canvas().get_pixmap()))
+
+  canvas.clear(@graphics.Color::white())
+  let second = match
+    renderer.draw_font_bytes_atlas_with_renderer_resources(
+      b"not a font",
+      text,
+      1.0,
+      1.0,
+      config,
+      resources,
+      "emoji-face",
+      "emoji-label",
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected supplementary atlas cache hit")
+  }
+  assert_true(second.did_hit_font_cache())
+  assert_eq(second.get_rasterized_glyph_count(), 0)
+  assert_eq(second.get_cache_hit_count(), 1)
+  assert_eq(second.get_atlas_hit_count(), 1)
+  assert_true(pixmap_has_ink(renderer.get_canvas().get_pixmap()))
+}
+
+///|
+test "Renderer generated fallback atlas fixture reports supplementary spans and missing glyphs" {
+  let text = string_from_codepoints(['A'.to_int(), 0x1F600, 'Z'.to_int()])
+  let canvas = @graphics.Canvas::new(36, 12)
+  canvas.clear(@graphics.Color::white())
+  let renderer = Renderer::new(canvas)
+  let resources = RendererResources::with_font_capacity(24, 12, 2, 4, 4, 1)
+  let config = @text.LayoutConfig::new(
+    max_width=40.0,
+    font_size=10.0,
+    line_height=10.0,
+  )
+  let first = match
+    renderer.draw_font_bytes_fallback_line_atlas_with_renderer_resources(
+      [
+        FontBytesFallbackSource::new("latin", make_ttf_for_codes([65])),
+        FontBytesFallbackSource::new("emoji", make_ttf_for_codes([0x1F600])),
+      ],
+      text,
+      1.0,
+      1.0,
+      config,
+      resources,
+      "mixed-label",
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected mixed fallback atlas draw")
+  }
+  assert_eq(first.get_parsed_font_count(), 2)
+  assert_eq(first.get_span_count(), 3)
+  assert_eq(first.get_drawn_span_count(), 2)
+  assert_eq(first.get_skipped_span_count(), 1)
+  assert_eq(first.get_missing_span_count(), 1)
+  assert_eq(first.get_missing_char_count(), 1)
+  assert_true(first.has_missing_glyphs())
+  assert_eq(first.get_glyph_count(), 2)
+  assert_eq(first.get_rasterized_glyph_count(), 2)
+  assert_eq(first.get_atlas_inserted_count(), 2)
+  assert_true(pixmap_has_ink(renderer.get_canvas().get_pixmap()))
+
+  canvas.clear(@graphics.Color::white())
+  let second = match
+    renderer.draw_font_bytes_fallback_line_atlas_with_renderer_resources(
+      [
+        FontBytesFallbackSource::new("latin", b"not a font"),
+        FontBytesFallbackSource::new("emoji", b"also not a font"),
+      ],
+      text,
+      1.0,
+      1.0,
+      config,
+      resources,
+      "mixed-label",
+      @graphics.Paint::new().set_color(@graphics.Color::black()),
+    ) {
+    Ok(result) => result
+    Err(_) => abort("expected mixed fallback atlas cache hit")
+  }
+  assert_eq(second.get_parsed_font_count(), 0)
+  assert_eq(second.get_font_cache_hit_count(), 2)
+  assert_eq(second.get_missing_span_count(), 1)
+  assert_eq(second.get_rasterized_glyph_count(), 0)
+  assert_eq(second.get_cache_hit_count(), 2)
+  assert_eq(second.get_atlas_hit_count(), 2)
+  assert_true(pixmap_has_ink(renderer.get_canvas().get_pixmap()))
+}
+
+///|
 fn make_renderer_test_nine_patch_source() -> @graphics.Pixmap {
   let src = @graphics.Pixmap::new(3, 3)
   src.set_pixel(0, 0, @graphics.Color::new(r=10, g=0, b=0))
@@ -9442,6 +11692,15 @@ fn printable_ascii_count() -> Int {
 }
 
 ///|
+fn string_from_codepoints(codepoints : Array[Int]) -> String {
+  let out = StringBuilder(size_hint=codepoints.length())
+  for codepoint in codepoints {
+    out.write_char(codepoint.unsafe_to_char())
+  }
+  out.to_string()
+}
+
+///|
 fn unwrap_font_face(
   result : Result[@text.FontFace, @text.FontParseError],
 ) -> @text.FontFace {
@@ -9456,6 +11715,13 @@ struct TestGlyph {
   codepoint : Int
   advance : Int
   bytes : Array[Byte]
+}
+
+///|
+struct TestKernPair {
+  left : Int
+  right : Int
+  value : Int
 }
 
 ///|
@@ -9486,6 +11752,17 @@ fn make_minimal_ttf() -> Bytes {
 }
 
 ///|
+fn make_kerning_ttf() -> Bytes {
+  make_ttf_with_glyphs_and_kern(
+    [
+      { codepoint: 65, advance: 10, bytes: make_box_glyph() },
+      { codepoint: 86, advance: 10, bytes: make_box_glyph() },
+    ],
+    [{ left: 1, right: 2, value: -4 }],
+  )
+}
+
+///|
 fn make_ttf_for_codes(codepoints : Array[Int]) -> Bytes {
   let glyphs = []
   for codepoint in codepoints {
@@ -9496,6 +11773,14 @@ fn make_ttf_for_codes(codepoints : Array[Int]) -> Bytes {
 
 ///|
 fn make_ttf_with_glyphs(glyphs : Array[TestGlyph]) -> Bytes {
+  make_ttf_with_glyphs_and_kern(glyphs, [])
+}
+
+///|
+fn make_ttf_with_glyphs_and_kern(
+  glyphs : Array[TestGlyph],
+  kern_pairs : Array[TestKernPair],
+) -> Bytes {
   let tags : Array[Bytes] = [
     b"cmap", b"glyf", b"head", b"hhea", b"hmtx", b"loca", b"maxp",
   ]
@@ -9508,6 +11793,10 @@ fn make_ttf_with_glyphs(glyphs : Array[TestGlyph]) -> Bytes {
     make_loca_table(glyphs),
     make_maxp_table(glyphs),
   ]
+  if kern_pairs.length() > 0 {
+    tags.push(b"kern")
+    tables.push(make_kern_table(kern_pairs))
+  }
   let offsets = []
   let mut current = 12 + tags.length() * 16
   for table in tables {
@@ -10095,6 +12384,26 @@ fn make_cmap_table(glyphs : Array[TestGlyph]) -> Array[Byte] {
     append_u32(out, glyphs[i].codepoint)
     append_u32(out, glyphs[i].codepoint)
     append_u32(out, i + 1)
+  }
+  out
+}
+
+///|
+fn make_kern_table(pairs : Array[TestKernPair]) -> Array[Byte] {
+  let out : Array[Byte] = []
+  append_u16(out, 0) // version
+  append_u16(out, 1) // nTables
+  append_u16(out, 0) // subtable version
+  append_u16(out, 14 + pairs.length() * 6) // subtable length
+  append_u16(out, 0) // coverage format 0
+  append_u16(out, pairs.length()) // nPairs
+  append_u16(out, 0) // searchRange
+  append_u16(out, 0) // entrySelector
+  append_u16(out, 0) // rangeShift
+  for pair in pairs {
+    append_u16(out, pair.left)
+    append_u16(out, pair.right)
+    append_i16(out, pair.value)
   }
   out
 }

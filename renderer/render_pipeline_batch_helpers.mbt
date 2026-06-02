@@ -70,6 +70,18 @@ fn render_command_batch_kind(
       _,
       _
     )
+    | RenderCommand::DrawTransformedQualityBmpBytesKeyed(_, _, _, _, _, _, _, _)
+    | RenderCommand::DrawTransformedQualityBmpBytesRectKeyed(
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _
+    )
     | RenderCommand::DrawTransformedSampledPngBytesKeyed(_, _, _, _, _, _, _, _)
     | RenderCommand::DrawTransformedSampledPngBytesRectKeyed(
       _,
@@ -107,6 +119,31 @@ fn render_command_batch_kind(
       _
     )
     | RenderCommand::DrawTransformedSampledRgbaBytesRectKeyed(
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _
+    )
+    | RenderCommand::DrawTransformedQualityRgbaBytesKeyed(
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _,
+      _
+    )
+    | RenderCommand::DrawTransformedQualityRgbaBytesRectKeyed(
       _,
       _,
       _,

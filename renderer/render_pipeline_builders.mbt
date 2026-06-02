@@ -403,6 +403,47 @@ pub fn RenderPipeline::draw_transformed_sampled_bmp_bytes_rect_keyed(
 }
 
 ///|
+/// Queue a keyed transformed quality BMP-bytes image command.
+pub fn RenderPipeline::draw_transformed_quality_bmp_bytes_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  image_data : Bytes,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawTransformedQualityBmpBytesKeyed(
+      resource_key, image_data, x, y, width, height, paint, quality,
+    ),
+  )
+}
+
+///|
+/// Queue a keyed transformed quality BMP-bytes source-rectangle command.
+pub fn RenderPipeline::draw_transformed_quality_bmp_bytes_rect_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  image_data : Bytes,
+  src_rect : @graphics.PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawTransformedQualityBmpBytesRectKeyed(
+      resource_key, image_data, src_rect, x, y, width, height, paint, quality,
+    ),
+  )
+}
+
+///|
 /// Queue a keyed transformed sampled PNG-bytes image command.
 pub fn RenderPipeline::draw_transformed_sampled_png_bytes_keyed(
   self : RenderPipeline,
@@ -527,6 +568,53 @@ pub fn RenderPipeline::draw_transformed_sampled_rgba_bytes_rect_keyed(
     RenderCommand::DrawTransformedSampledRgbaBytesRectKeyed(
       resource_key, image_data, image_width, image_height, src_rect, x, y, width,
       height, paint, sampling,
+    ),
+  )
+}
+
+///|
+/// Queue a keyed transformed quality raw RGBA-bytes image command.
+pub fn RenderPipeline::draw_transformed_quality_rgba_bytes_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawTransformedQualityRgbaBytesKeyed(
+      resource_key, image_data, image_width, image_height, x, y, width, height, paint,
+      quality,
+    ),
+  )
+}
+
+///|
+/// Queue a keyed transformed quality raw RGBA-bytes source-rectangle command.
+pub fn RenderPipeline::draw_transformed_quality_rgba_bytes_rect_keyed(
+  self : RenderPipeline,
+  resource_key : String,
+  image_data : Bytes,
+  image_width : Int,
+  image_height : Int,
+  src_rect : @graphics.PixelRect,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  paint : @graphics.Paint,
+  quality : @graphics.ImageQuality,
+) -> RenderPipeline {
+  self.push(
+    RenderCommand::DrawTransformedQualityRgbaBytesRectKeyed(
+      resource_key, image_data, image_width, image_height, src_rect, x, y, width,
+      height, paint, quality,
     ),
   )
 }
